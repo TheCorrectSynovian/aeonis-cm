@@ -2,9 +2,7 @@
 	"required": true,
 	"package": "com.qc.aeonis.mixin",
 	"compatibilityLevel": "JAVA_21",
-	"mixins": [
-		"ExampleMixin"
-	],
+	"mixins": [],
 	"injectors": {
 		"defaultRequire": 1
 	},
