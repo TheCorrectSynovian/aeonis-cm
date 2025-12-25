@@ -1,7 +1,7 @@
 {
 	"schemaVersion": 1,
 	"id": "aeonis-manager",
-	"version": "${25.8b}",
+	"version": "${version}",
 	"name": "Aeonis Plus",
 	"description": "A Companion and Expansion mod for AEONIS modpack!",
 	"authors": [
