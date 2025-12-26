@@ -19,14 +19,27 @@ import net.minecraft.world.effect.MobEffectInstance
 import net.minecraft.world.effect.MobEffects
 import net.minecraft.commands.arguments.ResourceArgument
 import net.minecraft.core.registries.Registries
+import com.mojang.brigadier.arguments.StringArgumentType
 import net.minecraft.world.entity.Entity
 import net.minecraft.world.entity.EntitySpawnReason
 import net.minecraft.world.entity.EntityType
 import net.minecraft.world.entity.LightningBolt
 import net.minecraft.world.entity.Mob
+import net.minecraft.world.entity.animal.IronGolem
+import net.minecraft.world.entity.animal.wolf.Wolf
+import net.minecraft.world.entity.boss.enderdragon.EnderDragon
+import net.minecraft.world.entity.boss.enderdragon.phases.EnderDragonPhase
+import net.minecraft.world.entity.monster.Monster
+import net.minecraft.world.entity.monster.Vex
 import net.minecraft.world.entity.player.Player
+import net.minecraft.world.entity.item.ItemEntity
+import net.minecraft.world.item.ItemStack
+import net.minecraft.world.item.Items
 import net.minecraft.world.level.GameType
+import net.minecraft.world.Difficulty
+import net.minecraft.world.level.ClipContext
 import net.minecraft.world.phys.AABB
+import net.minecraft.world.phys.HitResult
 import net.minecraft.world.phys.Vec3
 import net.minecraft.network.protocol.game.ClientboundGameEventPacket
 
@@ -35,6 +48,44 @@ object AeonisCommands {
     // Track original gamemode for untransform
     private val originalGameModes = mutableMapOf<java.util.UUID, GameType>()
     private val transformedEntities = mutableMapOf<java.util.UUID, Entity>()
+    
+    // Track pet vex ownership: vex entity ID -> owner player UUID
+    internal val petVexOwners = mutableMapOf<Int, java.util.UUID>()
+    
+    /**
+     * Called every tick to redirect pet vex targets away from their owners
+     */
+    fun tickPetVexes(server: net.minecraft.server.MinecraftServer) {
+        val toRemove = mutableListOf<Int>()
+        
+        for ((vexId, ownerUUID) in petVexOwners) {
+            var found = false
+            for (level in server.allLevels) {
+                val entity = level.getEntity(vexId)
+                if (entity is Vex && entity.isAlive) {
+                    found = true
+                    val owner = server.playerList.getPlayer(ownerUUID)
+                    
+                    // If vex is targeting owner, redirect to a hostile mob
+                    if (entity.target == owner || entity.target is Player) {
+                        val nearbyHostile = level.getEntitiesOfClass(
+                            Monster::class.java,
+                            entity.boundingBox.inflate(24.0)
+                        ) { it !is Vex && it.isAlive }.minByOrNull { it.distanceToSqr(entity) }
+                        
+                        entity.setTarget(nearbyHostile)
+                    }
+                    break
+                }
+            }
+            if (!found) {
+                toRemove.add(vexId)
+            }
+        }
+        
+        // Clean up dead vexes
+        toRemove.forEach { petVexOwners.remove(it) }
+    }
     
     fun register() {
         CommandRegistrationCallback.EVENT.register { dispatcher, registryAccess, _ ->
@@ -114,13 +165,83 @@ object AeonisCommands {
                         .executes { wardenRoar(it) })
                     .then(Commands.literal("darkness")
                         .requires { it.hasPermission(2) }
-                        .executes { darknessPulse(it) }))
+                        .executes { darknessPulse(it) })
+                    .then(Commands.literal("crit_save")
+                        .requires { it.hasPermission(2) }
+                        .executes { critSave(it) })
+                    .then(Commands.literal("pro_gamer_mode")
+                        .requires { it.hasPermission(2) }
+                        .executes { proGamerMode(it) }))
                 .then(Commands.literal("features")
                     .then(Commands.literal("extra_mobs")
                         .requires { it.hasPermission(2) }
                         .executes { showExtraMobsStatus(it) }
                         .then(Commands.argument("enabled", BoolArgumentType.bool())
                             .executes { setExtraMobs(it) })))
+                // New fun commands
+                .then(Commands.literal("mimic")
+                    .requires { it.hasPermission(2) }
+                    .then(Commands.literal("zombie").executes { mimicSound(it, "zombie") })
+                    .then(Commands.literal("wither").executes { mimicSound(it, "wither") })
+                    .then(Commands.literal("ghast").executes { mimicSound(it, "ghast") })
+                    .then(Commands.literal("dragon").executes { mimicSound(it, "dragon") }))
+                .then(Commands.literal("ambush_mode")
+                    .requires { it.hasPermission(2) }
+                    .executes { ambushMode(it) })
+                .then(Commands.literal("detect_hostiles")
+                    .requires { it.hasPermission(2) }
+                    .executes { detectHostiles(it) })
+                .then(Commands.literal("moon_jump")
+                    .requires { it.hasPermission(2) }
+                    .executes { moonJump(it) })
+                .then(Commands.literal("thunder_dome")
+                    .requires { it.hasPermission(2) }
+                    .executes { thunderDome(it) })
+                .then(Commands.literal("copper_drop")
+                    .requires { it.hasPermission(2) }
+                    .executes { copperDrop(it) })
+                .then(Commands.literal("time_warp")
+                    .requires { it.hasPermission(2) }
+                    .then(Commands.argument("ticks", IntegerArgumentType.integer(1, 24000))
+                        .executes { timeWarp(it) }))
+                .then(Commands.literal("give")
+                    .then(Commands.literal("drunk_vision")
+                        .requires { it.hasPermission(2) }
+                        .then(Commands.argument("targets", EntityArgument.players())
+                            .executes { drunkVision(it) })))
+                .then(Commands.literal("blink")
+                    .requires { it.hasPermission(2) }
+                    .then(Commands.argument("range", IntegerArgumentType.integer(1, 25))
+                        .executes { blink(it) }))
+                .then(Commands.literal("dash")
+                    .requires { it.hasPermission(2) }
+                    .executes { dash(it) })
+                .then(Commands.literal("pet")
+                    .requires { it.hasPermission(2) }
+                    .then(Commands.literal("vex").executes { petVex(it) }))
+                .then(Commands.literal("spirit_wolves")
+                    .requires { it.hasPermission(2) }
+                    .then(Commands.argument("count", IntegerArgumentType.integer(1, 5))
+                        .executes { spiritWolves(it) }))
+                .then(Commands.literal("clear_effects")
+                    .requires { it.hasPermission(2) }
+                    .then(Commands.argument("targets", EntityArgument.players())
+                        .executes { clearEffects(it) }))
+                .then(Commands.literal("sys")
+                    .then(Commands.literal("system_ping")
+                        .requires { it.hasPermission(2) }
+                        .executes { systemPing(it) })
+                    .then(Commands.literal("tell_story")
+                        .requires { it.hasPermission(2) }
+                        .executes { tellStory(it) }))
+        )
+        
+        // /exitbody shortcuts
+        dispatcher.register(
+            Commands.literal("exitbody")
+                .requires { it.hasPermission(2) }
+                .then(Commands.literal("s").executes { exitBody(it, GameType.SURVIVAL) })
+                .then(Commands.literal("c").executes { exitBody(it, GameType.CREATIVE) })
         )
     }
     
@@ -218,8 +339,16 @@ object AeonisCommands {
         transformedEntities[player.uuid] = entity
         
         // Disable the mob's AI so it doesn't interfere with player control
-        if (entity is Mob) {
+        // EXCEPTION: Ender Dragon needs AI to update its multi-part body and animations!
+        if (entity is Mob && entity !is EnderDragon) {
             entity.setNoAi(true)
+        }
+        
+        // Special handling for Ender Dragon - set to hover phase
+        if (entity is EnderDragon) {
+            entity.phaseManager.setPhase(EnderDragonPhase.HOVERING)
+            // Ensure AI is enabled for Dragon
+            entity.setNoAi(false)
         }
         
         // Register entity for control
@@ -544,6 +673,396 @@ object AeonisCommands {
         val count = nearbyPlayers.size
         source.sendSuccess({ 
             Component.literal("§8🌑 You release a DARKNESS PULSE! $count player(s) blinded!") 
+        }, true)
+        return 1
+    }
+    
+    // ========== NEW COMMANDS ==========
+    
+    private fun mimicSound(ctx: CommandContext<CommandSourceStack>, mob: String): Int {
+        val source = ctx.source
+        val player = source.player ?: run {
+            source.sendFailure(Component.literal("§cOnly players can use this!"))
+            return 0
+        }
+        val level = player.level() as? net.minecraft.server.level.ServerLevel ?: return 0
+        
+        val sound = when (mob) {
+            "zombie" -> SoundEvents.ZOMBIE_AMBIENT
+            "wither" -> SoundEvents.WITHER_AMBIENT
+            "ghast" -> SoundEvents.GHAST_AMBIENT
+            "dragon" -> SoundEvents.ENDER_DRAGON_GROWL
+            else -> SoundEvents.ZOMBIE_AMBIENT
+        }
+        
+        level.playSound(null, player.x, player.y, player.z, sound, SoundSource.HOSTILE, 2.0f, 1.0f)
+        source.sendSuccess({ Component.literal("§a🔊 Mimicked $mob sound!") }, false)
+        return 1
+    }
+    
+    private fun ambushMode(ctx: CommandContext<CommandSourceStack>): Int {
+        val source = ctx.source
+        val player = source.player ?: run {
+            source.sendFailure(Component.literal("§cOnly players can use this!"))
+            return 0
+        }
+        val level = player.level() as? net.minecraft.server.level.ServerLevel ?: return 0
+        
+        // Spawn 4 iron golems in a circle
+        val radius = 3.0
+        for (i in 0 until 4) {
+            val angle = (i * 90.0) * (Math.PI / 180.0)
+            val x = player.x + Math.cos(angle) * radius
+            val z = player.z + Math.sin(angle) * radius
+            
+            val golem = EntityType.IRON_GOLEM.create(level, EntitySpawnReason.COMMAND)
+            golem?.let {
+                it.setPos(x, player.y, z)
+                level.addFreshEntity(it)
+            }
+        }
+        
+        level.playSound(null, player.x, player.y, player.z, SoundEvents.IRON_GOLEM_REPAIR, SoundSource.NEUTRAL, 1.0f, 1.0f)
+        source.sendSuccess({ Component.literal("§6⚔ AMBUSH MODE! 4 Iron Golems summoned to protect you!") }, true)
+        return 1
+    }
+    
+    private fun detectHostiles(ctx: CommandContext<CommandSourceStack>): Int {
+        val source = ctx.source
+        val player = source.player ?: run {
+            source.sendFailure(Component.literal("§cOnly players can use this!"))
+            return 0
+        }
+        val level = player.level() as? net.minecraft.server.level.ServerLevel ?: return 0
+        
+        // Find all hostile mobs in 40-block radius
+        val hostiles = level.getEntitiesOfClass(
+            Monster::class.java,
+            AABB.ofSize(player.position(), 80.0, 40.0, 80.0)
+        )
+        
+        for (hostile in hostiles) {
+            hostile.addEffect(MobEffectInstance(MobEffects.GLOWING, 200, 0)) // 10 seconds
+        }
+        
+        source.sendSuccess({ Component.literal("§e👁 Detected ${hostiles.size} hostile mobs! They are now glowing.") }, true)
+        return 1
+    }
+    
+    private fun moonJump(ctx: CommandContext<CommandSourceStack>): Int {
+        val source = ctx.source
+        val player = source.player as? ServerPlayer ?: run {
+            source.sendFailure(Component.literal("§cOnly players can use this!"))
+            return 0
+        }
+        
+        // Low gravity = high jump boost + slow falling
+        player.addEffect(MobEffectInstance(MobEffects.JUMP_BOOST, 600, 4)) // 30 sec, level 5
+        player.addEffect(MobEffectInstance(MobEffects.SLOW_FALLING, 600, 0)) // 30 sec
+        
+        source.sendSuccess({ Component.literal("§b🌙 MOON JUMP activated! Low gravity for 30 seconds.") }, true)
+        return 1
+    }
+    
+    private fun thunderDome(ctx: CommandContext<CommandSourceStack>): Int {
+        val source = ctx.source
+        val player = source.player ?: run {
+            source.sendFailure(Component.literal("§cOnly players can use this!"))
+            return 0
+        }
+        val level = player.level() as? net.minecraft.server.level.ServerLevel ?: return 0
+        
+        // Spawn lightning in a 30-block radius ring, multiple strikes
+        val server = level.server
+        for (i in 0 until 15) {
+            val delay = i * 20L // 1 second apart
+            server.execute {
+                Thread.sleep(delay)
+                for (j in 0 until 8) {
+                    val angle = Math.random() * Math.PI * 2
+                    val dist = 5.0 + Math.random() * 25.0
+                    val x = player.x + Math.cos(angle) * dist
+                    val z = player.z + Math.sin(angle) * dist
+                    
+                    val lightning = LightningBolt(EntityType.LIGHTNING_BOLT, level)
+                    lightning.setPos(x, player.y, z)
+                    lightning.setVisualOnly(true) // Don't damage
+                    level.addFreshEntity(lightning)
+                }
+            }
+        }
+        
+        source.sendSuccess({ Component.literal("§c⚡ THUNDER DOME activated! Lightning storm for 15 seconds!") }, true)
+        return 1
+    }
+    
+    private fun copperDrop(ctx: CommandContext<CommandSourceStack>): Int {
+        val source = ctx.source
+        val player = source.player ?: run {
+            source.sendFailure(Component.literal("§cOnly players can use this!"))
+            return 0
+        }
+        val level = player.level() as? net.minecraft.server.level.ServerLevel ?: return 0
+        
+        // Rain copper ingots from above
+        for (i in 0 until 32) {
+            val x = player.x + (Math.random() - 0.5) * 10
+            val y = player.y + 15 + Math.random() * 5
+            val z = player.z + (Math.random() - 0.5) * 10
+            
+            val stack = ItemStack(Items.COPPER_INGOT, 1)
+            val itemEntity = ItemEntity(level, x, y, z, stack)
+            itemEntity.setDeltaMovement(0.0, -0.2, 0.0)
+            level.addFreshEntity(itemEntity)
+        }
+        
+        level.playSound(null, player.x, player.y, player.z, SoundEvents.COPPER_BREAK, SoundSource.BLOCKS, 1.0f, 1.0f)
+        source.sendSuccess({ Component.literal("§6🥉 COPPER DROP! Copper is raining from the sky!") }, true)
+        return 1
+    }
+    
+    private fun timeWarp(ctx: CommandContext<CommandSourceStack>): Int {
+        val source = ctx.source
+        val ticks = IntegerArgumentType.getInteger(ctx, "ticks")
+        val level = source.level
+        
+        val newTime = level.dayTime + ticks
+        level.setDayTime(newTime)
+        
+        source.sendSuccess({ Component.literal("§d⏰ TIME WARP! Shifted time forward by $ticks ticks.") }, true)
+        return 1
+    }
+    
+    private fun drunkVision(ctx: CommandContext<CommandSourceStack>): Int {
+        val source = ctx.source
+        val targets = EntityArgument.getPlayers(ctx, "targets")
+        
+        for (target in targets) {
+            target.addEffect(MobEffectInstance(MobEffects.NAUSEA, 160, 0)) // 8 sec
+            target.addEffect(MobEffectInstance(MobEffects.SLOWNESS, 160, 1)) // 8 sec
+            target.addEffect(MobEffectInstance(MobEffects.BLINDNESS, 60, 0)) // 3 sec
+        }
+        
+        source.sendSuccess({ Component.literal("§a🍺 DRUNK VISION applied to ${targets.size} player(s)!") }, true)
+        return 1
+    }
+    
+    private fun critSave(ctx: CommandContext<CommandSourceStack>): Int {
+        val source = ctx.source
+        val player = source.player as? ServerPlayer ?: run {
+            source.sendFailure(Component.literal("§cOnly players can use this!"))
+            return 0
+        }
+        
+        if (player.health <= 10f) {
+            player.addEffect(MobEffectInstance(MobEffects.ABSORPTION, 200, 3)) // 10 sec, 8 hearts
+            player.addEffect(MobEffectInstance(MobEffects.REGENERATION, 100, 2)) // 5 sec, regen III
+            player.addEffect(MobEffectInstance(MobEffects.RESISTANCE, 100, 1)) // 5 sec
+            
+            val level = player.level() as? net.minecraft.server.level.ServerLevel
+            level?.playSound(null, player.x, player.y, player.z, SoundEvents.TOTEM_USE, SoundSource.PLAYERS, 1.0f, 1.0f)
+            
+            source.sendSuccess({ Component.literal("§c💔 CRIT SAVE! Emergency healing activated!") }, true)
+        } else {
+            source.sendFailure(Component.literal("§eYour HP is above 10, no crit save needed."))
+        }
+        return 1
+    }
+    
+    private fun proGamerMode(ctx: CommandContext<CommandSourceStack>): Int {
+        val source = ctx.source
+        val player = source.player as? ServerPlayer ?: run {
+            source.sendFailure(Component.literal("§cOnly players can use this!"))
+            return 0
+        }
+        val level = source.level
+        val server = source.server
+        
+        // Set difficulty to hard
+        server.setDifficulty(Difficulty.HARD, true)
+        
+        // Set time to night (13000)
+        level.setDayTime(13000)
+        
+        // Give speed II for 20 sec
+        player.addEffect(MobEffectInstance(MobEffects.SPEED, 400, 1))
+        player.addEffect(MobEffectInstance(MobEffects.NIGHT_VISION, 400, 0))
+        
+        source.sendSuccess({ Component.literal("§4🎮 PRO GAMER MODE! Difficulty: HARD, Time: NIGHT, Speed II active!") }, true)
+        return 1
+    }
+    
+    private fun systemPing(ctx: CommandContext<CommandSourceStack>): Int {
+        val source = ctx.source
+        source.sendSuccess({ Component.literal("§6═══ AEONIS SYSTEM PING ═══") }, false)
+        source.sendSuccess({ Component.literal("§eMod ID: §baeonis-manager") }, false)
+        source.sendSuccess({ Component.literal("§eVersion: §b1.0.0") }, false)
+        source.sendSuccess({ Component.literal("§eCommands loaded: §b25+") }, false)
+        source.sendSuccess({ Component.literal("§eTransform system: §aONLINE") }, false)
+        source.sendSuccess({ Component.literal("§eExtra mobs: §a" + if (AeonisFeatures.isExtraMobsEnabled(source.server)) "ENABLED" else "DISABLED") }, false)
+        source.sendSuccess({ Component.literal("§6══════════════════════════") }, false)
+        return 1
+    }
+    
+    private fun tellStory(ctx: CommandContext<CommandSourceStack>): Int {
+        val source = ctx.source
+        val stories = listOf(
+            "§5§o\"The ancient ones whisper of a power beyond comprehension...\"",
+            "§5§o\"In the shadows, something stirs. The Aeonis awakens.\"",
+            "§5§o\"They said it was impossible. They were wrong.\"",
+            "§5§o\"The world trembles as a new legend is born.\"",
+            "§5§o\"From the void, power flows. Will you seize it?\"",
+            "§5§o\"Heroes are not born. They are forged in chaos.\"",
+            "§5§o\"The end is merely another beginning...\"",
+            "§5§o\"Reality bends to those who dare command it.\""
+        )
+        
+        val story = stories.random()
+        source.server.playerList.broadcastSystemMessage(Component.literal(story), false)
+        return 1
+    }
+
+    private fun blink(ctx: CommandContext<CommandSourceStack>): Int {
+        val source = ctx.source
+        val player = source.player as? ServerPlayer ?: run {
+            source.sendFailure(Component.literal("§cOnly players can blink!"))
+            return 0
+        }
+        val range = IntegerArgumentType.getInteger(ctx, "range").coerceIn(1, 25)
+        val look = player.lookAngle.normalize()
+        val eye = player.eyePosition
+        val target = eye.add(look.scale(range.toDouble()))
+        val hit = player.level().clip(
+            ClipContext(eye, target, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, player)
+        )
+
+        val destination = when (hit.type) {
+            HitResult.Type.BLOCK -> hit.location.subtract(look.scale(0.5))
+            else -> target
+        }
+
+        player.teleportTo(destination.x, destination.y, destination.z)
+        player.addEffect(MobEffectInstance(MobEffects.RESISTANCE, 40, 4)) // brief invuln
+        source.sendSuccess({ Component.literal("§b✦ Blinked $range blocks!") }, true)
+        return 1
+    }
+
+    private fun dash(ctx: CommandContext<CommandSourceStack>): Int {
+        val source = ctx.source
+        val player = source.player as? ServerPlayer ?: run {
+            source.sendFailure(Component.literal("§cOnly players can dash!"))
+            return 0
+        }
+        val dir = player.lookAngle.normalize().scale(1.5)
+        player.setDeltaMovement(dir)
+        player.hurtMarked = true
+        source.sendSuccess({ Component.literal("§e⚡ Dashed forward!") }, true)
+        return 1
+    }
+
+    private fun petVex(ctx: CommandContext<CommandSourceStack>): Int {
+        val source = ctx.source
+        val player = source.player as? ServerPlayer ?: run {
+            source.sendFailure(Component.literal("§cOnly players can summon pets!"))
+            return 0
+        }
+        val level = player.level() as? net.minecraft.server.level.ServerLevel ?: return 0
+
+        val vex = EntityType.VEX.spawn(level, player.blockPosition().above(), EntitySpawnReason.COMMAND)
+        if (vex == null) {
+            source.sendFailure(Component.literal("§cFailed to summon pet vex!"))
+            return 0
+        }
+        
+        // Track this vex as owned by the player
+        petVexOwners[vex.id] = player.uuid
+        
+        // Give vex effects to make it visible and strong
+        vex.addEffect(MobEffectInstance(MobEffects.GLOWING, 1200, 0))
+        vex.addEffect(MobEffectInstance(MobEffects.STRENGTH, 1200, 1))
+        vex.setLimitedLife(1200) // 60s
+        
+        // Find nearest hostile mob and set as target
+        val nearbyHostile = level.getEntitiesOfClass(
+            Monster::class.java,
+            vex.boundingBox.inflate(16.0)
+        ) { it !is Vex }.minByOrNull { it.distanceToSqr(vex) }
+        
+        if (nearbyHostile != null) {
+            vex.setTarget(nearbyHostile)
+        }
+
+        source.sendSuccess({ Component.literal("§d🧚 Pet Vex summoned! It will attack nearby hostiles.") }, true)
+        return 1
+    }
+
+    private fun spiritWolves(ctx: CommandContext<CommandSourceStack>): Int {
+        val source = ctx.source
+        val player = source.player as? ServerPlayer ?: run {
+            source.sendFailure(Component.literal("§cOnly players can summon wolves!"))
+            return 0
+        }
+        val level = player.level() as? net.minecraft.server.level.ServerLevel ?: return 0
+        val count = IntegerArgumentType.getInteger(ctx, "count").coerceIn(1, 5)
+
+        repeat(count) {
+            val wolf = EntityType.WOLF.spawn(level, player.blockPosition(), EntitySpawnReason.COMMAND) ?: return@repeat
+            // Apply effects for spirit wolf appearance
+            wolf.setPos(player.x + (Math.random() - 0.5) * 2, player.y, player.z + (Math.random() - 0.5) * 2)
+            wolf.addEffect(MobEffectInstance(MobEffects.GLOWING, 900, 0))
+            wolf.addEffect(MobEffectInstance(MobEffects.STRENGTH, 900, 1))
+            wolf.addEffect(MobEffectInstance(MobEffects.SPEED, 900, 1))
+        }
+
+        source.sendSuccess({ Component.literal("§f🐺 Spirit Wolves summoned ($count)!") }, true)
+        return 1
+    }
+
+    private fun clearEffects(ctx: CommandContext<CommandSourceStack>): Int {
+        val source = ctx.source
+        val targets = EntityArgument.getPlayers(ctx, "targets")
+        for (t in targets) {
+            t.removeAllEffects()
+        }
+        source.sendSuccess({ Component.literal("§a✨ Cleared effects for ${targets.size} player(s).") }, true)
+        return 1
+    }
+    
+    private fun exitBody(ctx: CommandContext<CommandSourceStack>, targetMode: GameType): Int {
+        val source = ctx.source
+        val player = source.player as? ServerPlayer ?: run {
+            source.sendFailure(Component.literal("§cOnly players can use this!"))
+            return 0
+        }
+        
+        // Check if transformed
+        val entity = transformedEntities.remove(player.uuid)
+        if (entity == null) {
+            source.sendFailure(Component.literal("§cYou're not transformed!"))
+            return 0
+        }
+        
+        // Stop controlling
+        AeonisNetworking.removeControlledEntity(player)
+        
+        // Stop spectating
+        player.setCamera(player)
+        
+        // Remove tracked original gamemode since we're using explicit mode
+        originalGameModes.remove(player.uuid)
+        
+        // Set to requested gamemode
+        player.setGameMode(targetMode)
+        
+        // Teleport player to entity's last position before killing it
+        player.teleportTo(entity.x, entity.y, entity.z)
+        
+        // Kill the spawned entity
+        entity.discard()
+        
+        val modeName = if (targetMode == GameType.SURVIVAL) "Survival" else "Creative"
+        source.sendSuccess({ 
+            Component.literal("§a✨ Exited body! Now in $modeName mode.") 
         }, true)
         return 1
     }

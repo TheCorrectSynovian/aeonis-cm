@@ -22,6 +22,9 @@ object AeonisManager : ModInitializer {
 		
 		// Register tick event to enforce spectator mode while transformed
 		ServerTickEvents.END_SERVER_TICK.register { server ->
+			// Handle pet vex AI redirection
+			AeonisCommands.tickPetVexes(server)
+			
 			for (player in server.playerList.players) {
 				if (AeonisNetworking.isPlayerTransformed(player.uuid)) {
 					// Force spectator mode while transformed

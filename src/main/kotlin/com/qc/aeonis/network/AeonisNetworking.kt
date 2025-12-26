@@ -19,19 +19,29 @@ import net.minecraft.world.entity.animal.Bee
 import net.minecraft.world.entity.animal.Parrot
 import net.minecraft.world.entity.boss.wither.WitherBoss
 import net.minecraft.world.entity.boss.enderdragon.EnderDragon
+import net.minecraft.world.entity.boss.enderdragon.phases.EnderDragonPhase
 import net.minecraft.world.entity.monster.Blaze
 import net.minecraft.world.entity.monster.Ghast
 import net.minecraft.world.entity.monster.Phantom
 import net.minecraft.world.entity.monster.Vex
 import net.minecraft.world.entity.monster.EnderMan
+import net.minecraft.world.entity.monster.Creeper
+import net.minecraft.world.entity.monster.AbstractSkeleton
 import net.minecraft.world.entity.monster.breeze.Breeze
+import net.minecraft.world.entity.monster.Pillager
+import net.minecraft.world.entity.animal.Chicken
+import net.minecraft.world.entity.projectile.Arrow
 import net.minecraft.world.entity.projectile.WitherSkull
 import net.minecraft.world.entity.projectile.DragonFireball
+import net.minecraft.world.entity.projectile.SmallFireball
+import net.minecraft.world.entity.projectile.LargeFireball
 import net.minecraft.world.entity.projectile.windcharge.BreezeWindCharge
+import net.minecraft.world.entity.item.ItemEntity
 import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.Vec3
 import net.minecraft.network.chat.Component
 import net.minecraft.world.item.ItemStack
+import net.minecraft.world.item.Items
 
 /**
  * Packet sent from client to server with movement input
@@ -176,9 +186,15 @@ object AeonisNetworking {
         // Special handling for Ender Dragon - it's a complex entity
         val isDragon = entity is EnderDragon
         
+        // Keep dragon in hover phase to prevent AI interference and stop jittery AI turns
+        if (isDragon && entity is EnderDragon) {
+            entity.phaseManager.setPhase(EnderDragonPhase.HOVERING)
+            if (entity.isNoAi) entity.setNoAi(false)
+        }
+        
         // Movement speed - slower in water, faster for flying mobs, dragon is big and fast
         val baseSpeed = when {
-            isDragon -> 0.8  // Dragon is fast!
+            isDragon -> 1.2  // Dragon is BIG and fast!
             isSwimming -> 0.25
             isFlying -> 0.45
             else -> 0.35
@@ -186,28 +202,36 @@ object AeonisNetworking {
         val speed = if (payload.sneak) baseSpeed * 0.4 else baseSpeed
         
         if (forward != 0.0 || strafe != 0.0) {
-            if (isDragon) {
-                // Special dragon movement - direct position teleport for smooth flight
+            if (isDragon && entity is EnderDragon) {
+                // Dragon movement: use velocity+move for smoother camera; avoid teleport jitter
                 val cosPitch = Math.cos(pitchRad)
                 val sinPitch = Math.sin(pitchRad)
-                
+
                 val motionX = (-Math.sin(yawRad) * forward * cosPitch + Math.cos(yawRad) * strafe) * speed
                 val motionY = (-sinPitch * forward) * speed
                 val motionZ = (Math.cos(yawRad) * forward * cosPitch + Math.sin(yawRad) * strafe) * speed
-                
-                // Directly move dragon for smooth flight
-                val newX = entity.x + motionX
-                val newY = entity.y + motionY
-                val newZ = entity.z + motionZ
-                entity.setPos(newX, newY, newZ)
-                entity.setDeltaMovement(Vec3(motionX, motionY, motionZ))
+
+                val motion = Vec3(motionX, motionY, motionZ)
+                entity.deltaMovement = motion
+                entity.move(net.minecraft.world.entity.MoverType.SELF, motion)
+
+                // Hard-set rotations to kill wobble
+                entity.setYRot(payload.yaw)
+                entity.setXRot(payload.pitch)
+                entity.yBodyRot = payload.yaw
+                entity.yHeadRot = payload.yaw
+                entity.yRotO = payload.yaw
+                entity.xRotO = payload.pitch
             } else if (isFlying) {
                 // Flying movement - full 3D movement based on pitch
                 val cosPitch = Math.cos(pitchRad)
                 val sinPitch = Math.sin(pitchRad)
                 
                 val motionX = (-Math.sin(yawRad) * forward * cosPitch + Math.cos(yawRad) * strafe) * speed
-                val motionY = (-sinPitch * forward) * speed
+                var motionY = (-sinPitch * forward) * speed
+                // Allow free ascent/descent with jump/sneak even while moving
+                if (payload.jump) motionY += 0.35
+                if (payload.sneak) motionY -= 0.35
                 val motionZ = (Math.cos(yawRad) * forward * cosPitch + Math.sin(yawRad) * strafe) * speed
                 
                 entity.setDeltaMovement(Vec3(motionX, motionY, motionZ))
@@ -244,16 +268,26 @@ object AeonisNetworking {
         }
         
         // Apply physics based on environment
-        if (isDragon) {
-            // Dragon hovers when not moving - direct position control
+        if (isDragon && entity is EnderDragon) {
+            // Dragon hover / vertical control when idle
             if (forward == 0.0 && strafe == 0.0) {
-                if (payload.jump) {
-                    entity.setPos(entity.x, entity.y + 0.5, entity.z)
-                } else if (payload.sneak) {
-                    entity.setPos(entity.x, entity.y - 0.5, entity.z)
+                var dy = 0.0
+                if (payload.jump) dy += 0.35
+                if (payload.sneak) dy -= 0.35
+                if (dy != 0.0) {
+                    val motion = Vec3(0.0, dy, 0.0)
+                    entity.deltaMovement = motion
+                    entity.move(net.minecraft.world.entity.MoverType.SELF, motion)
+                } else {
+                    entity.deltaMovement = Vec3.ZERO
                 }
-                // Dragon stays in place - no gravity
-                entity.setDeltaMovement(Vec3.ZERO)
+
+                entity.setYRot(payload.yaw)
+                entity.setXRot(payload.pitch)
+                entity.yBodyRot = payload.yaw
+                entity.yHeadRot = payload.yaw
+                entity.yRotO = payload.yaw
+                entity.xRotO = payload.pitch
             }
         } else if (isFlying) {
             // Flying mobs hover in place when not moving
@@ -309,13 +343,25 @@ object AeonisNetworking {
         // Handle sneaking visual
         entity.isShiftKeyDown = payload.sneak
         
-        // Handle attack - special handling for boss mobs
+        // Handle attack - special handling for boss mobs and projectile mobs
         if (payload.attack && canAttack(entity)) {
             when (entity) {
                 is WitherBoss -> handleWitherAttack(player, entity, payload.yaw, payload.pitch)
                 is EnderDragon -> handleDragonAttack(player, entity, payload.yaw, payload.pitch)
                 is Breeze -> handleBreezeAttack(player, entity, payload.yaw, payload.pitch)
-                else -> handleMobAttack(player, entity, payload.yaw, payload.pitch)
+                is Blaze -> handleBlazeAttack(player, entity, payload.yaw, payload.pitch)
+                is Ghast -> handleGhastAttack(player, entity, payload.yaw, payload.pitch)
+                is Chicken -> handleChickenEgg(player, entity)
+                is Creeper -> handleCreeperExplosion(player, entity, payload.yaw, payload.pitch)
+                is AbstractSkeleton -> handleSkeletonArrow(player, entity, payload.yaw, payload.pitch)
+                is Pillager -> handlePillagerArrow(player, entity, payload.yaw, payload.pitch)
+                else -> {
+                    if (isGhastLike(entity)) {
+                        handleGhastLikeAttack(player, entity as? LivingEntity ?: return)
+                    } else {
+                        handleMobAttack(player, entity, payload.yaw, payload.pitch)
+                    }
+                }
             }
         }
         
@@ -470,6 +516,7 @@ object AeonisNetworking {
      */
     private fun isFlightMob(entity: Entity): Boolean {
         return entity is Ghast ||
+               isGhastLike(entity) ||
                entity is Phantom ||
                entity is WitherBoss ||
                entity is EnderDragon ||
@@ -479,6 +526,15 @@ object AeonisNetworking {
                entity is Vex ||
                entity is Blaze ||
                entity is Breeze
+    }
+
+    private fun isGhastLike(entity: Entity): Boolean {
+        return try {
+            val path = entity.type.builtInRegistryHolder().key().location().path
+            path.contains("ghast", ignoreCase = true)
+        } catch (e: Exception) {
+            false
+        }
     }
     
     /**
@@ -620,6 +676,381 @@ object AeonisNetworking {
             net.minecraft.sounds.SoundSource.HOSTILE,
             1.0f,
             1.0f
+        )
+    }
+    
+    /**
+     * Handle Blaze fireball attack (rapid small fireballs)
+     */
+    private fun handleBlazeAttack(player: ServerPlayer, blaze: Blaze, yaw: Float, pitch: Float) {
+        // Check cooldown (250ms between fireballs - rapid fire!)
+        val now = System.currentTimeMillis()
+        val lastAttack = attackCooldowns[player.uuid] ?: 0L
+        if (now - lastAttack < 250) return
+        attackCooldowns[player.uuid] = now
+        
+        val level = player.level() as? net.minecraft.server.level.ServerLevel ?: return
+        
+        // Calculate look direction
+        val yawRad = Math.toRadians(yaw.toDouble())
+        val pitchRad = Math.toRadians(pitch.toDouble())
+        
+        val lookX = -Math.sin(yawRad) * Math.cos(pitchRad)
+        val lookY = -Math.sin(pitchRad)
+        val lookZ = Math.cos(yawRad) * Math.cos(pitchRad)
+        
+        // Spawn position - from blaze's center
+        val spawnX = blaze.x + lookX * 1.5
+        val spawnY = blaze.y + 1.0 + lookY * 1.5
+        val spawnZ = blaze.z + lookZ * 1.5
+        
+        // Create small fireball (like blaze shoots)
+        val fireball = SmallFireball(level, blaze, Vec3(lookX, lookY, lookZ).normalize())
+        fireball.setPos(spawnX, spawnY, spawnZ)
+        
+        // Set velocity
+        val power = 1.5
+        fireball.setDeltaMovement(lookX * power, lookY * power, lookZ * power)
+        
+        // Spawn the fireball
+        level.addFreshEntity(fireball)
+        
+        // Play blaze shoot sound
+        level.playSound(
+            null,
+            blaze.x, blaze.y, blaze.z,
+            net.minecraft.sounds.SoundEvents.BLAZE_SHOOT,
+            net.minecraft.sounds.SoundSource.HOSTILE,
+            1.0f,
+            1.0f
+        )
+    }
+    
+    /**
+     * Handle Ghast fireball attack (large explosive fireballs)
+     */
+    private fun handleGhastAttack(player: ServerPlayer, ghast: Ghast, yaw: Float, pitch: Float) {
+        // Check cooldown (600ms between fireballs - big and powerful!)
+        val now = System.currentTimeMillis()
+        val lastAttack = attackCooldowns[player.uuid] ?: 0L
+        if (now - lastAttack < 600) return
+        attackCooldowns[player.uuid] = now
+        
+        val level = player.level() as? net.minecraft.server.level.ServerLevel ?: return
+        
+        // Calculate look direction
+        val yawRad = Math.toRadians(yaw.toDouble())
+        val pitchRad = Math.toRadians(pitch.toDouble())
+        
+        val lookX = -Math.sin(yawRad) * Math.cos(pitchRad)
+        val lookY = -Math.sin(pitchRad)
+        val lookZ = Math.cos(yawRad) * Math.cos(pitchRad)
+        
+        // Spawn position - from ghast's face (ghasts are big!)
+        val spawnX = ghast.x + lookX * 3.0
+        val spawnY = ghast.y + 2.0 + lookY * 3.0
+        val spawnZ = ghast.z + lookZ * 3.0
+        
+        // Create large fireball (like ghast shoots) - explosive power 1
+        val fireball = LargeFireball(level, ghast, Vec3(lookX, lookY, lookZ).normalize(), 1)
+        fireball.setPos(spawnX, spawnY, spawnZ)
+        
+        // Set velocity - ghast fireballs are slower but powerful
+        val power = 1.0
+        fireball.setDeltaMovement(lookX * power, lookY * power, lookZ * power)
+        
+        // Spawn the fireball
+        level.addFreshEntity(fireball)
+        
+        // Play ghast shoot sound (the iconic fireball sound!)
+        level.playSound(
+            null,
+            ghast.x, ghast.y, ghast.z,
+            net.minecraft.sounds.SoundEvents.GHAST_SHOOT,
+            net.minecraft.sounds.SoundSource.HOSTILE,
+            1.0f,
+            1.0f
+        )
+        
+        // Also play the warning sound
+        level.playSound(
+            null,
+            ghast.x, ghast.y, ghast.z,
+            net.minecraft.sounds.SoundEvents.GHAST_WARN,
+            net.minecraft.sounds.SoundSource.HOSTILE,
+            0.5f,
+            1.0f
+        )
+    }
+
+    /**
+     * Handle Ghast-like custom mobs (e.g., Happy Ghast) that are not instance of Ghast
+     */
+    private fun handleGhastLikeAttack(player: ServerPlayer, entity: LivingEntity) {
+        // Check cooldown (600ms like ghast)
+        val now = System.currentTimeMillis()
+        val lastAttack = attackCooldowns[player.uuid] ?: 0L
+        if (now - lastAttack < 600) return
+        attackCooldowns[player.uuid] = now
+
+        val level = player.level() as? net.minecraft.server.level.ServerLevel ?: return
+
+        // Use player-facing yaw/pitch (entity rotation already synced)
+        val yaw = entity.yRot
+        val pitch = entity.xRot
+
+        val yawRad = Math.toRadians(yaw.toDouble())
+        val pitchRad = Math.toRadians(pitch.toDouble())
+
+        val lookX = -Math.sin(yawRad) * Math.cos(pitchRad)
+        val lookY = -Math.sin(pitchRad)
+        val lookZ = Math.cos(yawRad) * Math.cos(pitchRad)
+
+        // Spawn position - in front of face
+        val spawnX = entity.x + lookX * 3.0
+        val spawnY = entity.y + entity.eyeHeight.toDouble() + lookY * 2.0
+        val spawnZ = entity.z + lookZ * 3.0
+
+        // Create large fireball (power 1 like ghast)
+        val direction = Vec3(lookX, lookY, lookZ)
+        val fireball = LargeFireball(level, entity, direction, 1)
+        fireball.setPos(spawnX, spawnY, spawnZ)
+        fireball.setDeltaMovement(direction.normalize())
+
+        level.addFreshEntity(fireball)
+
+        // Play ghast shoot sounds
+        level.playSound(null, entity.x, entity.y, entity.z,
+            net.minecraft.sounds.SoundEvents.GHAST_SHOOT,
+            net.minecraft.sounds.SoundSource.HOSTILE,
+            1.0f, 1.0f)
+        level.playSound(null, entity.x, entity.y, entity.z,
+            net.minecraft.sounds.SoundEvents.GHAST_WARN,
+            net.minecraft.sounds.SoundSource.HOSTILE,
+            0.5f, 1.0f)
+    }
+
+    /**
+     * Handle Chicken egg drop (fun gag)
+     */
+    private fun handleChickenEgg(player: ServerPlayer, chicken: Chicken) {
+        // Check cooldown (700ms between eggs)
+        val now = System.currentTimeMillis()
+        val lastAttack = attackCooldowns[player.uuid] ?: 0L
+        if (now - lastAttack < 700) return
+        attackCooldowns[player.uuid] = now
+
+        val level = player.level() as? net.minecraft.server.level.ServerLevel ?: return
+
+        // Spawn an egg item slightly above the chicken
+        val spawnPos = Vec3(chicken.x, chicken.y + 0.6, chicken.z)
+        val eggStack = ItemStack(Items.EGG, 1)
+        val eggEntity = ItemEntity(level, spawnPos.x, spawnPos.y, spawnPos.z, eggStack)
+
+        // Give it a little forward toss for fun
+        val facing = chicken.lookAngle.normalize().scale(0.25)
+        eggEntity.deltaMovement = Vec3(facing.x, 0.15, facing.z)
+
+        level.addFreshEntity(eggEntity)
+
+        // Play chicken egg sound
+        level.playSound(
+            null,
+            chicken.x, chicken.y, chicken.z,
+            net.minecraft.sounds.SoundEvents.CHICKEN_EGG,
+            net.minecraft.sounds.SoundSource.NEUTRAL,
+            1.0f,
+            1.0f
+        )
+    }
+
+    /**
+     * Handle Creeper explosion - explode when left click is pressed near anything
+     * The creeper will die in the explosion like the real mob
+     */
+    private fun handleCreeperExplosion(player: ServerPlayer, creeper: Creeper, yaw: Float, pitch: Float) {
+        // Check cooldown (1500ms to prevent spam - also acts as "charging" time)
+        val now = System.currentTimeMillis()
+        val lastAttack = attackCooldowns[player.uuid] ?: 0L
+        if (now - lastAttack < 1500) return
+        attackCooldowns[player.uuid] = now
+
+        val level = player.level() as? net.minecraft.server.level.ServerLevel ?: return
+
+        // Calculate look direction to check if there's something nearby to explode on
+        val yawRad = Math.toRadians(yaw.toDouble())
+        val pitchRad = Math.toRadians(pitch.toDouble())
+
+        val lookX = -Math.sin(yawRad) * Math.cos(pitchRad)
+        val lookY = -Math.sin(pitchRad)
+        val lookZ = Math.cos(yawRad) * Math.cos(pitchRad)
+        val lookVec = Vec3(lookX, lookY, lookZ).normalize()
+
+        // Check if there's an entity or block within 4 blocks in front
+        val checkRange = 4.0
+        val startPos = creeper.position().add(0.0, creeper.bbHeight * 0.5, 0.0)
+        val endPos = startPos.add(lookVec.scale(checkRange))
+
+        // Check for nearby entities
+        val nearbyEntities = level.getEntitiesOfClass(
+            LivingEntity::class.java,
+            AABB(
+                minOf(startPos.x, endPos.x) - 2.0,
+                minOf(startPos.y, endPos.y) - 2.0,
+                minOf(startPos.z, endPos.z) - 2.0,
+                maxOf(startPos.x, endPos.x) + 2.0,
+                maxOf(startPos.y, endPos.y) + 2.0,
+                maxOf(startPos.z, endPos.z) + 2.0
+            )
+        ) { it != creeper && it != player && it.isAlive }
+
+        // Check for blocks in front (raycast)
+        val blockHitResult = level.clip(net.minecraft.world.level.ClipContext(
+            startPos,
+            endPos,
+            net.minecraft.world.level.ClipContext.Block.COLLIDER,
+            net.minecraft.world.level.ClipContext.Fluid.NONE,
+            creeper
+        ))
+        val hasBlockNearby = blockHitResult.type == net.minecraft.world.phys.HitResult.Type.BLOCK
+
+        // Only explode if there's something nearby (entity or block)
+        if (nearbyEntities.isEmpty() && !hasBlockNearby) {
+            player.displayClientMessage(Component.literal("§c💥 Get closer to something to explode!"), true)
+            return
+        }
+
+        // Play creeper hiss sound before explosion
+        level.playSound(
+            null,
+            creeper.x, creeper.y, creeper.z,
+            net.minecraft.sounds.SoundEvents.CREEPER_PRIMED,
+            net.minecraft.sounds.SoundSource.HOSTILE,
+            1.0f,
+            1.0f
+        )
+
+        // Determine explosion power (charged creeper = bigger explosion)
+        val explosionPower = if (creeper.isPowered) 6.0f else 3.0f
+
+        // Create the explosion at creeper's position
+        level.explode(
+            creeper,
+            creeper.x, creeper.y + creeper.bbHeight * 0.5, creeper.z,
+            explosionPower,
+            net.minecraft.world.level.Level.ExplosionInteraction.MOB
+        )
+
+        // Remove the player from controlling the entity first
+        removeControlledEntity(player)
+
+        // Kill the creeper (they die when they explode)
+        creeper.kill(level)
+
+        // Teleport player to where they were spectating from
+        player.setGameMode(net.minecraft.world.level.GameType.SURVIVAL)
+
+        // Notify the player
+        player.displayClientMessage(Component.literal("§c💥 BOOM! Your creeper exploded!"), false)
+    }
+
+    /**
+     * Handle Skeleton arrow shooting - shoot arrows using the bow in hand
+     * Works for Skeleton, Stray, Wither Skeleton, and Bogged
+     */
+    private fun handleSkeletonArrow(player: ServerPlayer, skeleton: AbstractSkeleton, yaw: Float, pitch: Float) {
+        // Check cooldown (800ms between shots - similar to skeleton attack speed)
+        val now = System.currentTimeMillis()
+        val lastAttack = attackCooldowns[player.uuid] ?: 0L
+        if (now - lastAttack < 800) return
+        attackCooldowns[player.uuid] = now
+
+        val level = player.level() as? net.minecraft.server.level.ServerLevel ?: return
+
+        // Calculate look direction
+        val yawRad = Math.toRadians(yaw.toDouble())
+        val pitchRad = Math.toRadians(pitch.toDouble())
+
+        val lookX = -Math.sin(yawRad) * Math.cos(pitchRad)
+        val lookY = -Math.sin(pitchRad)
+        val lookZ = Math.cos(yawRad) * Math.cos(pitchRad)
+        val lookVec = Vec3(lookX, lookY, lookZ).normalize()
+
+        // Spawn arrow from skeleton's eye position
+        val spawnPos = Vec3(skeleton.x, skeleton.eyeY - 0.1, skeleton.z)
+
+        // Create the arrow
+        val arrow = Arrow(level, skeleton, ItemStack(Items.ARROW), null)
+        arrow.setPos(spawnPos.x, spawnPos.y, spawnPos.z)
+
+        // Set arrow velocity (speed similar to skeleton's shot)
+        val arrowSpeed = 1.6
+        arrow.shoot(lookVec.x, lookVec.y, lookVec.z, arrowSpeed.toFloat(), 1.0f)
+
+        // Add the arrow to the world
+        level.addFreshEntity(arrow)
+
+        // Swing arm animation
+        skeleton.swing(net.minecraft.world.InteractionHand.MAIN_HAND)
+
+        // Play bow shoot sound
+        level.playSound(
+            null,
+            skeleton.x, skeleton.y, skeleton.z,
+            net.minecraft.sounds.SoundEvents.ARROW_SHOOT,
+            net.minecraft.sounds.SoundSource.HOSTILE,
+            1.0f,
+            1.0f / (level.random.nextFloat() * 0.4f + 0.8f)
+        )
+    }
+
+    /**
+     * Handle Pillager crossbow arrow shooting
+     */
+    private fun handlePillagerArrow(player: ServerPlayer, pillager: Pillager, yaw: Float, pitch: Float) {
+        // Check cooldown (1000ms between shots - crossbow takes longer)
+        val now = System.currentTimeMillis()
+        val lastAttack = attackCooldowns[player.uuid] ?: 0L
+        if (now - lastAttack < 1000) return
+        attackCooldowns[player.uuid] = now
+
+        val level = player.level() as? net.minecraft.server.level.ServerLevel ?: return
+
+        // Calculate look direction
+        val yawRad = Math.toRadians(yaw.toDouble())
+        val pitchRad = Math.toRadians(pitch.toDouble())
+
+        val lookX = -Math.sin(yawRad) * Math.cos(pitchRad)
+        val lookY = -Math.sin(pitchRad)
+        val lookZ = Math.cos(yawRad) * Math.cos(pitchRad)
+        val lookVec = Vec3(lookX, lookY, lookZ).normalize()
+
+        // Spawn arrow from pillager's eye position
+        val spawnPos = Vec3(pillager.x, pillager.eyeY - 0.1, pillager.z)
+
+        // Create the arrow (crossbow arrows are faster and more accurate)
+        val arrow = Arrow(level, pillager, ItemStack(Items.ARROW), null)
+        arrow.setPos(spawnPos.x, spawnPos.y, spawnPos.z)
+        arrow.setCritArrow(true) // Crossbow arrows are always critical
+
+        // Set arrow velocity (crossbow is faster than bow)
+        val arrowSpeed = 3.15
+        arrow.shoot(lookVec.x, lookVec.y, lookVec.z, arrowSpeed.toFloat(), 0.0f) // 0 inaccuracy for crossbow
+
+        // Add the arrow to the world
+        level.addFreshEntity(arrow)
+
+        // Swing arm animation
+        pillager.swing(net.minecraft.world.InteractionHand.MAIN_HAND)
+
+        // Play crossbow shoot sound
+        level.playSound(
+            null,
+            pillager.x, pillager.y, pillager.z,
+            net.minecraft.sounds.SoundEvents.CROSSBOW_SHOOT,
+            net.minecraft.sounds.SoundSource.HOSTILE,
+            1.0f,
+            1.0f / (level.random.nextFloat() * 0.4f + 0.8f)
         )
     }
     
