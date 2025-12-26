@@ -2,12 +2,27 @@ package com.qc.aeonis.network
 
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking
+import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper
 import net.minecraft.client.Minecraft
+import net.minecraft.client.KeyMapping
+import com.mojang.blaze3d.platform.InputConstants
+import org.lwjgl.glfw.GLFW
 
 object AeonisClientNetworking {
     
     private var isControlling = false
     private var wasAttacking = false  // Track previous attack state to detect new clicks
+    private var wasTeleporting = false  // Track previous teleport state to detect new T press
+    
+    // Register teleport keybind  
+    private val TELEPORT_KEY: KeyMapping = KeyBindingHelper.registerKeyBinding(
+        KeyMapping(
+            "key.aeonis.teleport",
+            InputConstants.Type.KEYSYM,
+            GLFW.GLFW_KEY_T,
+            KeyMapping.Category.GAMEPLAY
+        )
+    )
     
     fun register() {
         // Note: Payload types are already registered by the server/common code
@@ -57,8 +72,13 @@ object AeonisClientNetworking {
         val attack = attackKeyDown && !wasAttacking
         wasAttacking = attackKeyDown
         
+        // Detect T key for teleport (Enderman ability)
+        val teleportKeyDown = TELEPORT_KEY.isDown
+        val teleport = teleportKeyDown && !wasTeleporting
+        wasTeleporting = teleportKeyDown
+        
         // Send packet to server
-        val payload = MobControlPayload(forward, strafe, jump, sneak, yaw, pitch, attack)
+        val payload = MobControlPayload(forward, strafe, jump, sneak, yaw, pitch, attack, teleport)
         ClientPlayNetworking.send(payload)
     }
 }

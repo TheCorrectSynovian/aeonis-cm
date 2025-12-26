@@ -1,19 +1,28 @@
 {
 	"schemaVersion": 1,
-	"id": "aeonis-manager",
+	"id": "aeonis-command-master",
 	"version": "${version}",
-	"name": "Aeonis Plus",
-	"description": "A Companion and Expansion mod for AEONIS modpack!",
+	"name": "Aeonis: Command Master",
+	"description": "A powerful command utility mod! Take control of any mob, spawn custom entities, and unlock fun gameplay commands. Works standalone or as the perfect companion for modpacks. Features: Mob Possession, Custom Mobs (Copper Stalker & more), Admin Commands, and endless fun!",
 	"authors": [
 		"Quantum_Creeper"
 	],
 	"contact": {
 		"homepage": "https://www.youtube.com/@quantumcreeper",
-		"sources": "https://github.com/TheCorrectSynovian/Aeonis-mod"
+		"sources": "https://github.com/TheCorrectSynovian/Aeonis-mod",
+		"issues": "https://github.com/TheCorrectSynovian/Aeonis-mod/issues"
 	},
 	"license": "MIT",
 	"icon": "assets/aeonis-manager/icon.png",
 	"environment": "*",
+	"custom": {
+		"modmenu": {
+			"badges": ["library"],
+			"links": {
+				"modmenu.youtube": "https://www.youtube.com/@quantumcreeper"
+			}
+		}
+	},
 	"entrypoints": {
 		"main": [
 			{
@@ -42,7 +51,7 @@
 		}
 	],
 	"depends": {
-		"fabricloader": ">=0.18.4",
+		"fabricloader": ">=0.18.3",
 		"minecraft": "~1.21.10",
 		"java": ">=21",
 		"fabric-api": "*",

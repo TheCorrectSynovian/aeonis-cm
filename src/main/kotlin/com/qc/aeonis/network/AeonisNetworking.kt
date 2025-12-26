@@ -23,7 +23,11 @@ import net.minecraft.world.entity.monster.Blaze
 import net.minecraft.world.entity.monster.Ghast
 import net.minecraft.world.entity.monster.Phantom
 import net.minecraft.world.entity.monster.Vex
+import net.minecraft.world.entity.monster.EnderMan
+import net.minecraft.world.entity.monster.breeze.Breeze
 import net.minecraft.world.entity.projectile.WitherSkull
+import net.minecraft.world.entity.projectile.DragonFireball
+import net.minecraft.world.entity.projectile.windcharge.BreezeWindCharge
 import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.Vec3
 import net.minecraft.network.chat.Component
@@ -39,7 +43,8 @@ data class MobControlPayload(
     val sneak: Boolean,
     val yaw: Float,
     val pitch: Float,
-    val attack: Boolean
+    val attack: Boolean,
+    val teleport: Boolean = false
 ) : CustomPacketPayload {
     
     companion object {
@@ -56,6 +61,7 @@ data class MobControlPayload(
                 buf.writeFloat(payload.yaw)
                 buf.writeFloat(payload.pitch)
                 buf.writeBoolean(payload.attack)
+                buf.writeBoolean(payload.teleport)
             },
             { buf ->
                 MobControlPayload(
@@ -65,6 +71,7 @@ data class MobControlPayload(
                     buf.readBoolean(),
                     buf.readFloat(),
                     buf.readFloat(),
+                    buf.readBoolean(),
                     buf.readBoolean()
                 )
             }
@@ -166,8 +173,12 @@ object AeonisNetworking {
         // Check if this is a flying mob
         val isFlying = isFlightMob(entity)
         
-        // Movement speed - slower in water, faster for flying mobs
+        // Special handling for Ender Dragon - it's a complex entity
+        val isDragon = entity is EnderDragon
+        
+        // Movement speed - slower in water, faster for flying mobs, dragon is big and fast
         val baseSpeed = when {
+            isDragon -> 0.8  // Dragon is fast!
             isSwimming -> 0.25
             isFlying -> 0.45
             else -> 0.35
@@ -175,7 +186,22 @@ object AeonisNetworking {
         val speed = if (payload.sneak) baseSpeed * 0.4 else baseSpeed
         
         if (forward != 0.0 || strafe != 0.0) {
-            if (isFlying) {
+            if (isDragon) {
+                // Special dragon movement - direct position teleport for smooth flight
+                val cosPitch = Math.cos(pitchRad)
+                val sinPitch = Math.sin(pitchRad)
+                
+                val motionX = (-Math.sin(yawRad) * forward * cosPitch + Math.cos(yawRad) * strafe) * speed
+                val motionY = (-sinPitch * forward) * speed
+                val motionZ = (Math.cos(yawRad) * forward * cosPitch + Math.sin(yawRad) * strafe) * speed
+                
+                // Directly move dragon for smooth flight
+                val newX = entity.x + motionX
+                val newY = entity.y + motionY
+                val newZ = entity.z + motionZ
+                entity.setPos(newX, newY, newZ)
+                entity.setDeltaMovement(Vec3(motionX, motionY, motionZ))
+            } else if (isFlying) {
                 // Flying movement - full 3D movement based on pitch
                 val cosPitch = Math.cos(pitchRad)
                 val sinPitch = Math.sin(pitchRad)
@@ -218,7 +244,18 @@ object AeonisNetworking {
         }
         
         // Apply physics based on environment
-        if (isFlying) {
+        if (isDragon) {
+            // Dragon hovers when not moving - direct position control
+            if (forward == 0.0 && strafe == 0.0) {
+                if (payload.jump) {
+                    entity.setPos(entity.x, entity.y + 0.5, entity.z)
+                } else if (payload.sneak) {
+                    entity.setPos(entity.x, entity.y - 0.5, entity.z)
+                }
+                // Dragon stays in place - no gravity
+                entity.setDeltaMovement(Vec3.ZERO)
+            }
+        } else if (isFlying) {
             // Flying mobs hover in place when not moving
             if (forward == 0.0 && strafe == 0.0) {
                 if (payload.jump) {
@@ -272,13 +309,19 @@ object AeonisNetworking {
         // Handle sneaking visual
         entity.isShiftKeyDown = payload.sneak
         
-        // Handle attack - special handling for Wither
+        // Handle attack - special handling for boss mobs
         if (payload.attack && canAttack(entity)) {
-            if (entity is WitherBoss) {
-                handleWitherAttack(player, entity, payload.yaw, payload.pitch)
-            } else {
-                handleMobAttack(player, entity, payload.yaw, payload.pitch)
+            when (entity) {
+                is WitherBoss -> handleWitherAttack(player, entity, payload.yaw, payload.pitch)
+                is EnderDragon -> handleDragonAttack(player, entity, payload.yaw, payload.pitch)
+                is Breeze -> handleBreezeAttack(player, entity, payload.yaw, payload.pitch)
+                else -> handleMobAttack(player, entity, payload.yaw, payload.pitch)
             }
+        }
+        
+        // Handle Enderman teleport ability (T key)
+        if (payload.teleport && entity is EnderMan) {
+            handleEndermanTeleport(player, entity, payload.yaw, payload.pitch)
         }
         
         // Show entity health and held item via action bar
@@ -434,7 +477,8 @@ object AeonisNetworking {
                entity is Bee ||
                entity is Parrot ||
                entity is Vex ||
-               entity is Blaze
+               entity is Blaze ||
+               entity is Breeze
     }
     
     /**
@@ -483,5 +527,193 @@ object AeonisNetworking {
             1.0f,
             1.0f
         )
+    }
+    
+    /**
+     * Handle Ender Dragon fireball attack
+     */
+    private fun handleDragonAttack(player: ServerPlayer, dragon: EnderDragon, yaw: Float, pitch: Float) {
+        // Check cooldown (400ms between fireballs)
+        val now = System.currentTimeMillis()
+        val lastAttack = attackCooldowns[player.uuid] ?: 0L
+        if (now - lastAttack < 400) return
+        attackCooldowns[player.uuid] = now
+        
+        val level = player.level() as? net.minecraft.server.level.ServerLevel ?: return
+        
+        // Calculate look direction
+        val yawRad = Math.toRadians(yaw.toDouble())
+        val pitchRad = Math.toRadians(pitch.toDouble())
+        
+        val lookX = -Math.sin(yawRad) * Math.cos(pitchRad)
+        val lookY = -Math.sin(pitchRad)
+        val lookZ = Math.cos(yawRad) * Math.cos(pitchRad)
+        
+        // Spawn position - from dragon's head
+        val spawnX = dragon.x + lookX * 4.0
+        val spawnY = dragon.y + 3.0 + lookY * 4.0
+        val spawnZ = dragon.z + lookZ * 4.0
+        
+        // Create dragon fireball
+        val fireball = DragonFireball(level, dragon, Vec3(lookX, lookY, lookZ).normalize())
+        fireball.setPos(spawnX, spawnY, spawnZ)
+        
+        // Set velocity
+        val power = 1.2
+        fireball.setDeltaMovement(lookX * power, lookY * power, lookZ * power)
+        
+        // Spawn the fireball
+        level.addFreshEntity(fireball)
+        
+        // Play dragon shoot sound
+        level.playSound(
+            null,
+            dragon.x, dragon.y, dragon.z,
+            net.minecraft.sounds.SoundEvents.ENDER_DRAGON_SHOOT,
+            net.minecraft.sounds.SoundSource.HOSTILE,
+            1.0f,
+            1.0f
+        )
+    }
+    
+    /**
+     * Handle Breeze wind charge attack
+     */
+    private fun handleBreezeAttack(player: ServerPlayer, breeze: Breeze, yaw: Float, pitch: Float) {
+        // Check cooldown (350ms between wind charges - fast and fun!)
+        val now = System.currentTimeMillis()
+        val lastAttack = attackCooldowns[player.uuid] ?: 0L
+        if (now - lastAttack < 350) return
+        attackCooldowns[player.uuid] = now
+        
+        val level = player.level() as? net.minecraft.server.level.ServerLevel ?: return
+        
+        // Calculate look direction
+        val yawRad = Math.toRadians(yaw.toDouble())
+        val pitchRad = Math.toRadians(pitch.toDouble())
+        
+        val lookX = -Math.sin(yawRad) * Math.cos(pitchRad)
+        val lookY = -Math.sin(pitchRad)
+        val lookZ = Math.cos(yawRad) * Math.cos(pitchRad)
+        
+        // Spawn position - from breeze's center
+        val spawnX = breeze.x + lookX * 1.5
+        val spawnY = breeze.y + 1.0 + lookY * 1.5
+        val spawnZ = breeze.z + lookZ * 1.5
+        
+        // Create breeze wind charge
+        val windCharge = BreezeWindCharge(breeze, level)
+        windCharge.setPos(spawnX, spawnY, spawnZ)
+        
+        // Set velocity - wind charges are fast!
+        val power = 1.8
+        windCharge.deltaMovement = Vec3(lookX * power, lookY * power, lookZ * power)
+        
+        // Spawn the wind charge
+        level.addFreshEntity(windCharge)
+        
+        // Play breeze shoot sound
+        level.playSound(
+            null,
+            breeze.x, breeze.y, breeze.z,
+            net.minecraft.sounds.SoundEvents.BREEZE_SHOOT,
+            net.minecraft.sounds.SoundSource.HOSTILE,
+            1.0f,
+            1.0f
+        )
+    }
+    
+    /**
+     * Handle Enderman teleport ability (60 blocks in facing direction)
+     */
+    private fun handleEndermanTeleport(player: ServerPlayer, enderman: EnderMan, yaw: Float, pitch: Float) {
+        // Check cooldown (1000ms between teleports)
+        val now = System.currentTimeMillis()
+        val lastTeleport = attackCooldowns[player.uuid] ?: 0L
+        if (now - lastTeleport < 1000) return
+        attackCooldowns[player.uuid] = now
+        
+        val level = player.level() as? net.minecraft.server.level.ServerLevel ?: return
+        
+        // Calculate teleport direction
+        val yawRad = Math.toRadians(yaw.toDouble())
+        val pitchRad = Math.toRadians(pitch.toDouble())
+        
+        val lookX = -Math.sin(yawRad) * Math.cos(pitchRad)
+        val lookY = -Math.sin(pitchRad)
+        val lookZ = Math.cos(yawRad) * Math.cos(pitchRad)
+        
+        // Teleport 60 blocks in facing direction
+        val teleportDistance = 60.0
+        var targetX = enderman.x + lookX * teleportDistance
+        var targetY = enderman.y + lookY * teleportDistance
+        var targetZ = enderman.z + lookZ * teleportDistance
+        
+        // Clamp Y to valid range
+        targetY = targetY.coerceIn(-64.0, 320.0)
+        
+        // Try to find a safe landing spot (check for solid ground)
+        var foundSafe = false
+        for (yOffset in 0..10) {
+            val checkY = targetY - yOffset
+            val blockPos = net.minecraft.core.BlockPos.containing(targetX, checkY, targetZ)
+            val belowPos = blockPos.below()
+            
+            if (level.getBlockState(belowPos).isSolid &&
+                !level.getBlockState(blockPos).isSolid &&
+                !level.getBlockState(blockPos.above()).isSolid) {
+                targetY = checkY
+                foundSafe = true
+                break
+            }
+        }
+        
+        // If no safe spot found, try above
+        if (!foundSafe) {
+            for (yOffset in 1..10) {
+                val checkY = targetY + yOffset
+                val blockPos = net.minecraft.core.BlockPos.containing(targetX, checkY, targetZ)
+                val belowPos = blockPos.below()
+                
+                if (level.getBlockState(belowPos).isSolid &&
+                    !level.getBlockState(blockPos).isSolid &&
+                    !level.getBlockState(blockPos.above()).isSolid) {
+                    targetY = checkY
+                    foundSafe = true
+                    break
+                }
+            }
+        }
+        
+        // Teleport the enderman
+        enderman.teleportTo(targetX, targetY, targetZ)
+        
+        // Play enderman teleport sounds at both locations
+        level.playSound(
+            null,
+            enderman.xo, enderman.yo, enderman.zo,
+            net.minecraft.sounds.SoundEvents.ENDERMAN_TELEPORT,
+            net.minecraft.sounds.SoundSource.HOSTILE,
+            1.0f,
+            1.0f
+        )
+        level.playSound(
+            null,
+            targetX, targetY, targetZ,
+            net.minecraft.sounds.SoundEvents.ENDERMAN_TELEPORT,
+            net.minecraft.sounds.SoundSource.HOSTILE,
+            1.0f,
+            1.0f
+        )
+        
+        // Spawn particles at destination
+        level.sendParticles(
+            net.minecraft.core.particles.ParticleTypes.PORTAL,
+            targetX, targetY + 1.0, targetZ,
+            50, 0.5, 1.0, 0.5, 0.1
+        )
+        
+        // Notify player
+        player.displayClientMessage(Component.literal("§5✦ Teleported!"), true)
     }
 }
