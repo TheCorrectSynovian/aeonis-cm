@@ -2,7 +2,7 @@
   <img src="https://i.imgur.com/your-banner-here.png" alt="Aeonis: Command Master Banner" width="800"/>
 </p>
 
-<h1 align="center">⚡ Aeonis: CM - Transform into mobs!!! ⚡</h1>
+<h1 align="center">⚡ Aeonis: Command Master — Transform into Mobs! ⚡</h1>
 
 <p align="center">
   <b>Take control. Command anything. Master the game.</b>
@@ -23,7 +23,7 @@
 ---
 
 <p align="center">
-  <img src="https://readme-typing-svg.herokuapp.com?font=Fira+Code&weight=600&size=22&pause=1000&color=00D9FF&center=true&vCenter=true&width=600&lines=🎮+Control+ANY+Mob+in+Minecraft!;�+Shoot+Dragon+Fireballs!;💨+Launch+Breeze+Wind+Charges!;💀+Fire+Wither+Skulls!;🦅+Fly+as+Phantoms+%26+Ghasts;✨+Works+Standalone+or+in+Modpacks!" alt="Typing SVG" />
+  <img src="https://readme-typing-svg.herokuapp.com?font=Fira+Code&weight=600&size=22&pause=1000&color=00D9FF&center=true&vCenter=true&width=600&lines=🎮+Control+ANY+Mob+in+Minecraft!;🐉+Shoot+Dragon+Fireballs!;💨+Launch+Breeze+Wind+Charges!;💀+Fire+Wither+Skulls!;🦅+Fly+as+Phantoms+%26+Ghasts;✨+Works+Standalone+or+in+Modpacks!" alt="Typing SVG" />
 </p>
 
 ---
@@ -64,8 +64,8 @@ The revolutionary **Mob Possession System** lets you:
 <td width="40%">
 
 ```
-/aeonis transform <mob>
-/aeonis untransform
+/transform <entity>
+/untransform
 ```
 
 **Special Attack Mobs:**
@@ -100,7 +100,7 @@ The revolutionary **Mob Possession System** lets you:
 <table>
 <tr>
 <td align="center" width="33%">
-<h3>🥉 Copper Stalker</h3>
+<h3>🥉 Stalker</h3>
 <p>A mysterious copper-infused entity that lurks in the shadows...</p>
 </td>
 <td align="center" width="33%">
@@ -116,31 +116,104 @@ The revolutionary **Mob Possession System** lets you:
 
 ---
 
-### ⚡ Powerful Commands
+## ⚡ Complete Command Reference
 
-<details>
-<summary><b>📜 Click to expand full command list</b></summary>
+### 🔄 Transformation Commands
 
-| Command | Description | Permission |
-|---------|-------------|------------|
-| `/aeonis transform <entity>` | Possess and control a mob | OP |
-| `/aeonis untransform` | Return to your body | OP |
-| `/aeonis spawn <entity>` | Spawn custom entities | OP |
-| `/aeonis kill <target>` | Advanced kill command | OP |
-| `/aeonis heal [player]` | Heal players | OP |
-| `/aeonis feed [player]` | Feed players | OP |
-| `/aeonis god [player]` | Toggle god mode | OP |
-| `/aeonis fly [player]` | Toggle flight | OP |
-| `/aeonis speed <value>` | Set movement speed | OP |
-| `/aeonis tp <location>` | Advanced teleport | OP |
-| `/aeonis weather <type>` | Change weather | OP |
-| `/aeonis time <value>` | Set world time | OP |
+| Command | Description | Permission | Example |
+|---------|-------------|------------|---------|
+| `/transform <entity>` | Transform into any mob and control it | OP (Level 2) | `/transform minecraft:wither` |
+| `/untransform` | Return to your normal player form | OP (Level 2) | `/untransform` |
 
-</details>
+**Transform Examples:**
+```
+/transform minecraft:zombie          # Become a zombie
+/transform minecraft:wither          # Become the Wither boss (shoot skulls!)
+/transform minecraft:ender_dragon    # Become the Ender Dragon (shoot fireballs!)
+/transform minecraft:breeze          # Become a Breeze (shoot wind charges!)
+/transform minecraft:phantom         # Fly as a phantom
+/transform minecraft:ghast           # Fly as a ghast
+/transform minecraft:bee             # Buzz around as a bee
+/transform minecraft:dolphin         # Swim as a dolphin
+/transform minecraft:creeper         # Walk as a creeper
+/transform minecraft:skeleton        # Become a skeleton
+/transform minecraft:blaze           # Become a blaze
+/transform minecraft:enderman        # Become an enderman
+```
 
 ---
 
-## 🎮 Controls (While Possessing a Mob)
+### 🎭 Fun & Troll Commands
+
+| Command | Description | Permission | Example |
+|---------|-------------|------------|---------|
+| `/aeonis smite <player>` | Strike a player with lightning | OP (Level 2) | `/aeonis smite Steve` |
+| `/aeonis yeet <player>` | Launch a player into the sky | OP (Level 2) | `/aeonis yeet Alex` |
+| `/aeonis disco <player>` | Give player disco effects (glowing, speed, jump boost) | OP (Level 2) | `/aeonis disco Steve` |
+| `/aeonis supersize <player>` | Make player feel huge (slow, strong, resistant) | OP (Level 2) | `/aeonis supersize Alex` |
+| `/aeonis smol <player>` | Make player feel tiny (fast, weak, invisible) | OP (Level 2) | `/aeonis smol Steve` |
+| `/aeonis chaos <player>` | Apply 3 random potion effects | OP (Level 2) | `/aeonis chaos Alex` |
+| `/aeonis rocket <player>` | Launch player like a rocket with slow falling | OP (Level 2) | `/aeonis rocket Steve` |
+| `/aeonis spin <player> <times>` | Spin player around (1-50 times) | OP (Level 2) | `/aeonis spin Alex 10` |
+| `/aeonis freeze <player>` | Freeze player in place | OP (Level 2) | `/aeonis freeze Steve` |
+| `/aeonis burn <player>` | Set player on fire | OP (Level 2) | `/aeonis burn Alex` |
+
+**Fun Command Examples:**
+```
+/aeonis smite Steve              # ⚡ Strike Steve with lightning
+/aeonis yeet Alex                # 🚀 Yeet Alex into the sky
+/aeonis disco Steve              # 🎵 Party time for Steve!
+/aeonis supersize Alex           # 🦖 Make Alex HUGE
+/aeonis smol Steve               # 🐜 Make Steve tiny
+/aeonis chaos Alex               # 🎲 Random effects on Alex
+/aeonis rocket Steve             # 🚀 Launch Steve like a rocket
+/aeonis spin Alex 20             # 🌀 Spin Alex 20 times
+/aeonis freeze Steve             # ❄️ Freeze Steve solid
+/aeonis burn Alex                # 🔥 Set Alex on fire
+```
+
+---
+
+### 💀 Warden Ability Commands
+
+| Command | Description | Permission | Example |
+|---------|-------------|------------|---------|
+| `/aeonis do roar` | Unleash a Warden roar - knockback nearby players | OP (Level 2) | `/aeonis do roar` |
+| `/aeonis do darkness` | Release a darkness pulse - blind nearby players | OP (Level 2) | `/aeonis do darkness` |
+
+**Ability Examples:**
+```
+/aeonis do roar       # 🔊 Knockback all nearby players with Warden roar
+/aeonis do darkness   # 🌑 Blind all nearby players with darkness
+```
+
+---
+
+### ⚙️ Feature Management Commands
+
+| Command | Description | Permission | Example |
+|---------|-------------|------------|---------|
+| `/aeonis features extra_mobs` | Check if extra mobs are enabled | OP (Level 2) | `/aeonis features extra_mobs` |
+| `/aeonis features extra_mobs <true/false>` | Enable/disable Aeonis custom mobs spawning | OP (Level 2) | `/aeonis features extra_mobs true` |
+
+**Feature Examples:**
+```
+/aeonis features extra_mobs           # Check current status
+/aeonis features extra_mobs true      # Enable Stalker spawning at night
+/aeonis features extra_mobs false     # Disable Stalker spawning
+```
+
+---
+
+### ❓ Help Command
+
+| Command | Description | Permission |
+|---------|-------------|------------|
+| `/aeonis help` | Display all available commands | Everyone |
+
+---
+
+## 🎮 Controls (While Transformed)
 
 | Key | Action |
 |-----|--------|
@@ -150,7 +223,7 @@ The revolutionary **Mob Possession System** lets you:
 | `Left Click` | Attack (mob's natural attack) |
 | `Mouse` | Look around |
 
-> 💡 **Pro Tip:** Flying mobs use pitch (looking up/down) for 3D movement! Withers shoot skulls on attack!
+> 💡 **Pro Tip:** Flying mobs use pitch (looking up/down) for 3D movement! Withers shoot skulls, Dragons shoot fireballs, and Breezes shoot wind charges on attack!
 
 ---
 
@@ -161,11 +234,11 @@ The revolutionary **Mob Possession System** lets you:
 | Dependency | Version | Required |
 |------------|---------|----------|
 | Minecraft | 1.21.10 | ✅ |
-| Fabric Loader | ≥0.18.3 | ✅ |
-| Fabric API | Latest | ✅ |
-| Fabric Language Kotlin | Latest | ✅ |
+| Fabric Loader | ≥0.18.4 | ✅ |
+| Fabric API | 0.138.4+1.21.10 | ✅ |
+| Fabric Language Kotlin | 1.13.8+ | ✅ |
 
-### Steps for manual install
+### Steps for Manual Install
 
 1. 📥 Install [Fabric Loader](https://fabricmc.net/use/installer/)
 2. 📥 Download [Fabric API](https://modrinth.com/mod/fabric-api)
@@ -201,6 +274,44 @@ The revolutionary **Mob Possession System** lets you:
 
 ---
 
+## 📋 Quick Reference Cheat Sheet
+
+```
+=== TRANSFORMATION ===
+/transform minecraft:wither         → Become Wither (shoot skulls)
+/transform minecraft:ender_dragon   → Become Dragon (shoot fireballs)
+/transform minecraft:breeze         → Become Breeze (shoot wind charges)
+/transform minecraft:phantom        → Fly as a Phantom
+/transform minecraft:creeper        → Walk as a Creeper
+/untransform                        → Return to normal
+
+=== FUN COMMANDS ===
+/aeonis smite <player>              → Lightning strike
+/aeonis yeet <player>               → Launch into sky
+/aeonis disco <player>              → Party effects
+/aeonis supersize <player>          → Feel huge
+/aeonis smol <player>               → Feel tiny
+/aeonis chaos <player>              → Random effects
+/aeonis rocket <player>             → Rocket launch
+/aeonis spin <player> <1-50>        → Spin around
+/aeonis freeze <player>             → Freeze solid
+/aeonis burn <player>               → Set on fire
+
+=== ABILITIES ===
+/aeonis do roar                     → Warden roar (knockback)
+/aeonis do darkness                 → Darkness pulse (blind)
+
+=== SETTINGS ===
+/aeonis features extra_mobs         → Check mob spawning status
+/aeonis features extra_mobs true    → Enable Stalker spawns
+/aeonis features extra_mobs false   → Disable Stalker spawns
+
+=== HELP ===
+/aeonis help                        → Show all commands
+```
+
+---
+
 ## 🤝 Contributing
 
 Contributions are welcome! Feel free to:
@@ -217,25 +328,11 @@ Contributions are welcome! Feel free to:
 <summary><b>Version 1.0.0</b></summary>
 
 - 🎉 Initial release
-- ✨ Mob Possession System
-- 🦾 Copper Stalker entity
-- ⚡ Core command suite
-- 🎮 Full flying mob support
-- 🌊 Swimming mechanics
-- 💀 Wither skull shooting
-- 🐉 Ender Dragon fireball attack
-- 💨 Breeze wind charge attack
-
-</details>
-
----
-
-## 📜 License
-
-This project is licensed under the **MIT License** — see the [LICENSE](LICENSE) file for details.
-
----
-
+- ✨ Mob Possession System (`/transform`, `/untransform`)
+- 🦾 Stalker custom entity
+- ⚡ Fun commands: smite, yeet, disco, supersize, smol, chaos, rocket, spin, freeze, burn
+- 💀 Warden abilities: roar, darkness
+- ⚙️ Feature toggle system for extra mobs
 ## 💖 Support
 
 <p align="center">
