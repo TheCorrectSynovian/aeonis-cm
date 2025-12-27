@@ -69,6 +69,101 @@ object AeonisCommands {
     // Track pet vex ownership: vex entity ID -> owner player UUID
     internal val petVexOwners = mutableMapOf<Int, java.util.UUID>()
     
+    // Director Mode: Active Orders
+    private val actorWalkTargets = mutableMapOf<Int, Vec3>()
+    private val actorLookTargets = mutableMapOf<Int, Int>() // EntityID -> TargetEntityID
+    private val actorAttackTargets = mutableMapOf<Int, Int>() // EntityID -> TargetEntityID
+    
+    /**
+     * Called every tick to enforce Director Mode orders
+     */
+    fun tickActors(server: net.minecraft.server.MinecraftServer) {
+        // 1. Handle Walking
+        val walkIterator = actorWalkTargets.iterator()
+        while (walkIterator.hasNext()) {
+            val entry = walkIterator.next()
+            val entityId = entry.key
+            val targetPos = entry.value
+            
+            var found = false
+            for (level in server.allLevels) {
+                val entity = level.getEntity(entityId)
+                if (entity is PathfinderMob && entity.isAlive) {
+                    found = true
+                    
+                    // Check if arrived (within 1.5 blocks)
+                    if (entity.position().distanceToSqr(targetPos) < 2.25) {
+                        walkIterator.remove() // Arrived
+                        entity.navigation.stop()
+                    } else {
+                        // Re-issue move command if not moving or every 20 ticks (approx)
+                        if (entity.tickCount % 10 == 0 || entity.navigation.isDone) {
+                            entity.navigation.moveTo(targetPos.x, targetPos.y, targetPos.z, 1.2)
+                        }
+                    }
+                    break
+                }
+            }
+            if (!found) {
+                walkIterator.remove() // Entity dead or gone
+            }
+        }
+
+        // 2. Handle Looking
+        val lookIterator = actorLookTargets.iterator()
+        while (lookIterator.hasNext()) {
+            val entry = lookIterator.next()
+            val entityId = entry.key
+            val targetId = entry.value
+            
+            var found = false
+            for (level in server.allLevels) {
+                val entity = level.getEntity(entityId)
+                if (entity is Mob && entity.isAlive) {
+                    found = true
+                    val target = level.getEntity(targetId)
+                    if (target != null && target.isAlive) {
+                        entity.lookControl.setLookAt(target, 30.0f, 30.0f)
+                    } else {
+                        lookIterator.remove() // Target gone
+                    }
+                    break
+                }
+            }
+            if (!found) {
+                lookIterator.remove() // Entity gone
+            }
+        }
+
+        // 3. Handle Attacking
+        val attackIterator = actorAttackTargets.iterator()
+        while (attackIterator.hasNext()) {
+            val entry = attackIterator.next()
+            val entityId = entry.key
+            val targetId = entry.value
+            
+            var found = false
+            for (level in server.allLevels) {
+                val entity = level.getEntity(entityId)
+                if (entity is Mob && entity.isAlive) {
+                    found = true
+                    val target = level.getEntity(targetId) as? LivingEntity
+                    if (target != null && target.isAlive) {
+                        if (entity.target != target) {
+                            entity.target = target
+                        }
+                    } else {
+                        attackIterator.remove() // Target gone
+                    }
+                    break
+                }
+            }
+            if (!found) {
+                attackIterator.remove() // Entity gone
+            }
+        }
+    }
+
     /**
      * Called every tick to redirect pet vex targets away from their owners
      */
@@ -188,9 +283,16 @@ object AeonisCommands {
         
         for (entity in targets) {
             if (entity is PathfinderMob) {
-                if (entity.navigation.moveTo(pos.x, pos.y, pos.z, speed)) {
-                    count++
-                }
+                // Clear other orders
+                actorLookTargets.remove(entity.id)
+                actorAttackTargets.remove(entity.id)
+                
+                // Set new order
+                actorWalkTargets[entity.id] = pos
+                
+                // Initial move
+                entity.navigation.moveTo(pos.x, pos.y, pos.z, speed)
+                count++
             }
         }
         
@@ -205,6 +307,13 @@ object AeonisCommands {
         
         for (entity in targets) {
             if (entity is Mob) {
+                // Clear other orders
+                actorWalkTargets.remove(entity.id)
+                
+                // Set new order
+                actorLookTargets[entity.id] = target.id
+                
+                // Initial look
                 entity.lookControl.setLookAt(target, 30.0f, 30.0f)
                 count++
             }
@@ -226,6 +335,13 @@ object AeonisCommands {
 
         for (entity in targets) {
             if (entity is Mob) {
+                // Clear other orders
+                actorWalkTargets.remove(entity.id)
+                
+                // Set new order
+                actorAttackTargets[entity.id] = target.id
+                
+                // Initial attack
                 entity.target = target
                 count++
             }
@@ -241,6 +357,11 @@ object AeonisCommands {
         
         for (entity in targets) {
             if (entity is Mob) {
+                // Clear all orders
+                actorWalkTargets.remove(entity.id)
+                actorLookTargets.remove(entity.id)
+                actorAttackTargets.remove(entity.id)
+                
                 entity.navigation.stop()
                 entity.target = null
                 count++

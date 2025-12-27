@@ -24,6 +24,8 @@ object AeonisManager : ModInitializer {
 		ServerTickEvents.END_SERVER_TICK.register { server ->
 			// Handle pet vex AI redirection
 			AeonisCommands.tickPetVexes(server)
+            // Handle Director Mode orders
+            AeonisCommands.tickActors(server)
 			
 			for (player in server.playerList.players) {
 				if (AeonisNetworking.isPlayerTransformed(player.uuid)) {
