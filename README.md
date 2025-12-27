@@ -345,7 +345,7 @@ This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) 
 
 <p align="center">
   <b>NOT TO BE CONFUSED WITH ANY OTHER MOD!</b><br/>
-  <i>I've <b>RENAMED</b> the EMBERVEIL modpack (previously "Aeonis") to <b>BLITZ</b> to avoid confusion.</i><br/>
+  <i>I've <b>RENAMED</b> the AEONIS modpack (formally "Vanilla+") to <b>BLITZ</b> to avoid confusion.</i><br/>
   <b>AEONIS = This Command Master Mod ONLY!</b>
 </p>
 
