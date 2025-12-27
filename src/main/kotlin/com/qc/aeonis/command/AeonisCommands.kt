@@ -2,7 +2,11 @@ package com.qc.aeonis.command
 
 import com.mojang.brigadier.CommandDispatcher
 import com.mojang.brigadier.arguments.BoolArgumentType
+import com.mojang.brigadier.arguments.DoubleArgumentType
 import com.mojang.brigadier.arguments.IntegerArgumentType
+import net.minecraft.commands.arguments.coordinates.Vec3Argument
+import net.minecraft.world.entity.LivingEntity
+import net.minecraft.world.entity.PathfinderMob
 import com.mojang.brigadier.context.CommandContext
 import com.qc.aeonis.config.AeonisFeatures
 import com.qc.aeonis.network.AeonisNetworking
@@ -42,6 +46,19 @@ import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.HitResult
 import net.minecraft.world.phys.Vec3
 import net.minecraft.network.protocol.game.ClientboundGameEventPacket
+import net.minecraft.world.entity.monster.Zombie
+import net.minecraft.world.entity.monster.Skeleton
+import net.minecraft.world.entity.monster.Creeper
+import net.minecraft.world.entity.monster.Slime
+import net.minecraft.world.entity.animal.horse.Horse
+import net.minecraft.world.entity.animal.Pig
+import net.minecraft.world.entity.animal.axolotl.Axolotl
+import net.minecraft.world.entity.animal.Parrot
+import net.minecraft.world.entity.animal.Dolphin
+import net.minecraft.world.entity.animal.goat.Goat
+import net.minecraft.world.entity.animal.frog.Frog
+import net.minecraft.world.item.DyeColor
+import net.minecraft.nbt.CompoundTag
 
 object AeonisCommands {
     
@@ -91,6 +108,7 @@ object AeonisCommands {
         CommandRegistrationCallback.EVENT.register { dispatcher, registryAccess, _ ->
             registerCommands(dispatcher)
             registerTransformCommand(dispatcher, registryAccess)
+            registerActorCommand(dispatcher)
         }
     }
     
@@ -98,12 +116,28 @@ object AeonisCommands {
         dispatcher: CommandDispatcher<CommandSourceStack>,
         registryAccess: net.minecraft.commands.CommandBuildContext
     ) {
-        // /transform <entity> - Spawn and spectate an entity
+        // /transform <entity> [variants...]
         dispatcher.register(
             Commands.literal("transform")
                 .requires { it.hasPermission(2) }
                 .then(Commands.argument("entity", ResourceArgument.resource(registryAccess, Registries.ENTITY_TYPE))
-                    .executes { transformIntoEntity(it) })
+                    .executes { transformIntoEntity(it, emptyList()) }
+                    .then(Commands.argument("variant", StringArgumentType.word())
+                        .executes { 
+                            val variants = listOf(StringArgumentType.getString(it, "variant"))
+                            transformIntoEntity(it, variants)
+                        }
+                        .then(Commands.argument("variant2", StringArgumentType.word())
+                            .executes { 
+                                val variants = listOf(
+                                    StringArgumentType.getString(it, "variant"),
+                                    StringArgumentType.getString(it, "variant2")
+                                )
+                                transformIntoEntity(it, variants)
+                            }
+                        )
+                    )
+                )
         )
         
         // /untransform - Exit spectator and kill the entity
@@ -112,6 +146,129 @@ object AeonisCommands {
                 .requires { it.hasPermission(2) }
                 .executes { untransform(it) }
         )
+    }
+
+    private fun registerActorCommand(dispatcher: CommandDispatcher<CommandSourceStack>) {
+        dispatcher.register(
+            Commands.literal("actor")
+                .requires { it.hasPermission(2) }
+                .then(Commands.argument("targets", EntityArgument.entities())
+                    .then(Commands.literal("walk_to")
+                        .then(Commands.argument("pos", Vec3Argument.vec3())
+                            .executes { actorWalkTo(it, 1.0) }
+                            .then(Commands.argument("speed", DoubleArgumentType.doubleArg(0.1, 5.0))
+                                .executes { actorWalkTo(it, DoubleArgumentType.getDouble(it, "speed")) }
+                            )
+                        )
+                    )
+                    .then(Commands.literal("look_at")
+                        .then(Commands.argument("target", EntityArgument.entity())
+                            .executes { actorLookAt(it) }
+                        )
+                    )
+                    .then(Commands.literal("attack")
+                        .then(Commands.argument("target", EntityArgument.entity())
+                            .executes { actorAttack(it) }
+                        )
+                    )
+                    .then(Commands.literal("stop")
+                        .executes { actorStop(it) }
+                    )
+                    .then(Commands.literal("ignite")
+                        .executes { actorIgnite(it) }
+                    )
+                )
+        )
+    }
+
+    private fun actorWalkTo(ctx: CommandContext<CommandSourceStack>, speed: Double): Int {
+        val targets = EntityArgument.getEntities(ctx, "targets")
+        val pos = Vec3Argument.getVec3(ctx, "pos")
+        var count = 0
+        
+        for (entity in targets) {
+            if (entity is PathfinderMob) {
+                if (entity.navigation.moveTo(pos.x, pos.y, pos.z, speed)) {
+                    count++
+                }
+            }
+        }
+        
+        ctx.source.sendSuccess({ Component.literal("§aOrdered $count entities to walk to ${pos.x}, ${pos.y}, ${pos.z}") }, true)
+        return count
+    }
+
+    private fun actorLookAt(ctx: CommandContext<CommandSourceStack>): Int {
+        val targets = EntityArgument.getEntities(ctx, "targets")
+        val target = EntityArgument.getEntity(ctx, "target")
+        var count = 0
+        
+        for (entity in targets) {
+            if (entity is Mob) {
+                entity.lookControl.setLookAt(target, 30.0f, 30.0f)
+                count++
+            }
+        }
+        
+        ctx.source.sendSuccess({ Component.literal("§aOrdered $count entities to look at ${target.name.string}") }, true)
+        return count
+    }
+
+    private fun actorAttack(ctx: CommandContext<CommandSourceStack>): Int {
+        val targets = EntityArgument.getEntities(ctx, "targets")
+        val target = EntityArgument.getEntity(ctx, "target")
+        var count = 0
+        
+        if (target !is LivingEntity) {
+            ctx.source.sendFailure(Component.literal("§cTarget must be a living entity!"))
+            return 0
+        }
+
+        for (entity in targets) {
+            if (entity is Mob) {
+                entity.target = target
+                count++
+            }
+        }
+        
+        ctx.source.sendSuccess({ Component.literal("§aOrdered $count entities to attack ${target.name.string}") }, true)
+        return count
+    }
+
+    private fun actorStop(ctx: CommandContext<CommandSourceStack>): Int {
+        val targets = EntityArgument.getEntities(ctx, "targets")
+        var count = 0
+        
+        for (entity in targets) {
+            if (entity is Mob) {
+                entity.navigation.stop()
+                entity.target = null
+                count++
+            }
+        }
+        
+        ctx.source.sendSuccess({ Component.literal("§aStopped $count entities") }, true)
+        return count
+    }
+
+    private fun actorIgnite(ctx: CommandContext<CommandSourceStack>): Int {
+        val targets = EntityArgument.getEntities(ctx, "targets")
+        var count = 0
+        
+        for (entity in targets) {
+            if (entity is Creeper) {
+                entity.ignite()
+                count++
+            }
+        }
+        
+        if (count == 0) {
+             ctx.source.sendFailure(Component.literal("§cNo creepers found in selection!"))
+             return 0
+        }
+        
+        ctx.source.sendSuccess({ Component.literal("§aIgnited $count creepers") }, true)
+        return count
     }
     
     private fun registerCommands(dispatcher: CommandDispatcher<CommandSourceStack>) {
@@ -301,7 +458,7 @@ object AeonisCommands {
     // ========== ENTITY TRANSFORM ==========
     
     @Suppress("UNCHECKED_CAST")
-    private fun transformIntoEntity(ctx: CommandContext<CommandSourceStack>): Int {
+    private fun transformIntoEntity(ctx: CommandContext<CommandSourceStack>, variants: List<String> = emptyList()): Int {
         val source = ctx.source
         val player = source.player as? ServerPlayer ?: run {
             source.sendFailure(Component.literal("§cOnly players can transform!"))
@@ -334,6 +491,15 @@ object AeonisCommands {
             return 0
         }
         
+        // Apply variants
+        var variantInfo = ""
+        if (variants.isNotEmpty()) {
+            variantInfo = applyVariants(entity, variants)
+            if (variantInfo.isNotEmpty()) {
+                variantInfo = " §7(§e$variantInfo§7)"
+            }
+        }
+        
         // Store original gamemode and entity reference
         originalGameModes[player.uuid] = player.gameMode.gameModeForPlayer
         transformedEntities[player.uuid] = entity
@@ -362,11 +528,219 @@ object AeonisCommands {
         
         val entityName = entityType.description.string
         source.sendSuccess({ 
-            Component.literal("§a✨ You transformed into a §b$entityName§a! Use WASD to move, SPACE to jump. §e/untransform§a to return.") 
+            Component.literal("§a✨ You transformed into a §b$entityName$variantInfo§a! Use WASD to move, SPACE to jump. §e/untransform§a to return.") 
         }, true)
         return 1
     }
     
+    // NEW: Helper function to apply variants to entities
+    private fun applyVariants(entity: Entity, variants: List<String>): String {
+        val appliedVariants = mutableListOf<String>()
+        val level = entity.level() as net.minecraft.server.level.ServerLevel
+        
+        // Zombie variants
+        if (entity is Zombie) {
+            for (variant in variants) {
+                when (variant.lowercase()) {
+                    "baby" -> {
+                        entity.isBaby = true
+                        appliedVariants.add("Baby")
+                    }
+                    "drowned" -> {
+                        convertEntity(entity, EntityType.DROWNED)
+                        appliedVariants.add("Drowned")
+                    }
+                    "husk" -> {
+                        convertEntity(entity, EntityType.HUSK)
+                        appliedVariants.add("Husk")
+                    }
+                    "chicken_jockey" -> {
+                        entity.isBaby = true
+                        val chicken = EntityType.CHICKEN.spawn(
+                            level,
+                            entity.blockPosition(),
+                            EntitySpawnReason.COMMAND
+                        )
+                        if (chicken != null) {
+                            entity.startRiding(chicken)
+                            appliedVariants.add("Chicken Jockey")
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Skeleton variants
+        if (entity is Skeleton) {
+            for (variant in variants) {
+                when (variant.lowercase()) {
+                    "wither" -> {
+                        convertEntity(entity, EntityType.WITHER_SKELETON)
+                        appliedVariants.add("Wither")
+                    }
+                    "stray" -> {
+                        convertEntity(entity, EntityType.STRAY)
+                        appliedVariants.add("Stray")
+                    }
+                    "charged" -> {
+                        entity.addEffect(MobEffectInstance(MobEffects.GLOWING, Int.MAX_VALUE, 0))
+                        appliedVariants.add("Charged (Visual)")
+                    }
+                }
+            }
+        }
+        
+        // Creeper variants
+        if (entity is Creeper) {
+            for (variant in variants) {
+                when (variant.lowercase()) {
+                    "powered", "charged" -> {
+                        // NBT access issues, skipping for now
+                        entity.addEffect(MobEffectInstance(MobEffects.GLOWING, Int.MAX_VALUE, 0))
+                        appliedVariants.add("Charged (Visual)")
+                    }
+                }
+            }
+        }
+        
+        // Slime variants
+        if (entity is Slime) {
+            for (variant in variants) {
+                when (variant.lowercase()) {
+                    "big" -> {
+                        entity.setSize(4, true)
+                        appliedVariants.add("Big")
+                    }
+                    "tiny", "small" -> {
+                        entity.setSize(1, true)
+                        appliedVariants.add("Tiny")
+                    }
+                }
+            }
+        }
+        
+        // Horse variants
+        if (entity is Horse) {
+            for (variant in variants) {
+                when (variant.lowercase()) {
+                    "baby" -> {
+                        entity.isBaby = true
+                        appliedVariants.add("Baby")
+                    }
+                    "saddle" -> {
+                        entity.equipItemIfPossible(level, ItemStack(Items.SADDLE))
+                        appliedVariants.add("Saddled")
+                    }
+                    "armor" -> {
+                        entity.equipItemIfPossible(level, ItemStack(Items.DIAMOND_HORSE_ARMOR))
+                        appliedVariants.add("Armored")
+                    }
+                }
+            }
+        }
+        
+        /* Sheep variants - Temporarily disabled due to resolution issues
+        if (entity is net.minecraft.world.entity.animal.Sheep) {
+            for (variant in variants) {
+                val color = DyeColor.entries.firstOrNull { it.name.lowercase() == variant.lowercase() }
+                if (color != null) {
+                    entity.color = color
+                    appliedVariants.add(color.toString())
+                }
+            }
+        }
+        */
+        
+        // Pig variants
+        if (entity is Pig) {
+            for (variant in variants) {
+                when (variant.lowercase()) {
+                    "baby" -> {
+                        entity.isBaby = true
+                        appliedVariants.add("Baby")
+                    }
+                    "saddle" -> {
+                        entity.equipItemIfPossible(level, ItemStack(Items.SADDLE))
+                        appliedVariants.add("Saddled")
+                    }
+                }
+            }
+        }
+        
+        // Axolotl variants - Disabled due to NBT issues
+        /*
+        if (entity is Axolotl) {
+            // ...
+        }
+        */
+        
+        // Wolf variants - Disabled due to NBT issues
+        /*
+        if (entity is Wolf) {
+            // ...
+        }
+        */
+        
+        // Parrot variants - Disabled due to NBT issues
+        /*
+        if (entity is Parrot) {
+            // ...
+        }
+        */
+        
+        // Goat variants
+        if (entity is Goat) {
+            for (variant in variants) {
+                when (variant.lowercase()) {
+                    "baby" -> {
+                        entity.isBaby = true
+                        appliedVariants.add("Baby")
+                    }
+                    "screaming" -> {
+                        entity.isScreamingGoat = true
+                        appliedVariants.add("Screaming")
+                    }
+                }
+            }
+        }
+        
+        // Frog variants - Disabled due to NBT issues
+        /*
+        if (entity is Frog) {
+            // ...
+        }
+        */
+        
+        return appliedVariants.joinToString(", ")
+    }
+
+    private fun <T : Mob> convertEntity(oldEntity: Mob, newType: EntityType<T>): T? {
+        val level = oldEntity.level() as net.minecraft.server.level.ServerLevel
+        val newEntity = newType.create(level, EntitySpawnReason.COMMAND) ?: return null
+        
+        newEntity.copyPosition(oldEntity)
+        newEntity.yBodyRot = oldEntity.yBodyRot
+        newEntity.yHeadRot = oldEntity.yHeadRot
+        
+        level.addFreshEntity(newEntity)
+        oldEntity.discard()
+        
+        // Update our tracking maps
+        val ownerUUID = transformedEntities.entries.find { it.value == oldEntity }?.key
+        if (ownerUUID != null) {
+            transformedEntities[ownerUUID] = newEntity
+            val player = level.server.playerList.getPlayer(ownerUUID)
+            if (player != null) {
+                player.setCamera(newEntity)
+                AeonisNetworking.setControlledEntity(player, newEntity.id)
+                newEntity.setNoAi(true)
+            }
+        }
+        
+        return newEntity
+    }
+
+
     private fun untransform(ctx: CommandContext<CommandSourceStack>): Int {
         val source = ctx.source
         val player = source.player as? ServerPlayer ?: run {
