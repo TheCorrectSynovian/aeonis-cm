@@ -64,10 +64,61 @@ import net.minecraft.world.item.DyeColor
 import net.minecraft.nbt.CompoundTag
 
 object AeonisCommands {
+        // Track all entities made chaotic for easy disabling
+        private val chaoticEntities = mutableSetOf<Int>()
+
+        private fun stopChaotic(ctx: CommandContext<CommandSourceStack>): Int {
+            var count = 0
+            val server = ctx.source.server
+            for (level in server.allLevels) {
+                for (entityId in chaoticEntities) {
+                    val entity = level.getEntity(entityId)
+                    if (entity is PathfinderMob && entity.isAlive) {
+                        try {
+                            val goalSelectorField = Mob::class.java.getDeclaredField("goalSelector")
+                            goalSelectorField.isAccessible = true
+                            val goalSelector = goalSelectorField.get(entity) as? net.minecraft.world.entity.ai.goal.GoalSelector
+                            if (goalSelector != null) {
+                                val goals = goalSelector.availableGoals
+                                val toRemove = goals.take(3).toList()
+                                for (goal in toRemove) {
+                                    goalSelector.removeGoal(goal.goal)
+                                }
+                            }
+                            entity.removeEffect(MobEffects.SPEED)
+                            count++
+                        } catch (_: Exception) {}
+                    }
+                }
+            }
+            chaoticEntities.clear()
+            ctx.source.sendSuccess({ Component.literal("§aStopped chaotic AI on $count entities.") }, true)
+            return count
+        }
+
+        // Accessor for original game modes used by AeonisManager tick handler
+        fun getOriginalGameMode(uuid: java.util.UUID): GameType? = originalGameModes[uuid]
+
+        private fun reloadMod(ctx: CommandContext<CommandSourceStack>): Int {
+            // Reset all mod features and states
+            chaoticEntities.clear()
+            originalGameModes.clear()
+            transformedEntities.clear()
+            petVexOwners.clear()
+            actorWalkTargets.clear()
+            actorLookTargets.clear()
+            actorAttackTargets.clear()
+            // Optionally, reload config or features if needed
+            ctx.source.sendSuccess({ Component.literal("§bAeonis mod features reloaded and states reset.") }, true)
+            return 1
+        }
     
     // Track original gamemode for untransform
     private val originalGameModes = mutableMapOf<java.util.UUID, GameType>()
     private val transformedEntities = mutableMapOf<java.util.UUID, Entity>()
+    
+    // Track players in soul mode (spectator mode where they can possess existing mobs)
+    private val soulModePlayers = mutableSetOf<java.util.UUID>()
     
     // Track pet vex ownership: vex entity ID -> owner player UUID
     internal val petVexOwners = mutableMapOf<Int, java.util.UUID>()
@@ -209,7 +260,7 @@ object AeonisCommands {
             registerAiCommand(dispatcher)
             registerPrankCommand(dispatcher)
             registerAbilityCommand(dispatcher)
-            registerGameCommand(dispatcher)
+            registerEventCommand(dispatcher)
         }
     }
     
@@ -375,6 +426,9 @@ object AeonisCommands {
                     .then(Commands.argument("targets", EntityArgument.entities())
                         .executes { makeChaotic(it) }
                     )
+                    .then(Commands.literal("stop")
+                        .executes { stopChaotic(it) }
+                    )
                 )
                 .then(Commands.literal("director")
                     .then(Commands.argument("targets", EntityArgument.entities())
@@ -424,6 +478,15 @@ object AeonisCommands {
                     .then(Commands.literal("story")
                         .requires { it.hasPermission(2) }
                         .executes { tellStory(it) }))
+                .then(Commands.literal("reload")
+                    .requires { it.hasPermission(2) }
+                    .executes { reloadMod(it) })
+                .then(Commands.literal("soul")
+                    .requires { it.hasPermission(2) }
+                    .executes { enterSoulMode(it) })
+                .then(Commands.literal("unsoul")
+                    .requires { it.hasPermission(2) }
+                    .executes { exitSoulMode(it) })
         )
     }
 
@@ -496,9 +559,9 @@ object AeonisCommands {
         )
     }
 
-    private fun registerGameCommand(dispatcher: CommandDispatcher<CommandSourceStack>) {
+    private fun registerEventCommand(dispatcher: CommandDispatcher<CommandSourceStack>) {
         dispatcher.register(
-            Commands.literal("game")
+            Commands.literal("event")
                 .requires { it.hasPermission(2) }
                 .then(Commands.literal("ambush")
                     .executes { ambushMode(it) })
@@ -534,6 +597,8 @@ object AeonisCommands {
         source.sendSuccess({ Component.literal("§a/aeonis features extra_mobs <true/false>§7 - Toggle Aeonis mobs") }, false)
         source.sendSuccess({ Component.literal("§a/transform <entity> [variant...]§7 - Become any mob! Optionally specify variants.") }, false)
         source.sendSuccess({ Component.literal("§a/untransform§7 - Return to normal") }, false)
+        source.sendSuccess({ Component.literal("§a/aeonis soul§7 - Enter soul mode (spectator + possess existing mobs with P key)") }, false)
+        source.sendSuccess({ Component.literal("§a/aeonis unsoul§7 - Exit soul mode") }, false)
 
         // AI Tools
         source.sendSuccess({ Component.literal("§5=== AI Tools (/ai) ===") }, false)
@@ -568,17 +633,17 @@ object AeonisCommands {
         source.sendSuccess({ Component.literal("§b/ability summon vex§7 - Summon pet vex") }, false)
         source.sendSuccess({ Component.literal("§b/ability summon wolves <count>§7 - Summon spirit wolves") }, false)
 
-        // Game Tools
-        source.sendSuccess({ Component.literal("§c=== Game Tools (/game) ===") }, false)
-        source.sendSuccess({ Component.literal("§c/game ambush§7 - Surprise mob ambush") }, false)
-        source.sendSuccess({ Component.literal("§c/game scan§7 - Scan for hostiles nearby") }, false)
-        source.sendSuccess({ Component.literal("§c/game thunder§7 - Start thunder dome event") }, false)
-        source.sendSuccess({ Component.literal("§c/game copper§7 - Drop copper on players") }, false)
-        source.sendSuccess({ Component.literal("§c/game time <ticks>§7 - Warp time forward") }, false)
-        source.sendSuccess({ Component.literal("§c/game cleanse <players>§7 - Remove all effects") }, false)
-        source.sendSuccess({ Component.literal("§c/game crit_save§7 - Critical save (revive)") }, false)
-        source.sendSuccess({ Component.literal("§c/game pro_gamer§7 - Pro gamer mode") }, false)
-        source.sendSuccess({ Component.literal("§c/game exitbody <s|c>§7 - Exit body (Survival/Creative)") }, false)
+        // Event Tools
+        source.sendSuccess({ Component.literal("§c=== Event Tools (/event) ===") }, false)
+        source.sendSuccess({ Component.literal("§c/event ambush§7 - Surprise mob ambush") }, false)
+        source.sendSuccess({ Component.literal("§c/event scan§7 - Scan for hostiles nearby") }, false)
+        source.sendSuccess({ Component.literal("§c/event thunder§7 - Start thunder dome event") }, false)
+        source.sendSuccess({ Component.literal("§c/event copper§7 - Drop copper on players") }, false)
+        source.sendSuccess({ Component.literal("§c/event time <ticks>§7 - Warp time forward") }, false)
+        source.sendSuccess({ Component.literal("§c/event cleanse <players>§7 - Remove all effects") }, false)
+        source.sendSuccess({ Component.literal("§c/event crit_save§7 - Critical save (revive)") }, false)
+        source.sendSuccess({ Component.literal("§c/event pro_gamer§7 - Pro gamer mode") }, false)
+        source.sendSuccess({ Component.literal("§c/event exitbody <s|c>§7 - Exit body (Survival/Creative)") }, false)
 
         // System
         source.sendSuccess({ Component.literal("§7=== System (/aeonis sys) ===") }, false)
@@ -681,11 +746,27 @@ object AeonisCommands {
         // Register entity for control
         AeonisNetworking.setControlledEntity(player, entity.id)
         
-        // Set player to spectator mode
-        player.setGameMode(GameType.SPECTATOR)
+        // Auto-equip weapons for ranged mobs
+        equipWeaponsForRangedMob(entity, player)
         
-        // Make player spectate the entity
-        player.setCamera(entity)
+        // Set player to survival mode (allows block breaking, hotbar use) and make them invisible
+        // This mimics the QCmod possession behavior where players can still interact with the world
+        if (originalGameModes[player.uuid] == GameType.SPECTATOR) {
+            player.setGameMode(GameType.SPECTATOR)
+        } else {
+            player.setGameMode(GameType.SURVIVAL)
+            player.isInvisible = true
+        }
+        
+        // Set player health to match mob health
+        if (entity is LivingEntity) {
+            val mobMaxHealth = entity.maxHealth.toDouble()
+            player.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.MAX_HEALTH)?.baseValue = mobMaxHealth
+            player.health = entity.health.coerceAtMost(mobMaxHealth.toFloat())
+        }
+        
+        // Sync player position to mob (don't use camera spectating, player controls directly)
+        player.teleportTo(entity.x, entity.y, entity.z)
         
         val entityName = entityType.description.string
         source.sendSuccess({ 
@@ -874,6 +955,81 @@ object AeonisCommands {
         
         return appliedVariants.joinToString(", ")
     }
+    
+    /**
+     * Auto-equip weapons for ranged mobs when player transforms into them.
+     * Gives the player appropriate weapons based on mob type:
+     * - Skeleton, Stray, Bogged: Bow + Arrows
+     * - Pillager: Crossbow + Arrows
+     * - Piglin: Crossbow + Arrows
+     * - Drowned: Trident
+     */
+    private fun equipWeaponsForRangedMob(entity: Entity, player: ServerPlayer) {
+        when {
+            // Skeleton types - give bow and arrows
+            entity is Skeleton || entity.type == EntityType.STRAY || entity.type == EntityType.BOGGED -> {
+                val bow = ItemStack(Items.BOW)
+                val arrows = ItemStack(Items.ARROW, 64)
+                // Add to player inventory
+                player.inventory.add(bow)
+                player.inventory.add(arrows)
+                // Also make mob hold the bow
+                if (entity is LivingEntity) {
+                    entity.setItemSlot(net.minecraft.world.entity.EquipmentSlot.MAINHAND, ItemStack(Items.BOW))
+                }
+                player.sendSystemMessage(Component.literal("§7[Aeonis] §aEquipped §eBow §aand §eArrows§a!"))
+            }
+            // Pillager - give crossbow and arrows
+            entity.type == EntityType.PILLAGER -> {
+                val crossbow = ItemStack(Items.CROSSBOW)
+                val arrows = ItemStack(Items.ARROW, 64)
+                player.inventory.add(crossbow)
+                player.inventory.add(arrows)
+                if (entity is LivingEntity) {
+                    entity.setItemSlot(net.minecraft.world.entity.EquipmentSlot.MAINHAND, ItemStack(Items.CROSSBOW))
+                }
+                player.sendSystemMessage(Component.literal("§7[Aeonis] §aEquipped §eCrossbow §aand §eArrows§a!"))
+            }
+            // Piglin - give crossbow and arrows
+            entity.type == EntityType.PIGLIN -> {
+                val crossbow = ItemStack(Items.CROSSBOW)
+                val arrows = ItemStack(Items.ARROW, 64)
+                player.inventory.add(crossbow)
+                player.inventory.add(arrows)
+                if (entity is LivingEntity) {
+                    entity.setItemSlot(net.minecraft.world.entity.EquipmentSlot.MAINHAND, ItemStack(Items.CROSSBOW))
+                }
+                player.sendSystemMessage(Component.literal("§7[Aeonis] §aEquipped §eCrossbow §aand §eArrows§a!"))
+            }
+            // Drowned - give trident
+            entity.type == EntityType.DROWNED -> {
+                val trident = ItemStack(Items.TRIDENT)
+                player.inventory.add(trident)
+                if (entity is LivingEntity) {
+                    entity.setItemSlot(net.minecraft.world.entity.EquipmentSlot.MAINHAND, ItemStack(Items.TRIDENT))
+                }
+                player.sendSystemMessage(Component.literal("§7[Aeonis] §aEquipped §eTrident§a!"))
+            }
+            // Wither Skeleton - give stone sword
+            entity.type == EntityType.WITHER_SKELETON -> {
+                val sword = ItemStack(Items.STONE_SWORD)
+                player.inventory.add(sword)
+                if (entity is LivingEntity) {
+                    entity.setItemSlot(net.minecraft.world.entity.EquipmentSlot.MAINHAND, ItemStack(Items.STONE_SWORD))
+                }
+                player.sendSystemMessage(Component.literal("§7[Aeonis] §aEquipped §eStone Sword§a!"))
+            }
+            // Vindicator - give iron axe
+            entity.type == EntityType.VINDICATOR -> {
+                val axe = ItemStack(Items.IRON_AXE)
+                player.inventory.add(axe)
+                if (entity is LivingEntity) {
+                    entity.setItemSlot(net.minecraft.world.entity.EquipmentSlot.MAINHAND, ItemStack(Items.IRON_AXE))
+                }
+                player.sendSystemMessage(Component.literal("§7[Aeonis] §aEquipped §eIron Axe§a!"))
+            }
+        }
+    }
 
     private fun <T : Mob> convertEntity(oldEntity: Mob, newType: EntityType<T>): T? {
         val level = oldEntity.level() as net.minecraft.server.level.ServerLevel
@@ -910,32 +1066,182 @@ object AeonisCommands {
         }
         
         // Check if transformed
-        val entity = transformedEntities.remove(player.uuid)
-        if (entity == null) {
+        if (!transformedEntities.containsKey(player.uuid)) {
             source.sendFailure(Component.literal("§cYou're not transformed!"))
             return 0
         }
         
+        autoUntransform(player, showMessage = true)
+        return 1
+    }
+    
+    /**
+     * Auto-untransform helper function - used both by command and automatic death detection
+     */
+    fun autoUntransform(player: ServerPlayer, showMessage: Boolean = false) {
+        // Check if transformed
+        val entity = transformedEntities.remove(player.uuid) ?: return
+        
         // Stop controlling
         AeonisNetworking.removeControlledEntity(player)
         
-        // Stop spectating
+        // Stop spectating (in case of spectator mode)
         player.setCamera(player)
+        
+        // Restore visibility and collision
+        player.isInvisible = false
+        player.noPhysics = false
         
         // Restore original gamemode
         val originalMode = originalGameModes.remove(player.uuid) ?: GameType.SURVIVAL
         player.setGameMode(originalMode)
         
-        // Teleport player to entity's last position before killing it
-        player.teleportTo(entity.x, entity.y, entity.z)
+        // IMPORTANT: Reset player health to default (20.0 / 10 hearts)
+        player.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.MAX_HEALTH)?.baseValue = 20.0
+        player.health = 20.0f
         
-        // Kill the spawned entity
-        entity.discard()
+        // Teleport player to entity's last position (if entity still exists)
+        if (entity.isAlive) {
+            player.teleportTo(entity.x, entity.y, entity.z)
+            // Kill the spawned entity
+            entity.discard()
+        }
+        
+        if (showMessage) {
+            player.sendSystemMessage(Component.literal("§a✨ You returned to your normal form!"))
+        }
+    }
+    
+    // ========== SOUL MODE ==========
+    
+    /**
+     * Enter soul mode - become a spectator that can possess existing mobs with P key
+     */
+    private fun enterSoulMode(ctx: CommandContext<CommandSourceStack>): Int {
+        val source = ctx.source
+        val player = source.player as? ServerPlayer ?: run {
+            source.sendFailure(Component.literal("§cOnly players can use soul mode!"))
+            return 0
+        }
+        
+        // Check if already transformed
+        if (transformedEntities.containsKey(player.uuid)) {
+            source.sendFailure(Component.literal("§cYou're already controlling a mob! Use /untransform first."))
+            return 0
+        }
+        
+        // Check if already in soul mode
+        if (soulModePlayers.contains(player.uuid)) {
+            source.sendFailure(Component.literal("§cYou're already in soul mode! Use /aeonis unsoul to exit."))
+            return 0
+        }
+        
+        // Store original gamemode
+        originalGameModes[player.uuid] = player.gameMode.gameModeForPlayer
+        
+        // Set to spectator
+        player.setGameMode(GameType.SPECTATOR)
+        
+        // Add to soul mode set
+        soulModePlayers.add(player.uuid)
+        
+        // Notify client they're in soul mode
+        AeonisNetworking.sendSoulModeStatus(player, true)
         
         source.sendSuccess({ 
-            Component.literal("§a✨ You returned to your normal form!") 
-        }, true)
+            Component.literal("§b👻 Soul Mode activated! §7Look at any mob and press §eP§7 to possess it. Use §e/aeonis unsoul§7 to exit.") 
+        }, false)
         return 1
+    }
+    
+    /**
+     * Exit soul mode - return to normal
+     */
+    private fun exitSoulMode(ctx: CommandContext<CommandSourceStack>): Int {
+        val source = ctx.source
+        val player = source.player as? ServerPlayer ?: run {
+            source.sendFailure(Component.literal("§cOnly players can exit soul mode!"))
+            return 0
+        }
+        
+        // Check if in soul mode
+        if (!soulModePlayers.contains(player.uuid)) {
+            source.sendFailure(Component.literal("§cYou're not in soul mode!"))
+            return 0
+        }
+        
+        // Remove from soul mode
+        soulModePlayers.remove(player.uuid)
+        
+        // Restore original gamemode
+        val originalMode = originalGameModes.remove(player.uuid) ?: GameType.SURVIVAL
+        player.setGameMode(originalMode)
+        
+        // Notify client they're no longer in soul mode
+        AeonisNetworking.sendSoulModeStatus(player, false)
+        
+        source.sendSuccess({ Component.literal("§a✨ Soul mode deactivated!") }, false)
+        return 1
+    }
+    
+    /**
+     * Check if player is in soul mode
+     */
+    fun isInSoulMode(playerUuid: java.util.UUID): Boolean {
+        return soulModePlayers.contains(playerUuid)
+    }
+    
+    /**
+     * Called when player possesses an existing mob from soul mode
+     */
+    fun possessExistingMob(player: ServerPlayer, mob: Mob) {
+        // Remove from soul mode set (no longer in spectator possess mode)
+        soulModePlayers.remove(player.uuid)
+        
+        // Store original gamemode if not already stored
+        if (!originalGameModes.containsKey(player.uuid)) {
+            originalGameModes[player.uuid] = GameType.SURVIVAL
+        }
+        
+        // Track the entity
+        transformedEntities[player.uuid] = mob
+        
+        // Disable the mob's AI (except for Dragon)
+        if (mob !is EnderDragon) {
+            mob.setNoAi(true)
+        }
+        
+        // Special handling for Ender Dragon
+        if (mob is EnderDragon) {
+            mob.phaseManager.setPhase(EnderDragonPhase.HOVERING)
+            mob.setNoAi(false)
+        }
+        
+        // Register entity for control
+        AeonisNetworking.setControlledEntity(player, mob.id)
+        
+        // Auto-equip weapons for ranged mobs
+        equipWeaponsForRangedMob(mob, player)
+        
+        // Set player to survival and invisible
+        player.setGameMode(GameType.SURVIVAL)
+        player.isInvisible = true
+        
+        // Set player health to match mob health
+        val mobMaxHealth = mob.maxHealth.toDouble()
+        player.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.MAX_HEALTH)?.baseValue = mobMaxHealth
+        player.health = mob.health.coerceAtMost(mobMaxHealth.toFloat())
+        
+        // Teleport player to mob
+        player.teleportTo(mob.x, mob.y, mob.z)
+        
+        // Notify client they're no longer in soul mode (now controlling)
+        AeonisNetworking.sendSoulModeStatus(player, false)
+        
+        val entityName = mob.type.description.string
+        player.sendSystemMessage(
+            Component.literal("§a👻 You possessed a §b$entityName§a! Use WASD to move, §e/untransform§a to release.")
+        )
     }
     
     private fun smitePlayer(ctx: CommandContext<CommandSourceStack>): Int {
@@ -1566,7 +1872,7 @@ object AeonisCommands {
         
         source.sendSuccess({ Component.literal("§6§l═══════ AEONIS SYSTEM ═══════") }, false)
         source.sendSuccess({ Component.literal("§e§lMOD INFO") }, false)
-        source.sendSuccess({ Component.literal("  §7ID: §baeonis-command-master §7| §7Ver: §b1.2.8b") }, false)
+        source.sendSuccess({ Component.literal("  §7ID: §baeonis-command-master §7| §7Ver: §b1.3") }, false)
         source.sendSuccess({ Component.literal("  §7Extra Mobs: " + if (AeonisFeatures.isExtraMobsEnabled(server)) "§aON" else "§cOFF") }, false)
         
         source.sendSuccess({ Component.literal("§c§l⚡ PERFORMANCE") }, false)

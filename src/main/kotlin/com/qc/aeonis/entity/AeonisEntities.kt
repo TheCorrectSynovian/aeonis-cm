@@ -28,6 +28,7 @@ object AeonisEntities {
             .clientTrackingRange(48)
             .build(COPPER_STALKER_KEY)
     )
+    lateinit var BODY: EntityType<BodyEntity>
 
     fun register() {
         FabricDefaultAttributeRegistry.register(COPPER_STALKER, CopperStalkerEntity.createAttributes())
@@ -47,5 +48,16 @@ object AeonisEntities {
             1,
             2
         )
+        // Register Body entity used by the possession system
+        val BODY_KEY = ResourceKey.create(Registries.ENTITY_TYPE, ResourceLocation.fromNamespaceAndPath("aeonis", "body"))
+        BODY = Registry.register(
+            BuiltInRegistries.ENTITY_TYPE,
+            BODY_KEY,
+            EntityType.Builder.of(::BodyEntity, MobCategory.MISC)
+                .sized(0.6f, 1.8f)
+                .clientTrackingRange(64)
+                .build(BODY_KEY)
+        )
+        FabricDefaultAttributeRegistry.register(BODY, BodyEntity.createBodyAttributes())
     }
 }

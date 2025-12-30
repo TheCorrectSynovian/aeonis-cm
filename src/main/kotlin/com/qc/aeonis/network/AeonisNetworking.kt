@@ -35,13 +35,20 @@ import net.minecraft.world.entity.projectile.WitherSkull
 import net.minecraft.world.entity.projectile.DragonFireball
 import net.minecraft.world.entity.projectile.SmallFireball
 import net.minecraft.world.entity.projectile.LargeFireball
+import net.minecraft.world.entity.projectile.Snowball
 import net.minecraft.world.entity.projectile.windcharge.BreezeWindCharge
 import net.minecraft.world.entity.item.ItemEntity
+import net.minecraft.world.entity.monster.Witch
+import net.minecraft.world.entity.monster.Evoker
+import net.minecraft.world.entity.monster.warden.Warden
+import net.minecraft.world.entity.animal.SnowGolem
+import net.minecraft.world.entity.projectile.EvokerFangs
 import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.Vec3
 import net.minecraft.network.chat.Component
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.Items
+import com.qc.aeonis.AeonisPossession
 
 /**
  * Packet sent from client to server with movement input
@@ -95,7 +102,9 @@ data class MobControlPayload(
  * Packet sent from server to client to enable/disable control mode
  */
 data class ControlModePayload(
-    val enabled: Boolean
+    val enabled: Boolean,
+    val mobId: Int = -1,
+    val selectedSlot: Int = -1
 ) : CustomPacketPayload {
     
     companion object {
@@ -104,12 +113,89 @@ data class ControlModePayload(
         )
         
         val CODEC: StreamCodec<FriendlyByteBuf, ControlModePayload> = StreamCodec.of(
-            { buf, payload -> buf.writeBoolean(payload.enabled) },
-            { buf -> ControlModePayload(buf.readBoolean()) }
+            { buf, payload -> 
+                buf.writeBoolean(payload.enabled)
+                buf.writeInt(payload.mobId)
+                buf.writeInt(payload.selectedSlot)
+            },
+            { buf -> ControlModePayload(buf.readBoolean(), buf.readInt(), buf.readInt()) }
         )
     }
     
     override fun type(): CustomPacketPayload.Type<ControlModePayload> = ID
+}
+
+/**
+ * Possess / Release / Ability payloads
+ */
+data class PossessPayload(
+    val mobId: Int,
+    val selectedSlot: Int
+) : CustomPacketPayload {
+    companion object {
+        val ID = CustomPacketPayload.Type<PossessPayload>(
+            ResourceLocation.fromNamespaceAndPath("aeonis-manager", "possess_mob")
+        )
+        val CODEC: StreamCodec<FriendlyByteBuf, PossessPayload> = StreamCodec.of(
+            { buf, payload ->
+                buf.writeInt(payload.mobId)
+                buf.writeInt(payload.selectedSlot)
+            },
+            { buf -> PossessPayload(buf.readInt(), buf.readInt()) }
+        )
+    }
+    override fun type(): CustomPacketPayload.Type<PossessPayload> = ID
+}
+
+data class ReleasePayload(
+    val selectedSlot: Int,
+    val bodyX: Double,
+    val bodyY: Double,
+    val bodyZ: Double
+) : CustomPacketPayload {
+    companion object {
+        val ID = CustomPacketPayload.Type<ReleasePayload>(
+            ResourceLocation.fromNamespaceAndPath("aeonis-manager", "release_mob")
+        )
+        val CODEC: StreamCodec<FriendlyByteBuf, ReleasePayload> = StreamCodec.of(
+            { buf, payload ->
+                buf.writeInt(payload.selectedSlot)
+                buf.writeDouble(payload.bodyX)
+                buf.writeDouble(payload.bodyY)
+                buf.writeDouble(payload.bodyZ)
+            },
+            { buf -> ReleasePayload(buf.readInt(), buf.readDouble(), buf.readDouble(), buf.readDouble()) }
+        )
+    }
+    override fun type(): CustomPacketPayload.Type<ReleasePayload> = ID
+}
+
+class AbilityPayload : CustomPacketPayload {
+    companion object {
+        val ID = CustomPacketPayload.Type<AbilityPayload>(
+            ResourceLocation.fromNamespaceAndPath("aeonis-manager", "ability")
+        )
+        val CODEC: StreamCodec<FriendlyByteBuf, AbilityPayload> = StreamCodec.of(
+            { _, _ -> },
+            { _ -> AbilityPayload() }
+        )
+    }
+    override fun type(): CustomPacketPayload.Type<AbilityPayload> = ID
+}
+
+// Selected slot sync payload (client -> server)
+data class SelectedSlotPayload(val selectedSlot: Int) : CustomPacketPayload {
+    companion object {
+        val ID = CustomPacketPayload.Type<SelectedSlotPayload>(
+            ResourceLocation.fromNamespaceAndPath("aeonis-manager", "selected_slot")
+        )
+        val CODEC: StreamCodec<FriendlyByteBuf, SelectedSlotPayload> = StreamCodec.of(
+            { buf, payload -> buf.writeInt(payload.selectedSlot) },
+            { buf -> SelectedSlotPayload(buf.readInt()) }
+        )
+    }
+
+    override fun type(): CustomPacketPayload.Type<SelectedSlotPayload> = ID
 }
 
 object AeonisNetworking {
@@ -119,16 +205,230 @@ object AeonisNetworking {
     
     // Track attack cooldown to prevent spam
     private val attackCooldowns = mutableMapOf<java.util.UUID, Long>()
+
+    // Additional cooldown maps (ported from QCmod)
+    private val witchPotionCooldowns = mutableMapOf<java.util.UUID, Long>()
+    private val teleportCooldowns = mutableMapOf<java.util.UUID, Long>()
+    private val projectileCooldowns = mutableMapOf<java.util.UUID, Long>()
+
+    // Helper accessors for cooldowns
+    fun canUseTeleport(playerUuid: java.util.UUID, now: Long = System.currentTimeMillis()): Boolean {
+        val next = teleportCooldowns[playerUuid] ?: 0L
+        return now >= next
+    }
+
+    fun setTeleportCooldown(playerUuid: java.util.UUID, millisFromNow: Long) {
+        teleportCooldowns[playerUuid] = System.currentTimeMillis() + millisFromNow
+    }
+
+    fun canUseWitchPotion(playerUuid: java.util.UUID, now: Long = System.currentTimeMillis()): Boolean {
+        val next = witchPotionCooldowns[playerUuid] ?: 0L
+        return now >= next
+    }
+
+    fun setWitchPotionCooldown(playerUuid: java.util.UUID, millisFromNow: Long) {
+        witchPotionCooldowns[playerUuid] = System.currentTimeMillis() + millisFromNow
+    }
+
+    fun canUseProjectile(playerUuid: java.util.UUID, now: Long = System.currentTimeMillis()): Boolean {
+        val next = projectileCooldowns[playerUuid] ?: 0L
+        return now >= next
+    }
+
+    fun setProjectileCooldown(playerUuid: java.util.UUID, millisFromNow: Long) {
+        projectileCooldowns[playerUuid] = System.currentTimeMillis() + millisFromNow
+    }
     
+    // Sync payload to notify clients about which players are currently controlling mobs
+    data class SyncControllingPlayersPayload(val playerUUIDs: List<java.util.UUID>) : CustomPacketPayload {
+        companion object {
+            val ID = CustomPacketPayload.Type<SyncControllingPlayersPayload>(
+                ResourceLocation.fromNamespaceAndPath("aeonis-manager", "sync_controlling_players")
+            )
+            val CODEC: StreamCodec<FriendlyByteBuf, SyncControllingPlayersPayload> = StreamCodec.of(
+                { buf, payload ->
+                    buf.writeInt(payload.playerUUIDs.size)
+                    for (u in payload.playerUUIDs) {
+                        buf.writeLong(u.mostSignificantBits)
+                        buf.writeLong(u.leastSignificantBits)
+                    }
+                },
+                { buf ->
+                    val n = buf.readInt()
+                    val list = mutableListOf<java.util.UUID>()
+                    for (i in 0 until n) {
+                        val msb = buf.readLong()
+                        val lsb = buf.readLong()
+                        list.add(java.util.UUID(msb, lsb))
+                    }
+                    SyncControllingPlayersPayload(list)
+                }
+            )
+        }
+        override fun type(): CustomPacketPayload.Type<SyncControllingPlayersPayload> = ID
+    }
+
+    // Server -> Client payload: controlled entity status (health + name)
+    data class ControlledEntityStatusPayload(val entityId: Int, val health: Float, val maxHealth: Float, val name: String) : CustomPacketPayload {
+        companion object {
+            val ID = CustomPacketPayload.Type<ControlledEntityStatusPayload>(
+                ResourceLocation.fromNamespaceAndPath("aeonis-manager", "controlled_entity_status")
+            )
+            val CODEC: StreamCodec<FriendlyByteBuf, ControlledEntityStatusPayload> = StreamCodec.of(
+                { buf, payload ->
+                    buf.writeInt(payload.entityId)
+                    buf.writeFloat(payload.health)
+                    buf.writeFloat(payload.maxHealth)
+                    buf.writeUtf(payload.name)
+                },
+                { buf -> ControlledEntityStatusPayload(buf.readInt(), buf.readFloat(), buf.readFloat(), buf.readUtf(32767)) }
+            )
+        }
+
+        override fun type(): CustomPacketPayload.Type<ControlledEntityStatusPayload> = ID
+    }
+    
+    // Server -> Client payload: soul mode status
+    data class SoulModePayload(val enabled: Boolean) : CustomPacketPayload {
+        companion object {
+            val ID = CustomPacketPayload.Type<SoulModePayload>(
+                ResourceLocation.fromNamespaceAndPath("aeonis-manager", "soul_mode")
+            )
+            val CODEC: StreamCodec<FriendlyByteBuf, SoulModePayload> = StreamCodec.of(
+                { buf, payload -> buf.writeBoolean(payload.enabled) },
+                { buf -> SoulModePayload(buf.readBoolean()) }
+            )
+        }
+        override fun type(): CustomPacketPayload.Type<SoulModePayload> = ID
+    }
+    
+    // Client -> Server payload: possess existing mob (from soul mode)
+    data class SoulPossessPayload(val mobId: Int) : CustomPacketPayload {
+        companion object {
+            val ID = CustomPacketPayload.Type<SoulPossessPayload>(
+                ResourceLocation.fromNamespaceAndPath("aeonis-manager", "soul_possess")
+            )
+            val CODEC: StreamCodec<FriendlyByteBuf, SoulPossessPayload> = StreamCodec.of(
+                { buf, payload -> buf.writeInt(payload.mobId) },
+                { buf -> SoulPossessPayload(buf.readInt()) }
+            )
+        }
+        override fun type(): CustomPacketPayload.Type<SoulPossessPayload> = ID
+    }
+
+    // Register server-side networking handlers and periodic status updates
     fun registerServer() {
-        // Register payload types
-        PayloadTypeRegistry.playC2S().register(MobControlPayload.ID, MobControlPayload.CODEC)
+        // Register the server->client payload types
+        PayloadTypeRegistry.playS2C().register(ControlledEntityStatusPayload.ID, ControlledEntityStatusPayload.CODEC)
         PayloadTypeRegistry.playS2C().register(ControlModePayload.ID, ControlModePayload.CODEC)
+        PayloadTypeRegistry.playS2C().register(SyncControllingPlayersPayload.ID, SyncControllingPlayersPayload.CODEC)
+        PayloadTypeRegistry.playS2C().register(SoulModePayload.ID, SoulModePayload.CODEC)
         
-        // Handle incoming movement packets
+        // Register client->server payload types
+        PayloadTypeRegistry.playC2S().register(SelectedSlotPayload.ID, SelectedSlotPayload.CODEC)
+        PayloadTypeRegistry.playC2S().register(PossessPayload.ID, PossessPayload.CODEC)
+        PayloadTypeRegistry.playC2S().register(ReleasePayload.ID, ReleasePayload.CODEC)
+        PayloadTypeRegistry.playC2S().register(AbilityPayload.ID, AbilityPayload.CODEC)
+        PayloadTypeRegistry.playC2S().register(MobControlPayload.ID, MobControlPayload.CODEC)
+        PayloadTypeRegistry.playC2S().register(SoulPossessPayload.ID, SoulPossessPayload.CODEC)
+        
+        // Register client->server selected-slot payload handler
+        ServerPlayNetworking.registerGlobalReceiver(SelectedSlotPayload.ID) { payload, context ->
+            val player = context.player()
+            context.server().execute {
+                try { player.inventory.selectedSlot = payload.selectedSlot } catch (_: Exception) {}
+            }
+        }
+
+        // Send controlled entity status to each controlling player at end of server tick
+        net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents.END_SERVER_TICK.register { server ->
+            for ((playerUuid, entityId) in controlledEntities) {
+                try {
+                    val player = server.playerList.getPlayer(playerUuid) ?: continue
+                    val level = player.level() as? net.minecraft.server.level.ServerLevel ?: continue
+                    val entity = level.getEntity(entityId) ?: continue
+                    if (entity is net.minecraft.world.entity.LivingEntity) {
+                        val health = entity.health
+                        val maxHealth = entity.maxHealth
+                        val name = entity.name.string
+                        val payload = ControlledEntityStatusPayload(entityId, health, maxHealth, name)
+                        ServerPlayNetworking.send(player, payload)
+                    }
+                } catch (_: Exception) {
+                    // ignore
+                }
+            }
+        }
+
+        // Handle possess/release abilities
+        ServerPlayNetworking.registerGlobalReceiver(PossessPayload.ID) { payload, context ->
+            val player = context.player()
+            context.server().execute {
+                val level = player.level()
+                val entity = level.getEntity(payload.mobId)
+                if (entity is LivingEntity) {
+                    // Pass server to allow broadcasting updates
+                    AeonisPossession.handlePossess(player, entity, context.server())
+                    // Broadcast controlling players
+                    broadcastControllingPlayers(context.server())
+                }
+            }
+        }
+
+        ServerPlayNetworking.registerGlobalReceiver(ReleasePayload.ID) { payload, context ->
+            val player = context.player()
+            context.server().execute {
+                AeonisPossession.handleRelease(player, payload.bodyX, payload.bodyY, payload.bodyZ)
+            }
+        }
+
+        ServerPlayNetworking.registerGlobalReceiver(AbilityPayload.ID) { payload, context ->
+            val player = context.player()
+            context.server().execute {
+                val entityId = controlledEntities[player.uuid] ?: return@execute
+                val level = player.level() as? net.minecraft.server.level.ServerLevel ?: return@execute
+                val entity = level.getEntity(entityId)
+                if (entity != null) {
+                    try {
+                        useSpecialAbility(player, entity)
+                    } catch (e: Exception) {
+                        player.sendSystemMessage(Component.literal("§7[AEONIS] Ability error: ${e.message}"))
+                    }
+                }
+            }
+        }
+
+        // Handle mob control packets (movement, attack, etc.)
         ServerPlayNetworking.registerGlobalReceiver(MobControlPayload.ID) { payload, context ->
             val player = context.player()
-            handleMobControl(player, payload)
+            context.server().execute {
+                handleMobControl(player, payload)
+            }
+        }
+        
+        // Handle soul possess packet (possess existing mob from soul mode)
+        ServerPlayNetworking.registerGlobalReceiver(SoulPossessPayload.ID) { payload, context ->
+            val player = context.player()
+            context.server().execute {
+                // Import AeonisCommands for soul mode functions
+                val level = player.level() as? net.minecraft.server.level.ServerLevel ?: return@execute
+                val mob = level.getEntity(payload.mobId) as? Mob ?: run {
+                    player.sendSystemMessage(Component.literal("§c[Aeonis] Invalid mob!"))
+                    return@execute
+                }
+                
+                // Check if player is in soul mode
+                if (!com.qc.aeonis.command.AeonisCommands.isInSoulMode(player.uuid)) {
+                    player.sendSystemMessage(Component.literal("§c[Aeonis] You must be in soul mode to possess mobs!"))
+                    return@execute
+                }
+                
+                // Possess the mob
+                com.qc.aeonis.command.AeonisCommands.possessExistingMob(player, mob)
+                
+                // Broadcast controlling players
+                broadcastControllingPlayers(context.server())
+            }
         }
     }
     
@@ -139,21 +439,45 @@ object AeonisNetworking {
         return controlledEntities.containsKey(playerUuid)
     }
     
-    fun setControlledEntity(player: ServerPlayer, entityId: Int) {
+    fun setControlledEntity(player: ServerPlayer, entityId: Int, selectedSlot: Int = -1) {
         controlledEntities[player.uuid] = entityId
-        // Tell client to start controlling
-        ServerPlayNetworking.send(player, ControlModePayload(true))
+        // Apply selected hotbar slot on server-side immediately if provided
+        if (selectedSlot >= 0) {
+            try { player.inventory.selectedSlot = selectedSlot } catch (_: Exception) {}
+        }
+        // Tell client to start controlling and inform about selected slot
+        ServerPlayNetworking.send(player, ControlModePayload(true, entityId, selectedSlot))
     }
     
     fun removeControlledEntity(player: ServerPlayer) {
         controlledEntities.remove(player.uuid)
         attackCooldowns.remove(player.uuid)
+        try { player.isInvisible = false } catch (_: Exception) {}
         // Tell client to stop controlling
-        ServerPlayNetworking.send(player, ControlModePayload(false))
+        ServerPlayNetworking.send(player, ControlModePayload(false, -1, -1))
     }
     
     fun getControlledEntityId(playerUuid: java.util.UUID): Int? {
         return controlledEntities[playerUuid]
+    }
+    
+    fun getControlledEntitiesMap(): Map<java.util.UUID, Int> {
+        return controlledEntities.toMap()
+    }
+
+    fun broadcastControllingPlayers(server: net.minecraft.server.MinecraftServer) {
+        val uuids = controlledEntities.keys.toList()
+        val payload = SyncControllingPlayersPayload(uuids)
+        for (player in server.playerList.players) {
+            ServerPlayNetworking.send(player, payload)
+        }
+    }
+    
+    /**
+     * Send soul mode status to a player
+     */
+    fun sendSoulModeStatus(player: ServerPlayer, enabled: Boolean) {
+        ServerPlayNetworking.send(player, SoulModePayload(enabled))
     }
     
     private fun handleMobControl(player: ServerPlayer, payload: MobControlPayload) {
@@ -161,220 +485,392 @@ object AeonisNetworking {
         val level = player.level() as? net.minecraft.server.level.ServerLevel ?: return
         val entity = level.getEntity(entityId) ?: return
         
-        // Apply rotation to entity
+        // Apply rotation to entity (synced from player's camera)
         entity.yRot = payload.yaw
         entity.xRot = payload.pitch
         entity.setYHeadRot(payload.yaw)
         if (entity is LivingEntity) {
             entity.yBodyRot = payload.yaw
         }
-        
-        // Calculate movement direction based on entity's rotation
-        val yawRad = Math.toRadians(payload.yaw.toDouble())
-        val pitchRad = Math.toRadians(payload.pitch.toDouble())
-        val forward = payload.forward.toDouble()
-        val strafe = payload.strafe.toDouble()
-        
-        // Check if in water or lava
-        val inWater = entity.isInWater
-        val inLava = entity.isInLava
-        val isSwimming = inWater || inLava
-        
-        // Check if this is a flying mob
-        val isFlying = isFlightMob(entity)
-        
-        // Special handling for Ender Dragon - it's a complex entity
-        val isDragon = entity is EnderDragon
-        
-        // Keep dragon in hover phase to prevent AI interference and stop jittery AI turns
-        if (isDragon && entity is EnderDragon) {
-            entity.phaseManager.setPhase(EnderDragonPhase.HOVERING)
-            if (entity.isNoAi) entity.setNoAi(false)
-        }
-        
-        // Movement speed - slower in water, faster for flying mobs, dragon is big and fast
-        val baseSpeed = when {
-            isDragon -> 1.2  // Dragon is BIG and fast!
-            isSwimming -> 0.25
-            isFlying -> 0.45
-            else -> 0.35
-        }
-        val speed = if (payload.sneak) baseSpeed * 0.4 else baseSpeed
-        
-        if (forward != 0.0 || strafe != 0.0) {
-            if (isDragon && entity is EnderDragon) {
-                // Dragon movement: use velocity+move for smoother camera; avoid teleport jitter
-                val cosPitch = Math.cos(pitchRad)
-                val sinPitch = Math.sin(pitchRad)
 
-                val motionX = (-Math.sin(yawRad) * forward * cosPitch + Math.cos(yawRad) * strafe) * speed
-                val motionY = (-sinPitch * forward) * speed
-                val motionZ = (Math.cos(yawRad) * forward * cosPitch + Math.sin(yawRad) * strafe) * speed
-
-                val motion = Vec3(motionX, motionY, motionZ)
-                entity.deltaMovement = motion
-                entity.move(net.minecraft.world.entity.MoverType.SELF, motion)
-
-                // Hard-set rotations to kill wobble
-                entity.setYRot(payload.yaw)
-                entity.setXRot(payload.pitch)
-                entity.yBodyRot = payload.yaw
-                entity.yHeadRot = payload.yaw
-                entity.yRotO = payload.yaw
-                entity.xRotO = payload.pitch
-            } else if (isFlying) {
-                // Flying movement - full 3D movement based on pitch
-                val cosPitch = Math.cos(pitchRad)
-                val sinPitch = Math.sin(pitchRad)
-                
-                val motionX = (-Math.sin(yawRad) * forward * cosPitch + Math.cos(yawRad) * strafe) * speed
-                var motionY = (-sinPitch * forward) * speed
-                // Allow free ascent/descent with jump/sneak even while moving
-                if (payload.jump) motionY += 0.35
-                if (payload.sneak) motionY -= 0.35
-                val motionZ = (Math.cos(yawRad) * forward * cosPitch + Math.sin(yawRad) * strafe) * speed
-                
-                entity.setDeltaMovement(Vec3(motionX, motionY, motionZ))
-                entity.move(net.minecraft.world.entity.MoverType.SELF, Vec3(motionX, motionY, motionZ))
-            } else if (isSwimming) {
-                // Swimming movement - include vertical component based on pitch
-                val cosPitch = Math.cos(pitchRad)
-                val sinPitch = Math.sin(pitchRad)
-                
-                val motionX = (-Math.sin(yawRad) * forward * cosPitch + Math.cos(yawRad) * strafe) * speed
-                val motionY = (-sinPitch * forward) * speed * 0.8
-                val motionZ = (Math.cos(yawRad) * forward * cosPitch + Math.sin(yawRad) * strafe) * speed
-                
-                entity.setDeltaMovement(Vec3(motionX, motionY, motionZ))
-                entity.move(net.minecraft.world.entity.MoverType.SELF, Vec3(motionX, motionY, motionZ))
-                
-                // Set swimming pose
-                if (entity is LivingEntity) {
-                    entity.setSwimming(true)
-                }
-            } else {
-                // Normal ground movement
-                val motionX = (-Math.sin(yawRad) * forward + Math.cos(yawRad) * strafe) * speed
-                val motionZ = (Math.cos(yawRad) * forward + Math.sin(yawRad) * strafe) * speed
-                
-                entity.move(net.minecraft.world.entity.MoverType.SELF, Vec3(motionX, 0.0, motionZ))
-                
-                if (entity is LivingEntity) {
-                    entity.setSwimming(false)
+        // Handle attack input -> perform MELEE attack (left-click)
+        if (payload.attack) {
+            // Small guard against spam using attackCooldowns
+            val now = System.currentTimeMillis()
+            val last = attackCooldowns[player.uuid] ?: 0L
+            if (now - last >= 250L) { // 250ms cooldown between attacks
+                attackCooldowns[player.uuid] = now
+                try {
+                    // Perform melee attack: damage entity player is looking at
+                    performMeleeAttack(player, entity)
+                } catch (_: Exception) {
+                    // fallback: do nothing
                 }
             }
-        } else if (entity is LivingEntity) {
-            entity.setSwimming(false)
         }
-        
-        // Apply physics based on environment
-        if (isDragon && entity is EnderDragon) {
-            // Dragon hover / vertical control when idle
-            if (forward == 0.0 && strafe == 0.0) {
-                var dy = 0.0
-                if (payload.jump) dy += 0.35
-                if (payload.sneak) dy -= 0.35
-                if (dy != 0.0) {
-                    val motion = Vec3(0.0, dy, 0.0)
-                    entity.deltaMovement = motion
-                    entity.move(net.minecraft.world.entity.MoverType.SELF, motion)
-                } else {
-                    entity.deltaMovement = Vec3.ZERO
-                }
 
-                entity.setYRot(payload.yaw)
-                entity.setXRot(payload.pitch)
-                entity.yBodyRot = payload.yaw
-                entity.yHeadRot = payload.yaw
-                entity.yRotO = payload.yaw
-                entity.xRotO = payload.pitch
-            }
-        } else if (isFlying) {
-            // Flying mobs hover in place when not moving
-            if (forward == 0.0 && strafe == 0.0) {
-                if (payload.jump) {
-                    // Fly up when holding jump
-                    entity.setDeltaMovement(entity.deltaMovement.x, 0.3, entity.deltaMovement.z)
-                    entity.move(net.minecraft.world.entity.MoverType.SELF, Vec3(0.0, 0.3, 0.0))
-                } else if (payload.sneak) {
-                    // Fly down when holding sneak
-                    entity.setDeltaMovement(entity.deltaMovement.x, -0.3, entity.deltaMovement.z)
-                    entity.move(net.minecraft.world.entity.MoverType.SELF, Vec3(0.0, -0.3, 0.0))
-                } else {
-                    // Hover in place - no gravity
-                    entity.setDeltaMovement(entity.deltaMovement.x, 0.0, entity.deltaMovement.z)
+        // Teleport input: REMOVED - no longer used for special abilities
+        // Special abilities are now triggered by the R key (AbilityPayload)
+        
+        // NOTE: Movement is now handled by the player's normal movement
+        // The server tick in AeonisManager syncs the mob position to the player
+        // This simplifies the system and makes movement feel natural
+        
+        // NOTE: Removed legacy action bar health display since vanilla health bar now shows mob health
+        // The player's max health is synced to the mob's max health in AeonisManager tick
+    }
+
+    /**
+     * Perform melee attack with the mob (triggered by short left-click)
+     * Attacks originate from the MOB's position using the MOB's look direction
+     */
+    private fun performMeleeAttack(player: ServerPlayer, mobEntity: Entity) {
+        val level = player.level() as? net.minecraft.server.level.ServerLevel ?: return
+        
+        if (mobEntity !is Mob) return
+        val controlledMob = mobEntity
+        
+        // Calculate mob's melee reach based on its size
+        val mobReach = getMobMeleeReach(controlledMob)
+        
+        // Find target entity from MOB's position using MOB's look direction
+        val mobEyePos = controlledMob.eyePosition
+        val lookVec = controlledMob.getViewVector(1.0f)
+        val endPos = mobEyePos.add(lookVec.scale(mobReach))
+        
+        // Find entities in the attack path from the MOB
+        val searchBox = controlledMob.boundingBox.expandTowards(lookVec.scale(mobReach)).inflate(1.0)
+        val nearbyEntities = level.getEntities(controlledMob, searchBox) { e ->
+            e != controlledMob && e != player && e is LivingEntity && e.isAlive
+        }
+        
+        // Find the closest entity in the mob's line of sight
+        var target: LivingEntity? = null
+        var closestDistSq = mobReach * mobReach
+        
+        for (e in nearbyEntities) {
+            val box = e.boundingBox.inflate(e.pickRadius.toDouble())
+            val hitOpt = box.clip(mobEyePos, endPos)
+            if (hitOpt.isPresent) {
+                val distSq = mobEyePos.distanceToSqr(hitOpt.get())
+                if (distSq < closestDistSq) {
+                    closestDistSq = distSq
+                    target = e as? LivingEntity
                 }
             }
-        } else if (isSwimming) {
-            // Buoyancy in water - float up slowly when not moving down
-            val currentY = entity.deltaMovement.y
-            if (!payload.sneak && forward == 0.0) {
-                // Gentle float up
-                val buoyancy = if (inLava) 0.02 else 0.04
-                entity.setDeltaMovement(entity.deltaMovement.x, currentY + buoyancy, entity.deltaMovement.z)
-                entity.move(net.minecraft.world.entity.MoverType.SELF, Vec3(0.0, buoyancy, 0.0))
-            } else if (payload.sneak) {
-                // Sink when sneaking
-                val sink = if (inLava) -0.03 else -0.06
-                entity.setDeltaMovement(entity.deltaMovement.x, sink, entity.deltaMovement.z)
-                entity.move(net.minecraft.world.entity.MoverType.SELF, Vec3(0.0, sink, 0.0))
-            }
-        } else if (!entity.onGround()) {
-            // Normal gravity when not in water (and not flying)
-            val gravity = entity.deltaMovement.y - 0.08
-            entity.setDeltaMovement(entity.deltaMovement.x, gravity, entity.deltaMovement.z)
-            entity.move(net.minecraft.world.entity.MoverType.SELF, Vec3(0.0, gravity, 0.0))
         }
         
-        // Handle jumping - works on ground OR to swim up in water (flying mobs handled above)
-        if (payload.jump && !isFlying) {
-            if (entity.onGround() && !isSwimming) {
-                // Normal jump
-                entity.setDeltaMovement(entity.deltaMovement.x, 0.42, entity.deltaMovement.z)
-                entity.move(net.minecraft.world.entity.MoverType.SELF, Vec3(0.0, 0.42, 0.0))
-            } else if (isSwimming) {
-                // Swim up
-                val swimUpSpeed = if (inLava) 0.06 else 0.12
-                entity.setDeltaMovement(entity.deltaMovement.x, swimUpSpeed, entity.deltaMovement.z)
-                entity.move(net.minecraft.world.entity.MoverType.SELF, Vec3(0.0, swimUpSpeed, 0.0))
+        if (target == null) {
+            // Play miss sound
+            controlledMob.playSound(net.minecraft.sounds.SoundEvents.PLAYER_ATTACK_NODAMAGE, 1.0f, 1.0f)
+            return
+        }
+        
+        // Get base mob damage from attributes (vanilla mob damage)
+        var damage: Float
+        try {
+            damage = controlledMob.getAttributeValue(net.minecraft.world.entity.ai.attributes.Attributes.ATTACK_DAMAGE).toFloat()
+        } catch (_: Exception) {
+            // Fallback damage based on mob type
+            damage = when (controlledMob) {
+                is net.minecraft.world.entity.monster.Zombie -> 3.0f
+                is net.minecraft.world.entity.monster.Skeleton -> 2.5f
+                is net.minecraft.world.entity.boss.wither.WitherBoss -> 8.0f
+                is net.minecraft.world.entity.boss.enderdragon.EnderDragon -> 10.0f
+                is IronGolem -> 15.0f
+                is Wolf -> 4.0f
+                else -> 2.0f
             }
         }
         
-        // Handle sneaking visual
-        entity.isShiftKeyDown = payload.sneak
+        // Reset target invulnerability to allow hit
+        target.invulnerableTime = 0
+        target.hurtTime = 0
         
-        // Handle attack - special handling for boss mobs and projectile mobs
-        if (payload.attack && canAttack(entity)) {
-            when (entity) {
-                is WitherBoss -> handleWitherAttack(player, entity, payload.yaw, payload.pitch)
-                is EnderDragon -> handleDragonAttack(player, entity, payload.yaw, payload.pitch)
-                is Breeze -> handleBreezeAttack(player, entity, payload.yaw, payload.pitch)
-                is Blaze -> handleBlazeAttack(player, entity, payload.yaw, payload.pitch)
-                is Ghast -> handleGhastAttack(player, entity, payload.yaw, payload.pitch)
-                is Chicken -> handleChickenEgg(player, entity)
-                is Creeper -> handleCreeperExplosion(player, entity, payload.yaw, payload.pitch)
-                is AbstractSkeleton -> handleSkeletonArrow(player, entity, payload.yaw, payload.pitch)
-                is Pillager -> handlePillagerArrow(player, entity, payload.yaw, payload.pitch)
-                else -> {
-                    if (isGhastLike(entity)) {
-                        handleGhastLikeAttack(player, entity as? LivingEntity ?: return)
-                    } else {
-                        handleMobAttack(player, entity, payload.yaw, payload.pitch)
+        // Deal damage from the controlled mob
+        val damageSource = level.damageSources().mobAttack(controlledMob)
+        target.hurt(damageSource, damage)
+        
+        // Play attack sound
+        level.playSound(
+            null,
+            controlledMob.x, controlledMob.y, controlledMob.z,
+            net.minecraft.sounds.SoundEvents.PLAYER_ATTACK_STRONG,
+            net.minecraft.sounds.SoundSource.PLAYERS,
+            1.0f, 1.0f
+        )
+        
+        // Make target angry at the controlled mob
+        if (target is Mob) {
+            target.target = controlledMob
+        }
+        target.lastHurtByMob = controlledMob
+    }
+    
+    /**
+     * Get the melee attack reach for a mob based on its type and size
+     */
+    private fun getMobMeleeReach(mob: Mob): Double {
+        // Special cases for specific mobs
+        return when {
+            mob is IronGolem -> 4.0
+            mob is net.minecraft.world.entity.monster.Ravager -> 4.5
+            mob.type == net.minecraft.world.entity.EntityType.WARDEN -> 5.0
+            mob.type == net.minecraft.world.entity.EntityType.ENDER_DRAGON -> 8.0
+            mob is net.minecraft.world.entity.monster.Ghast -> 6.0
+            mob.type == net.minecraft.world.entity.EntityType.GIANT -> 8.0
+            mob.type == net.minecraft.world.entity.EntityType.WITHER -> 5.0
+            mob is net.minecraft.world.entity.animal.Bee -> 1.5
+            else -> {
+                // Default: base reach on mob's bounding box size
+                val width = mob.bbWidth.toDouble()
+                val height = mob.bbHeight.toDouble()
+                val baseReach = maxOf(width, height) + 1.5
+                // Clamp between reasonable values
+                baseReach.coerceIn(2.0, 6.0)
+            }
+        }
+    }
+    
+    // Mob-specific special abilities triggered by player while controlling (R key)
+    private fun useSpecialAbility(player: ServerPlayer, mobEntity: Entity) {
+        val now = System.currentTimeMillis()
+        val level = player.level() as? net.minecraft.server.level.ServerLevel ?: return
+        try {
+            when {
+                // Enderman: Teleport to where player is looking
+                mobEntity is EnderMan -> {
+                    if (!canUseTeleport(player.uuid, now)) return
+                    setTeleportCooldown(player.uuid, 200L)
+                    val hit = player.pick(32.0, 0f, false)
+                    if (hit is net.minecraft.world.phys.BlockHitResult) {
+                        val pos = hit.blockPos
+                        val face = hit.direction
+                        val x = pos.x + 0.5 + face.stepX
+                        val y = pos.y.toDouble() + face.stepY
+                        val z = pos.z + 0.5 + face.stepZ
+                        mobEntity.teleportTo(x, y, z)
+                        level.playSound(null, mobEntity.x, mobEntity.y, mobEntity.z, 
+                            net.minecraft.sounds.SoundEvents.ENDERMAN_TELEPORT, 
+                            net.minecraft.sounds.SoundSource.HOSTILE, 1.0f, 1.0f)
                     }
                 }
+                // Wither: Shoot wither skull
+                mobEntity is WitherBoss -> {
+                    if (!canUseProjectile(player.uuid, now)) return
+                    setProjectileCooldown(player.uuid, 100L)
+                    val look = mobEntity.getViewVector(1.0f)
+                    val skull = WitherSkull(level, mobEntity, Vec3(look.x, look.y, look.z))
+                    skull.setPos(mobEntity.x, mobEntity.eyeY, mobEntity.z)
+                    skull.setDeltaMovement(look.x * 0.5, look.y * 0.5, look.z * 0.5)
+                    level.addFreshEntity(skull)
+                    level.levelEvent(null, 1024, mobEntity.blockPosition(), 0)
+                }
+                // Blaze: Shoot small fireball
+                mobEntity is Blaze -> {
+                    if (!canUseProjectile(player.uuid, now)) return
+                    setProjectileCooldown(player.uuid, 100L)
+                    val look = mobEntity.getViewVector(1.0f)
+                    val fb = SmallFireball(level, mobEntity, Vec3(look.x, look.y, look.z))
+                    fb.setPos(mobEntity.x, mobEntity.eyeY, mobEntity.z)
+                    level.addFreshEntity(fb)
+                    level.playSound(null, mobEntity.x, mobEntity.y, mobEntity.z, 
+                        net.minecraft.sounds.SoundEvents.BLAZE_SHOOT, 
+                        net.minecraft.sounds.SoundSource.HOSTILE, 1.0f, 1.0f)
+                }
+                // Ghast: Shoot large fireball with charging animation
+                mobEntity is Ghast -> {
+                    if (!canUseProjectile(player.uuid, now)) return
+                    setProjectileCooldown(player.uuid, 1100L)
+                    mobEntity.playSound(net.minecraft.sounds.SoundEvents.GHAST_WARN, 1.0f, 1.0f)
+                    val look = mobEntity.getViewVector(1.0f)
+                    val fb = LargeFireball(level, mobEntity, Vec3(look.x, look.y, look.z), 1)
+                    fb.setPos(mobEntity.x, mobEntity.eyeY, mobEntity.z)
+                    level.addFreshEntity(fb)
+                    level.levelEvent(null, 1018, mobEntity.blockPosition(), 0)
+                }
+                // Snow Golem: Throw snowball
+                mobEntity is SnowGolem -> {
+                    if (!canUseProjectile(player.uuid, now)) return
+                    setProjectileCooldown(player.uuid, 100L)
+                    val look = mobEntity.getViewVector(1.0f)
+                    val snowball = Snowball(net.minecraft.world.entity.EntityType.SNOWBALL, level)
+                    snowball.owner = mobEntity
+                    snowball.setPos(mobEntity.x, mobEntity.eyeY, mobEntity.z)
+                    snowball.shoot(look.x, look.y, look.z, 1.6f, 1.0f)
+                    level.addFreshEntity(snowball)
+                    level.playSound(null, mobEntity.x, mobEntity.y, mobEntity.z, 
+                        net.minecraft.sounds.SoundEvents.SNOWBALL_THROW, 
+                        net.minecraft.sounds.SoundSource.NEUTRAL, 0.5f, 0.4f / (level.random.nextFloat() * 0.4f + 0.8f))
+                }
+                // Creeper: Ignite explosion
+                mobEntity is Creeper -> {
+                    mobEntity.ignite()
+                }
+                // Witch: Apply potion effect in a cone/area in front
+                mobEntity is Witch -> {
+                    if (!canUseWitchPotion(player.uuid, now)) return
+                    setWitchPotionCooldown(player.uuid, 1000L)
+                    // Random potion effect
+                    val random = level.random.nextInt(4)
+                    val effect = when (random) {
+                        0 -> net.minecraft.world.effect.MobEffects.INSTANT_DAMAGE
+                        1 -> net.minecraft.world.effect.MobEffects.POISON
+                        2 -> net.minecraft.world.effect.MobEffects.SLOWNESS
+                        else -> net.minecraft.world.effect.MobEffects.WEAKNESS
+                    }
+                    // Get target position
+                    val look = mobEntity.getViewVector(1.0f)
+                    val targetPos = Vec3(
+                        mobEntity.x + look.x * 8.0,
+                        mobEntity.eyeY + look.y * 8.0,
+                        mobEntity.z + look.z * 8.0
+                    )
+                    // Apply effect to all entities in splash radius at target
+                    val splashBox = AABB(targetPos.x - 4.0, targetPos.y - 2.0, targetPos.z - 4.0,
+                                         targetPos.x + 4.0, targetPos.y + 2.0, targetPos.z + 4.0)
+                    for (entity in level.getEntitiesOfClass(LivingEntity::class.java, splashBox)) {
+                        if (entity != mobEntity && entity != player) {
+                            entity.addEffect(net.minecraft.world.effect.MobEffectInstance(effect, 200, 0))
+                        }
+                    }
+                    // Spawn particles at target
+                    level.sendParticles(net.minecraft.core.particles.ParticleTypes.SPLASH, 
+                        targetPos.x, targetPos.y, targetPos.z, 30, 1.0, 0.5, 1.0, 0.1)
+                    level.playSound(null, mobEntity.x, mobEntity.y, mobEntity.z, 
+                        net.minecraft.sounds.SoundEvents.WITCH_THROW, 
+                        net.minecraft.sounds.SoundSource.HOSTILE, 1.0f, 1.0f)
+                    level.playSound(null, targetPos.x, targetPos.y, targetPos.z, 
+                        net.minecraft.sounds.SoundEvents.SPLASH_POTION_BREAK, 
+                        net.minecraft.sounds.SoundSource.HOSTILE, 1.0f, 1.0f)
+                }
+                // Evoker: Summon fangs line + vex
+                mobEntity is Evoker -> {
+                    if (!canUseProjectile(player.uuid, now)) return
+                    setProjectileCooldown(player.uuid, 500L)
+                    val look = mobEntity.getViewVector(1.0f)
+                    // Spawn line of evoker fangs
+                    for (i in 1..5) {
+                        val x = mobEntity.x + look.x * i * 1.5
+                        val z = mobEntity.z + look.z * i * 1.5
+                        val y = level.getHeightmapPos(net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING, 
+                            net.minecraft.core.BlockPos(x.toInt(), 0, z.toInt())).y
+                        val fangs = EvokerFangs(level, x, y.toDouble(), z, 
+                            Math.atan2(look.z, look.x).toFloat(), i * 2, mobEntity)
+                        level.addFreshEntity(fangs)
+                    }
+                    // Summon a vex
+                    val vex = Vex(net.minecraft.world.entity.EntityType.VEX, level)
+                    vex.setPos(mobEntity.x, mobEntity.y + 1.0, mobEntity.z)
+                    vex.setOwner(mobEntity)
+                    vex.setLimitedLife(600) // 30 seconds
+                    level.addFreshEntity(vex)
+                    level.playSound(null, mobEntity.x, mobEntity.y, mobEntity.z, 
+                        net.minecraft.sounds.SoundEvents.EVOKER_CAST_SPELL, 
+                        net.minecraft.sounds.SoundSource.HOSTILE, 1.0f, 1.0f)
+                }
+                // Warden: Sonic boom attack
+                mobEntity is Warden -> {
+                    if (!canUseProjectile(player.uuid, now)) return
+                    setProjectileCooldown(player.uuid, 3000L)
+                    level.playSound(null, mobEntity.x, mobEntity.y, mobEntity.z, 
+                        net.minecraft.sounds.SoundEvents.WARDEN_SONIC_CHARGE, 
+                        net.minecraft.sounds.SoundSource.HOSTILE, 3.0f, 1.0f)
+                    // Broadcast animation to clients
+                    level.broadcastEntityEvent(mobEntity, 62.toByte())
+                    // Delayed attack after charge-up
+                    val server = level.server
+                    server?.execute {
+                        Thread {
+                            try {
+                                Thread.sleep(1700)
+                                server.execute {
+                                    if (!mobEntity.isAlive) return@execute
+                                    level.playSound(null, mobEntity.x, mobEntity.y, mobEntity.z, 
+                                        net.minecraft.sounds.SoundEvents.WARDEN_SONIC_BOOM, 
+                                        net.minecraft.sounds.SoundSource.HOSTILE, 3.0f, 1.0f)
+                                    val hit = player.pick(15.0, 0f, false)
+                                    val targetPos = hit.location
+                                    val startPos = Vec3(mobEntity.x, mobEntity.eyeY, mobEntity.z)
+                                    val direction = targetPos.subtract(startPos).normalize()
+                                    val distance = startPos.distanceTo(targetPos)
+                                    // Spawn particles along the beam
+                                    var d = 0.0
+                                    while (d < distance) {
+                                        val x = startPos.x + direction.x * d
+                                        val y = startPos.y + direction.y * d
+                                        val z = startPos.z + direction.z * d
+                                        level.sendParticles(net.minecraft.core.particles.ParticleTypes.SONIC_BOOM, x, y, z, 1, 0.0, 0.0, 0.0, 0.0)
+                                        d += 0.5
+                                    }
+                                    // Damage entities in the beam
+                                    val damageBox = AABB(startPos.x, startPos.y, startPos.z, 
+                                        targetPos.x, targetPos.y, targetPos.z).inflate(1.0)
+                                    for (entity in level.getEntities(mobEntity, damageBox)) {
+                                        if (entity is LivingEntity && entity != player) {
+                                            entity.hurt(level.damageSources().sonicBoom(mobEntity), 10.0f)
+                                            val dx = entity.x - mobEntity.x
+                                            val dz = entity.z - mobEntity.z
+                                            val dist = Math.sqrt(dx * dx + dz * dz)
+                                            if (dist > 0) {
+                                                entity.setDeltaMovement(dx / dist * 2.5, 0.5, dz / dist * 2.5)
+                                                entity.hurtMarked = true
+                                            }
+                                        }
+                                    }
+                                }
+                            } catch (_: InterruptedException) {}
+                        }.start()
+                    }
+                }
+                // Breeze: Shoot wind charge
+                mobEntity is Breeze -> {
+                    if (!canUseProjectile(player.uuid, now)) return
+                    setProjectileCooldown(player.uuid, 250L)
+                    val windCharge = BreezeWindCharge(mobEntity, level)
+                    windCharge.setPos(mobEntity.x, mobEntity.eyeY, mobEntity.z)
+                    val look = mobEntity.getViewVector(1.0f)
+                    windCharge.shoot(look.x, look.y, look.z, 1.5f, 0.0f)
+                    level.addFreshEntity(windCharge)
+                    level.playSound(null, mobEntity.x, mobEntity.y, mobEntity.z, 
+                        net.minecraft.sounds.SoundEvents.BREEZE_SHOOT, 
+                        net.minecraft.sounds.SoundSource.HOSTILE, 1.0f, 1.0f)
+                }
+                // Skeleton and variants: Shoot arrow
+                mobEntity is AbstractSkeleton -> {
+                    if (!canUseProjectile(player.uuid, now)) return
+                    setProjectileCooldown(player.uuid, 200L)
+                    val arrow = Arrow(level, mobEntity, ItemStack(Items.ARROW), null)
+                    val look = mobEntity.getViewVector(1.0f)
+                    arrow.setPos(mobEntity.x, mobEntity.eyeY, mobEntity.z)
+                    arrow.shoot(look.x, look.y, look.z, 1.6f, 1.0f)
+                    level.addFreshEntity(arrow)
+                    level.playSound(null, mobEntity.x, mobEntity.y, mobEntity.z, 
+                        net.minecraft.sounds.SoundEvents.SKELETON_SHOOT, 
+                        net.minecraft.sounds.SoundSource.HOSTILE, 1.0f, 1.0f / (level.random.nextFloat() * 0.4f + 0.8f))
+                }
+                // Pillager: Shoot arrow (crossbow)
+                mobEntity is Pillager -> {
+                    if (!canUseProjectile(player.uuid, now)) return
+                    setProjectileCooldown(player.uuid, 200L)
+                    val arrow = Arrow(level, mobEntity, ItemStack(Items.ARROW), null)
+                    val look = mobEntity.getViewVector(1.0f)
+                    arrow.setPos(mobEntity.x, mobEntity.eyeY, mobEntity.z)
+                    arrow.shoot(look.x, look.y, look.z, 1.6f, 1.0f)
+                    level.addFreshEntity(arrow)
+                    level.playSound(null, mobEntity.x, mobEntity.y, mobEntity.z, 
+                        net.minecraft.sounds.SoundEvents.CROSSBOW_SHOOT, 
+                        net.minecraft.sounds.SoundSource.HOSTILE, 1.0f, 1.0f / (level.random.nextFloat() * 0.4f + 0.8f))
+                }
+                // Default: No special ability
+                else -> {
+                    // No special ability for this mob type
+                }
             }
+        } catch (e: Exception) {
+            // Log error but don't crash
+            player.sendSystemMessage(Component.literal("§7[AEONIS] Ability failed: ${e.message}"))
         }
-        
-        // Handle Enderman teleport ability (T key)
-        if (payload.teleport && entity is EnderMan) {
-            handleEndermanTeleport(player, entity, payload.yaw, payload.pitch)
-        }
-        
-        // Show entity health and held item via action bar
-        sendEntityStatus(player, entity)
-        
-        // Keep player camera synced to entity
-        player.setCamera(entity)
     }
     
     private fun sendEntityStatus(player: ServerPlayer, entity: Entity) {
@@ -513,8 +1009,10 @@ object AeonisNetworking {
     
     /**
      * Check if an entity is a flying mob that needs 3D flight controls
+     * Based on QCmod canMobFly() function
+     * Public so AeonisManager tick handler can enable player flight for flying mobs
      */
-    private fun isFlightMob(entity: Entity): Boolean {
+    fun canMobFly(entity: Entity): Boolean {
         return entity is Ghast ||
                isGhastLike(entity) ||
                entity is Phantom ||
@@ -525,8 +1023,12 @@ object AeonisNetworking {
                entity is Parrot ||
                entity is Vex ||
                entity is Blaze ||
-               entity is Breeze
+               entity is Breeze ||
+               entity.type == net.minecraft.world.entity.EntityType.BAT
     }
+    
+    // Internal alias for backward compatibility
+    private fun isFlightMob(entity: Entity): Boolean = canMobFly(entity)
 
     private fun isGhastLike(entity: Entity): Boolean {
         return try {

@@ -12,10 +12,15 @@ import net.minecraft.resources.ResourceLocation
 
 object AeonisEntityRenderers {
     private val TEXTURE = ResourceLocation.fromNamespaceAndPath("aeonis", "textures/entity/copper_stalker.png")
+    private val BODY_TEXTURE = ResourceLocation.fromNamespaceAndPath("aeonis", "textures/entity/body.png")
 
     fun register() {
         EntityRendererRegistry.register(AeonisEntities.COPPER_STALKER) { ctx ->
             CopperStalkerRenderer(ctx)
+        }
+        // Register the Body entity renderer (uses player skin when available)
+        EntityRendererRegistry.register(AeonisEntities.BODY) { ctx ->
+            BodyEntityRenderer(ctx)
         }
     }
 

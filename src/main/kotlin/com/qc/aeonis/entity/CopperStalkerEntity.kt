@@ -18,6 +18,7 @@ import net.minecraft.world.entity.SpawnGroupData
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier
 import net.minecraft.world.entity.ai.attributes.Attributes
 import net.minecraft.world.entity.ai.goal.FloatGoal
+import net.minecraft.world.entity.ai.goal.Goal
 import net.minecraft.world.entity.ai.goal.LookAtPlayerGoal
 import net.minecraft.world.entity.ai.goal.MeleeAttackGoal
 import net.minecraft.world.entity.ai.goal.RandomLookAroundGoal
@@ -32,16 +33,27 @@ import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.Items
 import net.minecraft.world.item.enchantment.Enchantments
 import net.minecraft.world.level.Level
+import net.minecraft.world.level.LightLayer
 import net.minecraft.world.level.ServerLevelAccessor
+import java.util.EnumSet
 
 class CopperStalkerEntity(entityType: EntityType<out CopperStalkerEntity>, level: Level) : Monster(entityType, level) {
-    private val lowHealthThreshold = 10f
-    private val invisIntervalTicks = 200
-    private val invisDurationTicks = 40
+    // Invisibility triggers at health <= 5, lasts 3 seconds (60 ticks)
+    private val lowHealthThreshold = 5f
+    private val invisDurationTicks = 60 // 3 seconds
     private var swordEnchanted = false
+    
+    // Track if currently fleeing (during invisibility)
+    private var isFleeing = false
+    private var fleeTicksRemaining = 0
+    
+    // Sunburn damage tracking
+    private var sunburnTicks = 0
 
     override fun registerGoals() {
         goalSelector.addGoal(0, FloatGoal(this))
+        // Flee goal has higher priority when active
+        goalSelector.addGoal(1, CopperStalkerFleeGoal(this))
         goalSelector.addGoal(2, ExtendedReachMeleeGoal(this, 0.85, true, 5.0))
         goalSelector.addGoal(7, WaterAvoidingRandomStrollGoal(this, 0.9))
         goalSelector.addGoal(8, LookAtPlayerGoal(this, Player::class.java, 12f))
@@ -54,12 +66,90 @@ class CopperStalkerEntity(entityType: EntityType<out CopperStalkerEntity>, level
 
     override fun aiStep() {
         super.aiStep()
-        if (!level().isClientSide && health <= lowHealthThreshold) {
-            if (tickCount % invisIntervalTicks == 0) {
-                addEffect(MobEffectInstance(MobEffects.INVISIBILITY, invisDurationTicks, 0, false, true))
+        
+        if (!level().isClientSide) {
+            // Sunlight burning - more sensitive than zombies
+            handleSunlightDamage()
+            
+            // Low health invisibility + flee behavior
+            if (health <= lowHealthThreshold && !isFleeing) {
+                // Start fleeing with invisibility
+                isFleeing = true
+                fleeTicksRemaining = invisDurationTicks
+                addEffect(MobEffectInstance(MobEffects.INVISIBILITY, invisDurationTicks, 0, false, false))
+                addEffect(MobEffectInstance(MobEffects.SPEED, invisDurationTicks, 1, false, false)) // Speed boost to flee
+                // Clear current target so it runs away
+                target = null
+            }
+            
+            // Track flee duration
+            if (isFleeing) {
+                fleeTicksRemaining--
+                // Slowly regenerate health while fleeing (0.5 health per second = 1 health per 40 ticks)
+                if (tickCount % 40 == 0) {
+                    heal(1f)
+                }
+                
+                if (fleeTicksRemaining <= 0) {
+                    isFleeing = false
+                }
             }
         }
     }
+    
+    /**
+     * Burns in sunlight - MORE sensitive than zombies
+     * Takes damage even with low sky light, and burns faster
+     */
+    private fun handleSunlightDamage() {
+        if (level().isClientSide) return
+        
+        val serverLevel = level() as? ServerLevel ?: return
+        
+        // Check if it's daytime
+        val dayTime = serverLevel.dayTime % 24000L
+        val isDaytime = dayTime < 12000L || dayTime > 23500L
+        
+        if (!isDaytime) {
+            sunburnTicks = 0
+            return
+        }
+        
+        // Check if exposed to sky (more sensitive - lower threshold than zombies)
+        val blockPos = blockPosition()
+        val skyLight = serverLevel.getBrightness(LightLayer.SKY, blockPos)
+        
+        // Burns at sky light >= 10 (zombies need 15), so much more sensitive
+        if (skyLight >= 10 && serverLevel.canSeeSky(blockPos)) {
+            // Check if wearing a helmet (provides some protection)
+            val helmet = getItemBySlot(EquipmentSlot.HEAD)
+            if (!helmet.isEmpty) {
+                // Helmet provides partial protection but gets damaged faster
+                if (random.nextFloat() < 0.1f) {
+                    helmet.hurtAndBreak(2, this, EquipmentSlot.HEAD)
+                }
+                // Still take some damage through helmet
+                sunburnTicks++
+                if (sunburnTicks >= 10) { // Every 0.5 seconds with helmet
+                    sunburnTicks = 0
+                    hurtServer(serverLevel, damageSources().onFire(), 1f)
+                    remainingFireTicks = 40
+                }
+            } else {
+                // No helmet - burn fast!
+                sunburnTicks++
+                if (sunburnTicks >= 5) { // Every 0.25 seconds without helmet
+                    sunburnTicks = 0
+                    hurtServer(serverLevel, damageSources().onFire(), 2f)
+                    remainingFireTicks = 80 // Longer fire
+                }
+            }
+        } else {
+            sunburnTicks = 0
+        }
+    }
+    
+    fun isFleeing(): Boolean = isFleeing
 
     override fun finalizeSpawn(
         accessor: ServerLevelAccessor,
@@ -128,11 +218,11 @@ class CopperStalkerEntity(entityType: EntityType<out CopperStalkerEntity>, level
 
     companion object {
         fun createAttributes(): AttributeSupplier.Builder = createMobAttributes()
-            .add(Attributes.MAX_HEALTH, 100.0)
-            .add(Attributes.MOVEMENT_SPEED, 0.28)
+            .add(Attributes.MAX_HEALTH, 10.0) // Low health - fragile but cunning
+            .add(Attributes.MOVEMENT_SPEED, 0.32) // Faster to compensate for low health
             .add(Attributes.ATTACK_DAMAGE, 4.0)
             .add(Attributes.FOLLOW_RANGE, 40.0)
-            .add(Attributes.KNOCKBACK_RESISTANCE, 0.15)
+            .add(Attributes.KNOCKBACK_RESISTANCE, 0.0) // No knockback resistance - fragile
 
         fun canSpawn(
             type: EntityType<CopperStalkerEntity>,
@@ -152,6 +242,67 @@ class CopperStalkerEntity(entityType: EntityType<out CopperStalkerEntity>, level
             val isNight = time in 13000L..23000L
             return isNight && checkMonsterSpawnRules(type, world, reason, pos, random)
         }
+    }
+}
+
+/**
+ * Flee goal for Copper Stalker - runs away from players when fleeing
+ */
+private class CopperStalkerFleeGoal(private val stalker: CopperStalkerEntity) : Goal() {
+    private var fleeX = 0.0
+    private var fleeY = 0.0
+    private var fleeZ = 0.0
+    
+    init {
+        flags = EnumSet.of(Flag.MOVE)
+    }
+    
+    override fun canUse(): Boolean {
+        return stalker.isFleeing()
+    }
+    
+    override fun canContinueToUse(): Boolean {
+        return stalker.isFleeing() && !stalker.navigation.isDone
+    }
+    
+    override fun start() {
+        // Find a position away from the nearest player
+        val nearestPlayer = stalker.level().getNearestPlayer(stalker, 16.0)
+        if (nearestPlayer != null) {
+            // Calculate direction away from player
+            val dx = stalker.x - nearestPlayer.x
+            val dz = stalker.z - nearestPlayer.z
+            val dist = kotlin.math.sqrt(dx * dx + dz * dz)
+            
+            if (dist > 0) {
+                // Normalize and scale
+                val fleeDistance = 16.0
+                fleeX = stalker.x + (dx / dist) * fleeDistance
+                fleeZ = stalker.z + (dz / dist) * fleeDistance
+                fleeY = stalker.y
+                
+                // Try to find a valid position
+                stalker.navigation.moveTo(fleeX, fleeY, fleeZ, 1.5) // Fast flee speed
+            }
+        } else {
+            // No player nearby, just move randomly away
+            val random = stalker.random
+            fleeX = stalker.x + (random.nextDouble() - 0.5) * 20
+            fleeZ = stalker.z + (random.nextDouble() - 0.5) * 20
+            fleeY = stalker.y
+            stalker.navigation.moveTo(fleeX, fleeY, fleeZ, 1.5)
+        }
+    }
+    
+    override fun tick() {
+        // Keep fleeing, re-navigate if stuck
+        if (stalker.navigation.isDone && stalker.isFleeing()) {
+            start() // Try a new flee direction
+        }
+    }
+    
+    override fun stop() {
+        stalker.navigation.stop()
     }
 }
 

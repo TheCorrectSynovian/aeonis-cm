@@ -2,7 +2,18 @@
 	"required": true,
 	"package": "com.qc.aeonis.mixin.client",
 	"compatibilityLevel": "JAVA_21",
-	"client": [],
+	"client": [
+		"MultiPlayerGameModeMixin",
+		"CameraMixin",
+		"GameRendererMixin",
+		"ClientCollisionMixin",
+		"LocalPlayerMixin",
+		"PlayerRendererMixin",
+		"MobRenderMixin",
+		"InGameOverlayRendererMixin",
+		"PlayerCameraPosMixin",
+		"WindowTitleMixin"
+	],
 	"injectors": {
 		"defaultRequire": 1
 	}

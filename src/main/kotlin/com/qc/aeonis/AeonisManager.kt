@@ -17,10 +17,13 @@ object AeonisManager : ModInitializer {
 
 	override fun onInitialize() {
 		AeonisEntities.register()
+		com.qc.aeonis.item.AeonisItems.register()
+		com.qc.aeonis.data.AeonisLootModifiers.register()
+		AeonisPossession.register()
 		AeonisCommands.register()
 		AeonisNetworking.registerServer()
 		
-		// Register tick event to enforce spectator mode while transformed
+		// Register tick event for transformed players - sync mob position and handle flying
 		ServerTickEvents.END_SERVER_TICK.register { server ->
 			// Handle pet vex AI redirection
 			AeonisCommands.tickPetVexes(server)
@@ -31,14 +34,70 @@ object AeonisManager : ModInitializer {
 			
 			for (player in server.playerList.players) {
 				if (AeonisNetworking.isPlayerTransformed(player.uuid)) {
-					// Force spectator mode while transformed
-					if (player.gameMode.gameModeForPlayer != GameType.SPECTATOR) {
-						player.setGameMode(GameType.SPECTATOR)
-						player.displayClientMessage(
-							Component.literal("§c§lYou cannot change gamemode while transformed! Use /untransform first."),
-							false
-						)
+					val entityId = AeonisNetworking.getControlledEntityId(player.uuid) ?: continue
+					val level = player.level() as? net.minecraft.server.level.ServerLevel ?: continue
+					val mob = level.getEntity(entityId)
+					
+					// AUTO-UNTRANSFORM: If mob is dead or gone, automatically untransform the player
+					if (mob == null || !mob.isAlive) {
+						AeonisCommands.autoUntransform(player)
+						continue
 					}
+					
+					// SYNC MOB TO PLAYER POSITION (player moves via normal minecraft movement, mob follows)
+					// This is the QCmod approach - player is the "driver" and mob is the "visual"
+					// The camera positioning is handled client-side in CameraMixin
+					mob.teleportTo(player.x, player.y, player.z)
+					mob.yRot = player.yRot
+					mob.xRot = player.xRot
+					mob.setYHeadRot(player.yRot)
+					if (mob is net.minecraft.world.entity.LivingEntity) {
+						mob.yBodyRot = player.yRot
+					}
+					mob.setDeltaMovement(player.deltaMovement)
+					mob.hurtMarked = true
+					
+					// Sync mob equipment with player's held items
+					if (mob is net.minecraft.world.entity.LivingEntity) {
+						mob.setItemSlot(net.minecraft.world.entity.EquipmentSlot.MAINHAND, player.mainHandItem.copy())
+						mob.setItemSlot(net.minecraft.world.entity.EquipmentSlot.OFFHAND, player.offhandItem.copy())
+						// Sync armor slots
+						mob.setItemSlot(net.minecraft.world.entity.EquipmentSlot.HEAD, player.getItemBySlot(net.minecraft.world.entity.EquipmentSlot.HEAD).copy())
+						mob.setItemSlot(net.minecraft.world.entity.EquipmentSlot.CHEST, player.getItemBySlot(net.minecraft.world.entity.EquipmentSlot.CHEST).copy())
+						mob.setItemSlot(net.minecraft.world.entity.EquipmentSlot.LEGS, player.getItemBySlot(net.minecraft.world.entity.EquipmentSlot.LEGS).copy())
+						mob.setItemSlot(net.minecraft.world.entity.EquipmentSlot.FEET, player.getItemBySlot(net.minecraft.world.entity.EquipmentSlot.FEET).copy())
+						
+						// Sync health from mob to player (damage redirect happens in mixin)
+						val mobMaxHealth = mob.maxHealth.toDouble()
+						player.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.MAX_HEALTH)?.baseValue = mobMaxHealth
+						// Keep player health synced with mob
+						if (mob.health < player.health) {
+							player.health = mob.health
+						}
+					}
+					
+					// Handle flying mobs - give player flight ability
+					if (AeonisNetworking.canMobFly(mob)) {
+						player.abilities.mayfly = true
+						player.abilities.flying = true // Force flight for flying mobs
+						player.onUpdateAbilities()
+					} else {
+						// Only disable flight if player wasn't originally in creative
+						val originalMode = AeonisCommands.getOriginalGameMode(player.uuid)
+						if (originalMode != GameType.CREATIVE && originalMode != GameType.SPECTATOR) {
+							player.abilities.mayfly = false
+							player.abilities.flying = false
+							player.onUpdateAbilities()
+						}
+					}
+					
+					// Make player FULLY invisible and disable collisions
+					// Player becomes a ghost - only the mob body has collision
+					if (!player.isInvisible) {
+						player.isInvisible = true
+					}
+					// Disable player collision by making them spectator-like but still in survival
+					player.noPhysics = true
 				}
 			}
 		}
@@ -63,6 +122,15 @@ object AeonisManager : ModInitializer {
 					player.sendSystemMessage(Component.literal(""))
 				}
 			}
+
+			// Additional possession state validation / sync
+			server.execute { AeonisPossession.onPlayerJoin(handler.player, server) }
+		}
+
+		// Handle disconnect cleanups
+		ServerPlayConnectionEvents.DISCONNECT.register { handler, server ->
+			val player = handler.player
+			server.execute { AeonisPossession.onPlayerDisconnect(player, server) }
 		}
 		
 		logger.info("Aeonis Plus core initialized")
