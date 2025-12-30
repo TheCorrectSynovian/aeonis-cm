@@ -26,6 +26,8 @@ object AeonisManager : ModInitializer {
 			AeonisCommands.tickPetVexes(server)
             // Handle Director Mode orders
             AeonisCommands.tickActors(server)
+            // Handle Thunder Dome waves
+            AeonisCommands.tickThunderDomes(server)
 			
 			for (player in server.playerList.players) {
 				if (AeonisNetworking.isPlayerTransformed(player.uuid)) {

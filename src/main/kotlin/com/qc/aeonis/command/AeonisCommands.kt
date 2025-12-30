@@ -1,6 +1,10 @@
 package com.qc.aeonis.command
 
 import com.mojang.brigadier.CommandDispatcher
+import net.minecraft.world.entity.ai.goal.Goal
+import net.minecraft.world.level.block.Blocks
+import java.util.EnumSet
+import net.minecraft.core.BlockPos
 import com.mojang.brigadier.arguments.BoolArgumentType
 import com.mojang.brigadier.arguments.DoubleArgumentType
 import com.mojang.brigadier.arguments.IntegerArgumentType
@@ -45,7 +49,6 @@ import net.minecraft.world.level.ClipContext
 import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.HitResult
 import net.minecraft.world.phys.Vec3
-import net.minecraft.network.protocol.game.ClientboundGameEventPacket
 import net.minecraft.world.entity.monster.Zombie
 import net.minecraft.world.entity.monster.Skeleton
 import net.minecraft.world.entity.monster.Creeper
@@ -203,7 +206,10 @@ object AeonisCommands {
         CommandRegistrationCallback.EVENT.register { dispatcher, registryAccess, _ ->
             registerCommands(dispatcher)
             registerTransformCommand(dispatcher, registryAccess)
-            registerActorCommand(dispatcher)
+            registerAiCommand(dispatcher)
+            registerPrankCommand(dispatcher)
+            registerAbilityCommand(dispatcher)
+            registerGameCommand(dispatcher)
         }
     }
     
@@ -243,38 +249,7 @@ object AeonisCommands {
         )
     }
 
-    private fun registerActorCommand(dispatcher: CommandDispatcher<CommandSourceStack>) {
-        dispatcher.register(
-            Commands.literal("actor")
-                .requires { it.hasPermission(2) }
-                .then(Commands.argument("targets", EntityArgument.entities())
-                    .then(Commands.literal("walk_to")
-                        .then(Commands.argument("pos", Vec3Argument.vec3())
-                            .executes { actorWalkTo(it, 1.0) }
-                            .then(Commands.argument("speed", DoubleArgumentType.doubleArg(0.1, 5.0))
-                                .executes { actorWalkTo(it, DoubleArgumentType.getDouble(it, "speed")) }
-                            )
-                        )
-                    )
-                    .then(Commands.literal("look_at")
-                        .then(Commands.argument("target", EntityArgument.entity())
-                            .executes { actorLookAt(it) }
-                        )
-                    )
-                    .then(Commands.literal("attack")
-                        .then(Commands.argument("target", EntityArgument.entity())
-                            .executes { actorAttack(it) }
-                        )
-                    )
-                    .then(Commands.literal("stop")
-                        .executes { actorStop(it) }
-                    )
-                    .then(Commands.literal("ignite")
-                        .executes { actorIgnite(it) }
-                    )
-                )
-        )
-    }
+
 
     private fun actorWalkTo(ctx: CommandContext<CommandSourceStack>, speed: Double): Int {
         val targets = EntityArgument.getEntities(ctx, "targets")
@@ -391,159 +366,224 @@ object AeonisCommands {
         ctx.source.sendSuccess({ Component.literal("§aIgnited $count creepers") }, true)
         return count
     }
+
+    private fun registerAiCommand(dispatcher: CommandDispatcher<CommandSourceStack>) {
+        dispatcher.register(
+            Commands.literal("ai")
+                .requires { it.hasPermission(2) }
+                .then(Commands.literal("chaotic")
+                    .then(Commands.argument("targets", EntityArgument.entities())
+                        .executes { makeChaotic(it) }
+                    )
+                )
+                .then(Commands.literal("director")
+                    .then(Commands.argument("targets", EntityArgument.entities())
+                        .then(Commands.literal("walk_to")
+                            .then(Commands.argument("pos", Vec3Argument.vec3())
+                                .executes { actorWalkTo(it, 1.0) }
+                                .then(Commands.argument("speed", DoubleArgumentType.doubleArg(0.1, 5.0))
+                                    .executes { actorWalkTo(it, DoubleArgumentType.getDouble(it, "speed")) }
+                                )
+                            )
+                        )
+                        .then(Commands.literal("look_at")
+                            .then(Commands.argument("target", EntityArgument.entity())
+                                .executes { actorLookAt(it) }
+                            )
+                        )
+                        .then(Commands.literal("attack")
+                            .then(Commands.argument("target", EntityArgument.entity())
+                                .executes { actorAttack(it) }
+                            )
+                        )
+                        .then(Commands.literal("stop")
+                            .executes { actorStop(it) }
+                        )
+                        .then(Commands.literal("ignite")
+                            .executes { actorIgnite(it) }
+                        )
+                    )
+                )
+        )
+    }
     
     private fun registerCommands(dispatcher: CommandDispatcher<CommandSourceStack>) {
         dispatcher.register(
             Commands.literal("aeonis")
                 .then(Commands.literal("help").executes { showHelp(it) })
-                .then(Commands.literal("smite")
-                    .then(Commands.argument("target", EntityArgument.player())
-                        .requires { it.hasPermission(2) }
-                        .executes { smitePlayer(it) }))
-                .then(Commands.literal("yeet")
-                    .then(Commands.argument("target", EntityArgument.player())
-                        .requires { it.hasPermission(2) }
-                        .executes { yeetPlayer(it) }))
-                .then(Commands.literal("disco")
-                    .then(Commands.argument("target", EntityArgument.player())
-                        .requires { it.hasPermission(2) }
-                        .executes { discoMode(it) }))
-                .then(Commands.literal("supersize")
-                    .then(Commands.argument("target", EntityArgument.player())
-                        .requires { it.hasPermission(2) }
-                        .executes { supersizePlayer(it) }))
-                .then(Commands.literal("smol")
-                    .then(Commands.argument("target", EntityArgument.player())
-                        .requires { it.hasPermission(2) }
-                        .executes { shrinkPlayer(it) }))
-                .then(Commands.literal("chaos")
-                    .then(Commands.argument("target", EntityArgument.player())
-                        .requires { it.hasPermission(2) }
-                        .executes { chaosMode(it) }))
-                .then(Commands.literal("rocket")
-                    .then(Commands.argument("target", EntityArgument.player())
-                        .requires { it.hasPermission(2) }
-                        .executes { rocketPlayer(it) }))
-                .then(Commands.literal("spin")
-                    .then(Commands.argument("target", EntityArgument.player())
-                        .then(Commands.argument("times", IntegerArgumentType.integer(1, 50))
-                            .requires { it.hasPermission(2) }
-                            .executes { spinPlayer(it) })))
-                .then(Commands.literal("freeze")
-                    .then(Commands.argument("target", EntityArgument.player())
-                        .requires { it.hasPermission(2) }
-                        .executes { freezePlayer(it) }))
-                .then(Commands.literal("burn")
-                    .then(Commands.argument("target", EntityArgument.player())
-                        .requires { it.hasPermission(2) }
-                        .executes { burnPlayer(it) }))
-                .then(Commands.literal("do")
-                    .then(Commands.literal("roar")
-                        .requires { it.hasPermission(2) }
-                        .executes { wardenRoar(it) })
-                    .then(Commands.literal("darkness")
-                        .requires { it.hasPermission(2) }
-                        .executes { darknessPulse(it) })
-                    .then(Commands.literal("crit_save")
-                        .requires { it.hasPermission(2) }
-                        .executes { critSave(it) })
-                    .then(Commands.literal("pro_gamer_mode")
-                        .requires { it.hasPermission(2) }
-                        .executes { proGamerMode(it) }))
                 .then(Commands.literal("features")
                     .then(Commands.literal("extra_mobs")
                         .requires { it.hasPermission(2) }
                         .executes { showExtraMobsStatus(it) }
                         .then(Commands.argument("enabled", BoolArgumentType.bool())
                             .executes { setExtraMobs(it) })))
-                // New fun commands
+                .then(Commands.literal("sys")
+                    .then(Commands.literal("ping")
+                        .requires { it.hasPermission(2) }
+                        .executes { systemPing(it) })
+                    .then(Commands.literal("story")
+                        .requires { it.hasPermission(2) }
+                        .executes { tellStory(it) }))
+        )
+    }
+
+    private fun registerPrankCommand(dispatcher: CommandDispatcher<CommandSourceStack>) {
+        dispatcher.register(
+            Commands.literal("prank")
+                .requires { it.hasPermission(2) }
+                .then(Commands.literal("smite")
+                    .then(Commands.argument("targets", EntityArgument.players())
+                        .executes { smitePlayer(it) }))
+                .then(Commands.literal("yeet")
+                    .then(Commands.argument("targets", EntityArgument.players())
+                        .executes { yeetPlayer(it) }))
+                .then(Commands.literal("disco")
+                    .then(Commands.argument("targets", EntityArgument.players())
+                        .executes { discoMode(it) }))
+                .then(Commands.literal("supersize")
+                    .then(Commands.argument("targets", EntityArgument.players())
+                        .executes { supersizePlayer(it) }))
+                .then(Commands.literal("smol")
+                    .then(Commands.argument("targets", EntityArgument.players())
+                        .executes { shrinkPlayer(it) }))
+                .then(Commands.literal("chaos")
+                    .then(Commands.argument("targets", EntityArgument.players())
+                        .executes { chaosMode(it) }))
+                .then(Commands.literal("rocket")
+                    .then(Commands.argument("targets", EntityArgument.players())
+                        .executes { rocketPlayer(it) }))
+                .then(Commands.literal("spin")
+                    .then(Commands.argument("targets", EntityArgument.players())
+                        .then(Commands.argument("times", IntegerArgumentType.integer(1, 50))
+                            .executes { spinPlayer(it) })))
+                .then(Commands.literal("freeze")
+                    .then(Commands.argument("targets", EntityArgument.players())
+                        .executes { freezePlayer(it) }))
+                .then(Commands.literal("burn")
+                    .then(Commands.argument("targets", EntityArgument.players())
+                        .executes { burnPlayer(it) }))
+                .then(Commands.literal("drunk")
+                    .then(Commands.argument("targets", EntityArgument.players())
+                        .executes { drunkVision(it) }))
+        )
+    }
+
+    private fun registerAbilityCommand(dispatcher: CommandDispatcher<CommandSourceStack>) {
+        dispatcher.register(
+            Commands.literal("ability")
+                .requires { it.hasPermission(2) }
                 .then(Commands.literal("mimic")
-                    .requires { it.hasPermission(2) }
                     .then(Commands.literal("zombie").executes { mimicSound(it, "zombie") })
                     .then(Commands.literal("wither").executes { mimicSound(it, "wither") })
                     .then(Commands.literal("ghast").executes { mimicSound(it, "ghast") })
                     .then(Commands.literal("dragon").executes { mimicSound(it, "dragon") }))
-                .then(Commands.literal("ambush_mode")
-                    .requires { it.hasPermission(2) }
-                    .executes { ambushMode(it) })
-                .then(Commands.literal("detect_hostiles")
-                    .requires { it.hasPermission(2) }
-                    .executes { detectHostiles(it) })
-                .then(Commands.literal("moon_jump")
-                    .requires { it.hasPermission(2) }
-                    .executes { moonJump(it) })
-                .then(Commands.literal("thunder_dome")
-                    .requires { it.hasPermission(2) }
-                    .executes { thunderDome(it) })
-                .then(Commands.literal("copper_drop")
-                    .requires { it.hasPermission(2) }
-                    .executes { copperDrop(it) })
-                .then(Commands.literal("time_warp")
-                    .requires { it.hasPermission(2) }
-                    .then(Commands.argument("ticks", IntegerArgumentType.integer(1, 24000))
-                        .executes { timeWarp(it) }))
-                .then(Commands.literal("give")
-                    .then(Commands.literal("drunk_vision")
-                        .requires { it.hasPermission(2) }
-                        .then(Commands.argument("targets", EntityArgument.players())
-                            .executes { drunkVision(it) })))
+                .then(Commands.literal("dash")
+                    .executes { dash(it) })
                 .then(Commands.literal("blink")
-                    .requires { it.hasPermission(2) }
                     .then(Commands.argument("range", IntegerArgumentType.integer(1, 25))
                         .executes { blink(it) }))
-                .then(Commands.literal("dash")
-                    .requires { it.hasPermission(2) }
-                    .executes { dash(it) })
-                .then(Commands.literal("pet")
-                    .requires { it.hasPermission(2) }
-                    .then(Commands.literal("vex").executes { petVex(it) }))
-                .then(Commands.literal("spirit_wolves")
-                    .requires { it.hasPermission(2) }
-                    .then(Commands.argument("count", IntegerArgumentType.integer(1, 5))
-                        .executes { spiritWolves(it) }))
-                .then(Commands.literal("clear_effects")
-                    .requires { it.hasPermission(2) }
+                .then(Commands.literal("jump")
+                    .executes { moonJump(it) })
+                .then(Commands.literal("roar")
+                    .executes { wardenRoar(it) })
+                .then(Commands.literal("darkness")
+                    .executes { darknessPulse(it) })
+                .then(Commands.literal("summon")
+                    .then(Commands.literal("vex").executes { petVex(it) })
+                    .then(Commands.literal("wolves")
+                        .then(Commands.argument("count", IntegerArgumentType.integer(1, 5))
+                            .executes { spiritWolves(it) })))
+        )
+    }
+
+    private fun registerGameCommand(dispatcher: CommandDispatcher<CommandSourceStack>) {
+        dispatcher.register(
+            Commands.literal("game")
+                .requires { it.hasPermission(2) }
+                .then(Commands.literal("ambush")
+                    .executes { ambushMode(it) })
+                .then(Commands.literal("scan")
+                    .executes { detectHostiles(it) })
+                .then(Commands.literal("thunder")
+                    .executes { thunderDome(it) })
+                .then(Commands.literal("copper")
+                    .executes { copperDrop(it) })
+                .then(Commands.literal("time")
+                    .then(Commands.argument("ticks", IntegerArgumentType.integer(1, 24000))
+                        .executes { timeWarp(it) }))
+                .then(Commands.literal("cleanse")
                     .then(Commands.argument("targets", EntityArgument.players())
                         .executes { clearEffects(it) }))
-                .then(Commands.literal("sys")
-                    .then(Commands.literal("system_ping")
-                        .requires { it.hasPermission(2) }
-                        .executes { systemPing(it) })
-                    .then(Commands.literal("tell_story")
-                        .requires { it.hasPermission(2) }
-                        .executes { tellStory(it) }))
-        )
-        
-        // /exitbody shortcuts
-        dispatcher.register(
-            Commands.literal("exitbody")
-                .requires { it.hasPermission(2) }
-                .then(Commands.literal("s").executes { exitBody(it, GameType.SURVIVAL) })
-                .then(Commands.literal("c").executes { exitBody(it, GameType.CREATIVE) })
+                .then(Commands.literal("crit_save")
+                    .executes { critSave(it) })
+                .then(Commands.literal("pro_gamer")
+                    .executes { proGamerMode(it) })
+                .then(Commands.literal("exitbody")
+                    .then(Commands.literal("s").executes { exitBody(it, GameType.SURVIVAL) })
+                    .then(Commands.literal("c").executes { exitBody(it, GameType.CREATIVE) })
+                )
         )
     }
     
     private fun showHelp(ctx: CommandContext<CommandSourceStack>): Int {
         val source = ctx.source
         source.sendSuccess({ Component.literal("§6=== Aeonis Plus Commands ===") }, false)
-        source.sendSuccess({ Component.literal("§e/aeonis smite <player>§7 - Strike with lightning") }, false)
-        source.sendSuccess({ Component.literal("§e/aeonis yeet <player>§7 - Launch into the sky") }, false)
-        source.sendSuccess({ Component.literal("§e/aeonis disco <player>§7 - Party time!") }, false)
-        source.sendSuccess({ Component.literal("§e/aeonis supersize <player>§7 - Become HUGE") }, false)
-        source.sendSuccess({ Component.literal("§e/aeonis smol <player>§7 - Become tiny") }, false)
-        source.sendSuccess({ Component.literal("§e/aeonis chaos <player>§7 - Random effects!") }, false)
-        source.sendSuccess({ Component.literal("§e/aeonis rocket <player>§7 - Rocket launch!") }, false)
-        source.sendSuccess({ Component.literal("§e/aeonis spin <player> <times>§7 - Spin around") }, false)
-        source.sendSuccess({ Component.literal("§e/aeonis freeze <player>§7 - Freeze in place") }, false)
-        source.sendSuccess({ Component.literal("§e/aeonis burn <player>§7 - Set on fire") }, false)
-        source.sendSuccess({ Component.literal("§5=== Abilities ===") }, false)
-        source.sendSuccess({ Component.literal("§d/aeonis do roar§7 - Warden roar! Knockback nearby players") }, false)
-        source.sendSuccess({ Component.literal("§d/aeonis do darkness§7 - Darkness pulse to all nearby") }, false)
-        source.sendSuccess({ Component.literal("§a=== Entity Transform ===") }, false)
-        source.sendSuccess({ Component.literal("§b/transform <entity>§7 - Become any mob! (spectate mode)") }, false)
-        source.sendSuccess({ Component.literal("§b/untransform§7 - Return to normal") }, false)
-        source.sendSuccess({ Component.literal("§2=== Features ===") }, false)
+
+        // Main Features
+        source.sendSuccess({ Component.literal("§2=== Main Features ===") }, false)
         source.sendSuccess({ Component.literal("§a/aeonis features extra_mobs <true/false>§7 - Toggle Aeonis mobs") }, false)
+        source.sendSuccess({ Component.literal("§a/transform <entity> [variant...]§7 - Become any mob! Optionally specify variants.") }, false)
+        source.sendSuccess({ Component.literal("§a/untransform§7 - Return to normal") }, false)
+
+        // AI Tools
+        source.sendSuccess({ Component.literal("§5=== AI Tools (/ai) ===") }, false)
+        source.sendSuccess({ Component.literal("§d/ai chaotic <entities>§7 - Enable chaotic AI on entities") }, false)
+        source.sendSuccess({ Component.literal("§d/ai director <entities> walk_to <x y z> [speed]§7 - Walk entities to position") }, false)
+        source.sendSuccess({ Component.literal("§d/ai director <entities> look_at <target>§7 - Make entities look at a target") }, false)
+        source.sendSuccess({ Component.literal("§d/ai director <entities> attack <target>§7 - Make entities attack a target") }, false)
+        source.sendSuccess({ Component.literal("§d/ai director <entities> stop§7 - Stop all orders for entities") }, false)
+
+        // Pranks
+        source.sendSuccess({ Component.literal("§e=== Pranks (/prank) ===") }, false)
+        source.sendSuccess({ Component.literal("§e/prank smite <players>§7 - Strike with lightning") }, false)
+        source.sendSuccess({ Component.literal("§e/prank yeet <players>§7 - Launch into air") }, false)
+        source.sendSuccess({ Component.literal("§e/prank disco <players>§7 - Disco mode") }, false)
+        source.sendSuccess({ Component.literal("§e/prank supersize <players>§7 - Make huge") }, false)
+        source.sendSuccess({ Component.literal("§e/prank smol <players>§7 - Make tiny") }, false)
+        source.sendSuccess({ Component.literal("§e/prank chaos <players>§7 - Chaotic effects") }, false)
+        source.sendSuccess({ Component.literal("§e/prank rocket <players>§7 - Rocket launch") }, false)
+        source.sendSuccess({ Component.literal("§e/prank spin <players> <times>§7 - Spin players") }, false)
+        source.sendSuccess({ Component.literal("§e/prank freeze <players>§7 - Freeze in place") }, false)
+        source.sendSuccess({ Component.literal("§e/prank burn <players>§7 - Set on fire") }, false)
+        source.sendSuccess({ Component.literal("§e/prank drunk <players>§7 - Drunk vision") }, false)
+
+        // Abilities
+        source.sendSuccess({ Component.literal("§b=== Abilities (/ability) ===") }, false)
+        source.sendSuccess({ Component.literal("§b/ability mimic <zombie|wither|ghast|dragon>§7 - Mimic mob sounds") }, false)
+        source.sendSuccess({ Component.literal("§b/ability dash§7 - Quick dash forward") }, false)
+        source.sendSuccess({ Component.literal("§b/ability blink <range>§7 - Teleport a short distance") }, false)
+        source.sendSuccess({ Component.literal("§b/ability jump§7 - Moon jump") }, false)
+        source.sendSuccess({ Component.literal("§b/ability roar§7 - Warden roar") }, false)
+        source.sendSuccess({ Component.literal("§b/ability darkness§7 - Darkness pulse") }, false)
+        source.sendSuccess({ Component.literal("§b/ability summon vex§7 - Summon pet vex") }, false)
+        source.sendSuccess({ Component.literal("§b/ability summon wolves <count>§7 - Summon spirit wolves") }, false)
+
+        // Game Tools
+        source.sendSuccess({ Component.literal("§c=== Game Tools (/game) ===") }, false)
+        source.sendSuccess({ Component.literal("§c/game ambush§7 - Surprise mob ambush") }, false)
+        source.sendSuccess({ Component.literal("§c/game scan§7 - Scan for hostiles nearby") }, false)
+        source.sendSuccess({ Component.literal("§c/game thunder§7 - Start thunder dome event") }, false)
+        source.sendSuccess({ Component.literal("§c/game copper§7 - Drop copper on players") }, false)
+        source.sendSuccess({ Component.literal("§c/game time <ticks>§7 - Warp time forward") }, false)
+        source.sendSuccess({ Component.literal("§c/game cleanse <players>§7 - Remove all effects") }, false)
+        source.sendSuccess({ Component.literal("§c/game crit_save§7 - Critical save (revive)") }, false)
+        source.sendSuccess({ Component.literal("§c/game pro_gamer§7 - Pro gamer mode") }, false)
+        source.sendSuccess({ Component.literal("§c/game exitbody <s|c>§7 - Exit body (Survival/Creative)") }, false)
+
+        // System
+        source.sendSuccess({ Component.literal("§7=== System (/aeonis sys) ===") }, false)
+        source.sendSuccess({ Component.literal("§7/aeonis sys ping§7 - Show server/mod stats") }, false)
+        source.sendSuccess({ Component.literal("§7/aeonis sys story§7 - Aeonis story info") }, false)
         return 1
     }
     
@@ -899,167 +939,214 @@ object AeonisCommands {
     }
     
     private fun smitePlayer(ctx: CommandContext<CommandSourceStack>): Int {
-        val target = EntityArgument.getPlayer(ctx, "target")
-        val level = target.level() as? net.minecraft.server.level.ServerLevel ?: return 0
+        val targets = EntityArgument.getPlayers(ctx, "targets")
+        var count = 0
         
-        val lightning = LightningBolt(EntityType.LIGHTNING_BOLT, level)
-        lightning.setPos(target.x, target.y, target.z)
-        lightning.setVisualOnly(false)
-        level.addFreshEntity(lightning)
+        for (target in targets) {
+            val level = target.level() as? net.minecraft.server.level.ServerLevel ?: continue
+            
+            val lightning = LightningBolt(EntityType.LIGHTNING_BOLT, level)
+            lightning.setPos(target.x, target.y, target.z)
+            lightning.setVisualOnly(false)
+            level.addFreshEntity(lightning)
+            count++
+        }
         
-        ctx.source.sendSuccess({ Component.literal("§c⚡ ${target.name.string} has been smitten!") }, true)
-        return 1
+        ctx.source.sendSuccess({ Component.literal("§c⚡ Smitten $count player(s)!") }, true)
+        return count
     }
     
     private fun yeetPlayer(ctx: CommandContext<CommandSourceStack>): Int {
-        val target = EntityArgument.getPlayer(ctx, "target")
-        target.setDeltaMovement(target.deltaMovement.add(0.0, 3.0, 0.0))
-        target.hurtMarked = true
+        val targets = EntityArgument.getPlayers(ctx, "targets")
+        var count = 0
         
-        val level = target.level() as? net.minecraft.server.level.ServerLevel ?: return 0
-        level.playSound(null, target.x, target.y, target.z, 
-            SoundEvents.FIREWORK_ROCKET_LAUNCH, SoundSource.PLAYERS, 1.0f, 1.0f)
+        for (target in targets) {
+            target.setDeltaMovement(target.deltaMovement.add(0.0, 3.0, 0.0))
+            target.hurtMarked = true
+            
+            val level = target.level() as? net.minecraft.server.level.ServerLevel
+            level?.playSound(null, target.x, target.y, target.z, 
+                SoundEvents.FIREWORK_ROCKET_LAUNCH, SoundSource.PLAYERS, 1.0f, 1.0f)
+            count++
+        }
         
-        ctx.source.sendSuccess({ Component.literal("§b🚀 ${target.name.string} has been YEETED!") }, true)
-        return 1
+        ctx.source.sendSuccess({ Component.literal("§b🚀 YEETED $count player(s)!") }, true)
+        return count
     }
     
     private fun discoMode(ctx: CommandContext<CommandSourceStack>): Int {
-        val target = EntityArgument.getPlayer(ctx, "target")
-        val level = target.level() as? net.minecraft.server.level.ServerLevel ?: return 0
+        val targets = EntityArgument.getPlayers(ctx, "targets")
+        var count = 0
         
-        // Give glowing, speed, and jump boost
-        target.addEffect(MobEffectInstance(MobEffects.GLOWING, 200, 0))
-        target.addEffect(MobEffectInstance(MobEffects.SPEED, 200, 2))
-        target.addEffect(MobEffectInstance(MobEffects.JUMP_BOOST, 200, 1))
-        
-        // Spawn colorful particles
-        repeat(50) {
-            level.sendParticles(ParticleTypes.NOTE,
-                target.x + (Math.random() - 0.5) * 2,
-                target.y + Math.random() * 2,
-                target.z + (Math.random() - 0.5) * 2,
-                1, 0.0, 0.0, 0.0, 0.0)
+        for (target in targets) {
+            val level = target.level() as? net.minecraft.server.level.ServerLevel ?: continue
+            
+            // Give glowing, speed, and jump boost
+            target.addEffect(MobEffectInstance(MobEffects.GLOWING, 200, 0))
+            target.addEffect(MobEffectInstance(MobEffects.SPEED, 200, 2))
+            target.addEffect(MobEffectInstance(MobEffects.JUMP_BOOST, 200, 1))
+            
+            // Spawn colorful particles
+            repeat(50) {
+                level.sendParticles(ParticleTypes.NOTE,
+                    target.x + (Math.random() - 0.5) * 2,
+                    target.y + Math.random() * 2,
+                    target.z + (Math.random() - 0.5) * 2,
+                    1, 0.0, 0.0, 0.0, 0.0)
+            }
+            
+            level.playSound(null, target.x, target.y, target.z,
+                SoundEvents.NOTE_BLOCK_PLING.value(), SoundSource.PLAYERS, 1.0f, 1.0f)
+            count++
         }
         
-        level.playSound(null, target.x, target.y, target.z,
-            SoundEvents.NOTE_BLOCK_PLING.value(), SoundSource.PLAYERS, 1.0f, 1.0f)
-        
-        ctx.source.sendSuccess({ Component.literal("§d🎵 ${target.name.string} is now in DISCO MODE!") }, true)
-        return 1
+        ctx.source.sendSuccess({ Component.literal("§d🎵 DISCO MODE for $count player(s)!") }, true)
+        return count
     }
     
     private fun supersizePlayer(ctx: CommandContext<CommandSourceStack>): Int {
-        val target = EntityArgument.getPlayer(ctx, "target")
+        val targets = EntityArgument.getPlayers(ctx, "targets")
+        var count = 0
         
-        // Slowness + resistance + strength to simulate being big
-        target.addEffect(MobEffectInstance(MobEffects.SLOWNESS, 400, 1))
-        target.addEffect(MobEffectInstance(MobEffects.RESISTANCE, 400, 1))
-        target.addEffect(MobEffectInstance(MobEffects.STRENGTH, 400, 2))
-        target.addEffect(MobEffectInstance(MobEffects.HEALTH_BOOST, 400, 4))
+        for (target in targets) {
+            // Slowness + resistance + strength to simulate being big
+            target.addEffect(MobEffectInstance(MobEffects.SLOWNESS, 400, 1))
+            target.addEffect(MobEffectInstance(MobEffects.RESISTANCE, 400, 1))
+            target.addEffect(MobEffectInstance(MobEffects.STRENGTH, 400, 2))
+            target.addEffect(MobEffectInstance(MobEffects.HEALTH_BOOST, 400, 4))
+            count++
+        }
         
-        ctx.source.sendSuccess({ Component.literal("§a🦖 ${target.name.string} is now SUPERSIZED!") }, true)
-        return 1
+        ctx.source.sendSuccess({ Component.literal("§a🦖 SUPERSIZED $count player(s)!") }, true)
+        return count
     }
     
     private fun shrinkPlayer(ctx: CommandContext<CommandSourceStack>): Int {
-        val target = EntityArgument.getPlayer(ctx, "target")
+        val targets = EntityArgument.getPlayers(ctx, "targets")
+        var count = 0
         
-        // Speed + weakness + invisibility to simulate being small
-        target.addEffect(MobEffectInstance(MobEffects.SPEED, 400, 2))
-        target.addEffect(MobEffectInstance(MobEffects.WEAKNESS, 400, 1))
-        target.addEffect(MobEffectInstance(MobEffects.INVISIBILITY, 400, 0))
-        target.addEffect(MobEffectInstance(MobEffects.JUMP_BOOST, 400, 2))
+        for (target in targets) {
+            // Speed + weakness + invisibility to simulate being small
+            target.addEffect(MobEffectInstance(MobEffects.SPEED, 400, 2))
+            target.addEffect(MobEffectInstance(MobEffects.WEAKNESS, 400, 1))
+            target.addEffect(MobEffectInstance(MobEffects.INVISIBILITY, 400, 0))
+            target.addEffect(MobEffectInstance(MobEffects.JUMP_BOOST, 400, 2))
+            count++
+        }
         
-        ctx.source.sendSuccess({ Component.literal("§7🐜 ${target.name.string} is now smol!") }, true)
-        return 1
+        ctx.source.sendSuccess({ Component.literal("§7🐜 Shrunk $count player(s)!") }, true)
+        return count
     }
     
     private fun chaosMode(ctx: CommandContext<CommandSourceStack>): Int {
-        val target = EntityArgument.getPlayer(ctx, "target")
-        val random = target.random
+        val targets = EntityArgument.getPlayers(ctx, "targets")
+        var count = 0
         
-        val effects = listOf(
-            MobEffects.LEVITATION,
-            MobEffects.BLINDNESS,
-            MobEffects.NAUSEA,
-            MobEffects.SPEED,
-            MobEffects.SLOWNESS,
-            MobEffects.JUMP_BOOST,
-            MobEffects.GLOWING,
-            MobEffects.NIGHT_VISION,
-            MobEffects.POISON,
-            MobEffects.REGENERATION
-        )
-        
-        repeat(3) {
-            val effect = effects[random.nextInt(effects.size)]
-            val amplifier = random.nextInt(3)
-            target.addEffect(MobEffectInstance(effect, 200, amplifier))
+        for (target in targets) {
+            val random = target.random
+            
+            val effects = listOf(
+                MobEffects.LEVITATION,
+                MobEffects.BLINDNESS,
+                MobEffects.NAUSEA,
+                MobEffects.SPEED,
+                MobEffects.SLOWNESS,
+                MobEffects.JUMP_BOOST,
+                MobEffects.GLOWING,
+                MobEffects.NIGHT_VISION,
+                MobEffects.POISON,
+                MobEffects.REGENERATION
+            )
+            
+            repeat(3) {
+                val effect = effects[random.nextInt(effects.size)]
+                val amplifier = random.nextInt(3)
+                target.addEffect(MobEffectInstance(effect, 200, amplifier))
+            }
+            count++
         }
         
-        ctx.source.sendSuccess({ Component.literal("§c🎲 ${target.name.string} is experiencing CHAOS!") }, true)
-        return 1
+        ctx.source.sendSuccess({ Component.literal("§c🎲 CHAOS unleashed on $count player(s)!") }, true)
+        return count
     }
     
     private fun rocketPlayer(ctx: CommandContext<CommandSourceStack>): Int {
-        val target = EntityArgument.getPlayer(ctx, "target")
-        val level = target.level() as? net.minecraft.server.level.ServerLevel ?: return 0
+        val targets = EntityArgument.getPlayers(ctx, "targets")
+        var count = 0
         
-        // Launch high with slow falling
-        target.setDeltaMovement(Vec3(0.0, 5.0, 0.0))
-        target.hurtMarked = true
-        target.addEffect(MobEffectInstance(MobEffects.SLOW_FALLING, 200, 0))
+        for (target in targets) {
+            val level = target.level() as? net.minecraft.server.level.ServerLevel ?: continue
+            
+            // Launch high with slow falling
+            target.setDeltaMovement(Vec3(0.0, 5.0, 0.0))
+            target.hurtMarked = true
+            target.addEffect(MobEffectInstance(MobEffects.SLOW_FALLING, 200, 0))
+            
+            // Particles and sound
+            level.sendParticles(ParticleTypes.FLAME, target.x, target.y, target.z, 30, 0.3, 0.1, 0.3, 0.1)
+            level.playSound(null, target.x, target.y, target.z,
+                SoundEvents.FIREWORK_ROCKET_LAUNCH, SoundSource.PLAYERS, 1.0f, 0.5f)
+            count++
+        }
         
-        // Particles and sound
-        level.sendParticles(ParticleTypes.FLAME, target.x, target.y, target.z, 30, 0.3, 0.1, 0.3, 0.1)
-        level.playSound(null, target.x, target.y, target.z,
-            SoundEvents.FIREWORK_ROCKET_LAUNCH, SoundSource.PLAYERS, 1.0f, 0.5f)
-        
-        ctx.source.sendSuccess({ Component.literal("§6🚀 ${target.name.string} has been LAUNCHED!") }, true)
-        return 1
+        ctx.source.sendSuccess({ Component.literal("§6🚀 LAUNCHED $count player(s)!") }, true)
+        return count
     }
     
     private fun spinPlayer(ctx: CommandContext<CommandSourceStack>): Int {
-        val target = EntityArgument.getPlayer(ctx, "target")
+        val targets = EntityArgument.getPlayers(ctx, "targets")
         val times = IntegerArgumentType.getInteger(ctx, "times")
+        var count = 0
         
-        // Apply nausea for spinning effect
-        target.addEffect(MobEffectInstance(MobEffects.NAUSEA, times * 20, 0))
+        for (target in targets) {
+            // Apply nausea for spinning effect
+            target.addEffect(MobEffectInstance(MobEffects.NAUSEA, times * 20, 0))
+            
+            // Rotate player rapidly
+            val newYaw = target.yRot + (360f * times)
+            target.setYRot(newYaw)
+            count++
+        }
         
-        // Rotate player rapidly
-        val newYaw = target.yRot + (360f * times)
-        target.setYRot(newYaw)
-        
-        ctx.source.sendSuccess({ Component.literal("§e🌀 ${target.name.string} is spinning ${times} times!") }, true)
-        return 1
+        ctx.source.sendSuccess({ Component.literal("§e🌀 Spinning $count player(s) ${times} times!") }, true)
+        return count
     }
     
     private fun freezePlayer(ctx: CommandContext<CommandSourceStack>): Int {
-        val target = EntityArgument.getPlayer(ctx, "target")
-        val level = target.level() as? net.minecraft.server.level.ServerLevel ?: return 0
+        val targets = EntityArgument.getPlayers(ctx, "targets")
+        var count = 0
         
-        target.addEffect(MobEffectInstance(MobEffects.SLOWNESS, 100, 255))
-        target.addEffect(MobEffectInstance(MobEffects.JUMP_BOOST, 100, 128))
-        target.ticksFrozen = 300
+        for (target in targets) {
+            val level = target.level() as? net.minecraft.server.level.ServerLevel ?: continue
+            
+            target.addEffect(MobEffectInstance(MobEffects.SLOWNESS, 100, 255))
+            target.addEffect(MobEffectInstance(MobEffects.JUMP_BOOST, 100, 128))
+            target.ticksFrozen = 300
+            
+            level.sendParticles(ParticleTypes.SNOWFLAKE, target.x, target.y + 1, target.z, 20, 0.5, 0.5, 0.5, 0.0)
+            level.playSound(null, target.x, target.y, target.z,
+                SoundEvents.GLASS_BREAK, SoundSource.PLAYERS, 1.0f, 1.5f)
+            count++
+        }
         
-        level.sendParticles(ParticleTypes.SNOWFLAKE, target.x, target.y + 1, target.z, 20, 0.5, 0.5, 0.5, 0.0)
-        level.playSound(null, target.x, target.y, target.z,
-            SoundEvents.GLASS_BREAK, SoundSource.PLAYERS, 1.0f, 1.5f)
-        
-        ctx.source.sendSuccess({ Component.literal("§b❄ ${target.name.string} has been FROZEN!") }, true)
-        return 1
+        ctx.source.sendSuccess({ Component.literal("§b❄ FROZE $count player(s)!") }, true)
+        return count
     }
     
     private fun burnPlayer(ctx: CommandContext<CommandSourceStack>): Int {
-        val target = EntityArgument.getPlayer(ctx, "target")
-        val level = target.level() as? net.minecraft.server.level.ServerLevel ?: return 0
+        val targets = EntityArgument.getPlayers(ctx, "targets")
+        var count = 0
         
-        target.remainingFireTicks = 100
-        level.sendParticles(ParticleTypes.FLAME, target.x, target.y + 1, target.z, 30, 0.5, 0.5, 0.5, 0.05)
+        for (target in targets) {
+            val level = target.level() as? net.minecraft.server.level.ServerLevel ?: continue
+            
+            target.remainingFireTicks = 100
+            level.sendParticles(ParticleTypes.FLAME, target.x, target.y + 1, target.z, 30, 0.5, 0.5, 0.5, 0.05)
+            count++
+        }
         
-        ctx.source.sendSuccess({ Component.literal("§c🔥 ${target.name.string} is on FIRE!") }, true)
-        return 1
+        ctx.source.sendSuccess({ Component.literal("§c🔥 Set $count player(s) on FIRE!") }, true)
+        return count
     }
     
     // ========== TRANSFORM ABILITIES ==========
@@ -1259,20 +1346,29 @@ object AeonisCommands {
         return 1
     }
     
-    private fun thunderDome(ctx: CommandContext<CommandSourceStack>): Int {
-        val source = ctx.source
-        val player = source.player ?: run {
-            source.sendFailure(Component.literal("§cOnly players can use this!"))
-            return 0
-        }
-        val level = player.level() as? net.minecraft.server.level.ServerLevel ?: return 0
-        
-        // Spawn lightning in a 30-block radius ring, multiple strikes
-        val server = level.server
-        for (i in 0 until 15) {
-            val delay = i * 20L // 1 second apart
-            server.execute {
-                Thread.sleep(delay)
+    // Track active thunder domes: player UUID -> remaining waves
+    private val activeThunderDomes = mutableMapOf<java.util.UUID, Int>()
+    
+    /**
+     * Called every tick to process thunder dome waves
+     */
+    fun tickThunderDomes(server: net.minecraft.server.MinecraftServer) {
+        val iterator = activeThunderDomes.iterator()
+        while (iterator.hasNext()) {
+            val entry = iterator.next()
+            val playerUUID = entry.key
+            var wavesRemaining = entry.value
+            
+            val player = server.playerList.getPlayer(playerUUID)
+            if (player == null || wavesRemaining <= 0) {
+                iterator.remove()
+                continue
+            }
+            
+            val level = player.level() as? net.minecraft.server.level.ServerLevel ?: continue
+            
+            // Only spawn lightning every 20 ticks (1 second)
+            if (server.tickCount % 20 == 0) {
                 for (j in 0 until 8) {
                     val angle = Math.random() * Math.PI * 2
                     val dist = 5.0 + Math.random() * 25.0
@@ -1284,8 +1380,22 @@ object AeonisCommands {
                     lightning.setVisualOnly(true) // Don't damage
                     level.addFreshEntity(lightning)
                 }
+                
+                wavesRemaining--
+                activeThunderDomes[playerUUID] = wavesRemaining
             }
         }
+    }
+    
+    private fun thunderDome(ctx: CommandContext<CommandSourceStack>): Int {
+        val source = ctx.source
+        val player = source.player ?: run {
+            source.sendFailure(Component.literal("§cOnly players can use this!"))
+            return 0
+        }
+        
+        // Start 15 waves of lightning
+        activeThunderDomes[player.uuid] = 15
         
         source.sendSuccess({ Component.literal("§c⚡ THUNDER DOME activated! Lightning storm for 15 seconds!") }, true)
         return 1
@@ -1389,13 +1499,92 @@ object AeonisCommands {
     
     private fun systemPing(ctx: CommandContext<CommandSourceStack>): Int {
         val source = ctx.source
-        source.sendSuccess({ Component.literal("§6═══ AEONIS SYSTEM PING ═══") }, false)
-        source.sendSuccess({ Component.literal("§eMod ID: §baeonis-manager") }, false)
-        source.sendSuccess({ Component.literal("§eVersion: §b1.0.0") }, false)
-        source.sendSuccess({ Component.literal("§eCommands loaded: §b25+") }, false)
-        source.sendSuccess({ Component.literal("§eTransform system: §aONLINE") }, false)
-        source.sendSuccess({ Component.literal("§eExtra mobs: §a" + if (AeonisFeatures.isExtraMobsEnabled(source.server)) "ENABLED" else "DISABLED") }, false)
-        source.sendSuccess({ Component.literal("§6══════════════════════════") }, false)
+        val server = source.server
+        val player = source.player as? ServerPlayer
+        val level = source.level as? net.minecraft.server.level.ServerLevel
+        
+        // Calculate TPS from tick times
+        val tickTimes = server.tickTimesNanos
+        val avgTickTime = if (tickTimes.isNotEmpty()) tickTimes.average() else 0.0
+        val mspt = avgTickTime / 1_000_000.0
+        val tps = (1000.0 / mspt).coerceAtMost(20.0)
+        val tpsColor = when {
+            tps >= 19.0 -> "§a"
+            tps >= 15.0 -> "§e"
+            tps >= 10.0 -> "§6"
+            else -> "§c"
+        }
+        
+        // Memory info
+        val runtime = Runtime.getRuntime()
+        val usedMem = (runtime.totalMemory() - runtime.freeMemory()) / 1024 / 1024
+        val maxMem = runtime.maxMemory() / 1024 / 1024
+        val memPercent = (usedMem * 100 / maxMem).toInt()
+        val memColor = when {
+            memPercent < 60 -> "§a"
+            memPercent < 80 -> "§e"
+            else -> "§c"
+        }
+        
+        // Player ping (latency)
+        val pingMs = player?.connection?.latency() ?: 0
+        val pingColor = when {
+            pingMs < 50 -> "§a"
+            pingMs < 100 -> "§e"
+            pingMs < 200 -> "§6"
+            else -> "§c"
+        }
+        
+        // World info
+        val worldTime = level?.dayTime ?: 0L
+        val dayCount = (worldTime / 24000L) + 1
+        val timeOfDay = worldTime % 24000L
+        val timeStr = when {
+            timeOfDay < 6000 -> "§e☀ Morning"
+            timeOfDay < 12000 -> "§6☀ Noon"
+            timeOfDay < 13000 -> "§6☀ Afternoon"
+            timeOfDay < 18000 -> "§c🌅 Evening"
+            else -> "§8🌙 Night"
+        }
+        
+        // Entity counts
+        val entityCount = level?.allEntities?.count() ?: 0
+        val loadedChunks = level?.chunkSource?.loadedChunksCount ?: 0
+        
+        // Player counts
+        val onlinePlayers = server.playerCount
+        val maxPlayers = server.maxPlayers
+        
+        // Difficulty
+        val difficulty = server.worldData.difficulty.displayName.string
+        
+        // Active Aeonis systems
+        val transformedCount = transformedEntities.size
+        val activeVexes = petVexOwners.size
+        val activeThunder = activeThunderDomes.size
+        val activeDirector = actorWalkTargets.size + actorLookTargets.size + actorAttackTargets.size
+        
+        source.sendSuccess({ Component.literal("§6§l═══════ AEONIS SYSTEM ═══════") }, false)
+        source.sendSuccess({ Component.literal("§e§lMOD INFO") }, false)
+        source.sendSuccess({ Component.literal("  §7ID: §baeonis-command-master §7| §7Ver: §b1.2.8b") }, false)
+        source.sendSuccess({ Component.literal("  §7Extra Mobs: " + if (AeonisFeatures.isExtraMobsEnabled(server)) "§aON" else "§cOFF") }, false)
+        
+        source.sendSuccess({ Component.literal("§c§l⚡ PERFORMANCE") }, false)
+        source.sendSuccess({ Component.literal("  §7TPS: ${tpsColor}%.1f §7/ 20 §8(%.2fms/tick)".format(tps, mspt)) }, false)
+        source.sendSuccess({ Component.literal("  §7Memory: ${memColor}${usedMem}MB §7/ ${maxMem}MB §8(${memPercent}%%)") }, false)
+        source.sendSuccess({ Component.literal("  §7Latency: ${pingColor}${pingMs}ms") }, false)
+        
+        source.sendSuccess({ Component.literal("§a§l🌍 WORLD") }, false)
+        source.sendSuccess({ Component.literal("  §7Time: $timeStr §8(Day $dayCount)") }, false)
+        source.sendSuccess({ Component.literal("  §7Difficulty: §e$difficulty") }, false)
+        source.sendSuccess({ Component.literal("  §7Entities: §b$entityCount §7| Chunks: §b$loadedChunks") }, false)
+        source.sendSuccess({ Component.literal("  §7Players: §a$onlinePlayers§7/$maxPlayers") }, false)
+        
+        source.sendSuccess({ Component.literal("§d§l✦ AEONIS ACTIVE") }, false)
+        source.sendSuccess({ Component.literal("  §7Transforms: §b$transformedCount §7| Pet Vexes: §b$activeVexes") }, false)
+        source.sendSuccess({ Component.literal("  §7Thunder Domes: §b$activeThunder §7| Director Orders: §b$activeDirector") }, false)
+        
+        source.sendSuccess({ Component.literal("§6§l═════════════════════════════") }, false)
         return 1
     }
     
@@ -1560,5 +1749,129 @@ object AeonisCommands {
             Component.literal("§a✨ Exited body! Now in $modeName mode.") 
         }, true)
         return 1
+    }
+
+    private fun makeChaotic(ctx: CommandContext<CommandSourceStack>): Int {
+        val targets = EntityArgument.getEntities(ctx, "targets")
+        var count = 0
+        
+        // Reflection to access goalSelector
+        var goalSelectorField: java.lang.reflect.Field? = null
+        try {
+            // Try mapped name first
+            goalSelectorField = Mob::class.java.getDeclaredField("goalSelector")
+        } catch (e: NoSuchFieldException) {
+             // Fallback: find by type (first one is usually goalSelector)
+             goalSelectorField = Mob::class.java.declaredFields.find { it.type == net.minecraft.world.entity.ai.goal.GoalSelector::class.java }
+        }
+        goalSelectorField?.isAccessible = true
+        
+        for (entity in targets) {
+            if (entity is PathfinderMob) {
+                try {
+                    val goalSelector = goalSelectorField?.get(entity) as? net.minecraft.world.entity.ai.goal.GoalSelector
+                    
+                    if (goalSelector != null) {
+                        // Add chaotic goals with high priority (0 and 1)
+                        goalSelector.addGoal(0, SuicidalLavaGoal(entity))
+                        goalSelector.addGoal(1, CliffJumpGoal(entity))
+                        goalSelector.addGoal(2, CrazySpinGoal(entity))
+                        
+                        // Add speed effect to make it funnier
+                        entity.addEffect(MobEffectInstance(MobEffects.SPEED, Int.MAX_VALUE, 2))
+                        count++
+                    }
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+            }
+        }
+        
+        ctx.source.sendSuccess({ Component.literal("§c🤪 Made $count entities chaotic!") }, true)
+        return count
+    }
+
+    class SuicidalLavaGoal(private val mob: PathfinderMob) : Goal() {
+        private var lavaPos: BlockPos? = null
+
+        init {
+            this.flags = EnumSet.of(Flag.MOVE)
+        }
+
+        override fun canUse(): Boolean {
+            if (mob.tickCount % 20 != 0) return false
+            val pos = mob.blockPosition()
+            val level = mob.level()
+            
+            // Scan for lava
+            for (x in -15..15) {
+                for (y in -5..5) {
+                    for (z in -15..15) {
+                        val checkPos = pos.offset(x, y, z)
+                        if (level.getBlockState(checkPos).block == Blocks.LAVA) {
+                            lavaPos = checkPos
+                            return true
+                        }
+                    }
+                }
+            }
+            return false
+        }
+
+        override fun start() {
+            lavaPos?.let {
+                mob.navigation.moveTo(it.x.toDouble(), it.y.toDouble(), it.z.toDouble(), 1.5)
+            }
+        }
+    }
+
+    class CliffJumpGoal(private val mob: PathfinderMob) : Goal() {
+        private var jumpPos: BlockPos? = null
+
+        init {
+            this.flags = EnumSet.of(Flag.MOVE)
+        }
+
+        override fun canUse(): Boolean {
+            if (mob.tickCount % 20 != 0) return false
+            val pos = mob.blockPosition()
+            val level = mob.level()
+            
+            // Scan for drops
+            for (x in -10..10) {
+                for (z in -10..10) {
+                    val checkPos = pos.offset(x, 0, z)
+                    if (level.isEmptyBlock(checkPos.below()) && 
+                        level.isEmptyBlock(checkPos.below(2)) && 
+                        level.isEmptyBlock(checkPos.below(3))) {
+                        jumpPos = checkPos
+                        return true
+                    }
+                }
+            }
+            return false
+        }
+
+        override fun start() {
+            jumpPos?.let {
+                mob.navigation.moveTo(it.x.toDouble(), it.y.toDouble(), it.z.toDouble(), 1.5)
+            }
+        }
+    }
+
+    class CrazySpinGoal(private val mob: PathfinderMob) : Goal() {
+        init {
+            this.flags = EnumSet.of(Flag.MOVE, Flag.LOOK)
+        }
+
+        override fun canUse(): Boolean {
+            return mob.random.nextFloat() < 0.05f // 5% chance to start spinning
+        }
+
+        override fun tick() {
+            mob.yRot += 45f
+            mob.yBodyRot += 45f
+            mob.navigation.moveTo(mob.x + mob.random.nextGaussian(), mob.y, mob.z + mob.random.nextGaussian(), 2.0)
+        }
     }
 }
