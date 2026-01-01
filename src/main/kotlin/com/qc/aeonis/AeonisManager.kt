@@ -3,11 +3,15 @@ package com.qc.aeonis
 import com.qc.aeonis.command.AeonisCommands
 import com.qc.aeonis.config.AeonisFeatures
 import com.qc.aeonis.entity.AeonisEntities
+import com.qc.aeonis.entity.HerobrineEntity
+import com.qc.aeonis.entity.HerobrineSpawner
 import com.qc.aeonis.network.AeonisNetworking
 import net.fabricmc.api.ModInitializer
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents
+import net.fabricmc.fabric.api.event.player.PlayerBlockBreakEvents
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents
 import net.minecraft.network.chat.Component
+import net.minecraft.server.level.ServerLevel
 import net.minecraft.server.level.ServerPlayer
 import net.minecraft.world.level.GameType
 import org.slf4j.LoggerFactory
@@ -23,6 +27,15 @@ object AeonisManager : ModInitializer {
 		AeonisCommands.register()
 		AeonisNetworking.registerServer()
 		
+		// Register block break event for Herobrine shrine detection
+		PlayerBlockBreakEvents.BEFORE.register { world, player, pos, state, blockEntity ->
+			if (world is ServerLevel && player is ServerPlayer) {
+				// Check if this is a Herobrine shrine block
+				HerobrineEntity.onBlockBroken(world, pos, player)
+			}
+			true // Allow the break to continue
+		}
+		
 		// Register tick event for transformed players - sync mob position and handle flying
 		ServerTickEvents.END_SERVER_TICK.register { server ->
 			// Handle pet vex AI redirection
@@ -31,6 +44,8 @@ object AeonisManager : ModInitializer {
             AeonisCommands.tickActors(server)
             // Handle Thunder Dome waves
             AeonisCommands.tickThunderDomes(server)
+            // Handle Herobrine spawn cycles
+            HerobrineSpawner.tick(server)
 			
 			for (player in server.playerList.players) {
 				if (AeonisNetworking.isPlayerTransformed(player.uuid)) {
@@ -117,7 +132,7 @@ object AeonisManager : ModInitializer {
 					player.sendSystemMessage(Component.literal("§7━━━━━━━━━━━━━━━━━━━━━━━━━━━━"))
 					player.sendSystemMessage(Component.literal("§eAeonis Special Extra Mobs is currently §c§lOFF§e!"))
 					player.sendSystemMessage(Component.literal("§7Give it a try with: §a/aeonis features extra_mobs true"))
-					player.sendSystemMessage(Component.literal("§7This adds unique monsters like the §6Stalker§7!"))
+					player.sendSystemMessage(Component.literal("§7This adds unique monsters like the §6Stalker§7 and §cHerobrine§7!"))
 					player.sendSystemMessage(Component.literal("§7━━━━━━━━━━━━━━━━━━━━━━━━━━━━"))
 					player.sendSystemMessage(Component.literal(""))
 				}

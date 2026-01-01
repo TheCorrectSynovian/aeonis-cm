@@ -22,6 +22,10 @@ object AeonisEntityRenderers {
         EntityRendererRegistry.register(AeonisEntities.BODY) { ctx ->
             BodyEntityRenderer(ctx)
         }
+        // Register Herobrine entity renderer (uses humanoid player model)
+        EntityRendererRegistry.register(AeonisEntities.HEROBRINE) { ctx ->
+            HerobrineEntityRenderer(ctx)
+        }
     }
 
     private class CopperStalkerRenderer(ctx: EntityRendererProvider.Context) :

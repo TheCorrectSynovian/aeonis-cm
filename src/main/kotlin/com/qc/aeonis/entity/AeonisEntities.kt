@@ -28,10 +28,26 @@ object AeonisEntities {
             .clientTrackingRange(48)
             .build(COPPER_STALKER_KEY)
     )
+    
+    private val HEROBRINE_KEY: ResourceKey<EntityType<*>> = ResourceKey.create(
+        Registries.ENTITY_TYPE,
+        ResourceLocation.fromNamespaceAndPath("aeonis", "herobrine")
+    )
+    
+    val HEROBRINE: EntityType<HerobrineEntity> = Registry.register(
+        BuiltInRegistries.ENTITY_TYPE,
+        HEROBRINE_KEY,
+        EntityType.Builder.of(::HerobrineEntity, MobCategory.MONSTER)
+            .sized(0.6f, 1.95f)
+            .clientTrackingRange(100)
+            .build(HEROBRINE_KEY)
+    )
+    
     lateinit var BODY: EntityType<BodyEntity>
 
     fun register() {
         FabricDefaultAttributeRegistry.register(COPPER_STALKER, CopperStalkerEntity.createAttributes())
+        FabricDefaultAttributeRegistry.register(HEROBRINE, HerobrineEntity.createAttributes())
 
         SpawnPlacements.register(
             COPPER_STALKER,

@@ -13,6 +13,8 @@ import net.minecraft.world.entity.LivingEntity
 import net.minecraft.world.entity.PathfinderMob
 import com.mojang.brigadier.context.CommandContext
 import com.qc.aeonis.config.AeonisFeatures
+import com.qc.aeonis.entity.HerobrineEntity
+import com.qc.aeonis.entity.HerobrineSpawner
 import com.qc.aeonis.network.AeonisNetworking
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback
 import net.minecraft.commands.CommandSourceStack
@@ -62,6 +64,8 @@ import net.minecraft.world.entity.animal.goat.Goat
 import net.minecraft.world.entity.animal.frog.Frog
 import net.minecraft.world.item.DyeColor
 import net.minecraft.nbt.CompoundTag
+import kotlin.math.cos
+import kotlin.math.sin
 
 object AeonisCommands {
         // Track all entities made chaotic for easy disabling
@@ -471,6 +475,13 @@ object AeonisCommands {
                         .executes { showExtraMobsStatus(it) }
                         .then(Commands.argument("enabled", BoolArgumentType.bool())
                             .executes { setExtraMobs(it) })))
+                .then(Commands.literal("summon_herobrine")
+                    .requires { it.hasPermission(2) }
+                    .executes { summonHerobrine(it, "behind") }
+                    .then(Commands.literal("behind").executes { summonHerobrine(it, "behind") })
+                    .then(Commands.literal("roaming").executes { summonHerobrine(it, "roaming") })
+                    .then(Commands.literal("staring").executes { summonHerobrine(it, "staring") })
+                    .then(Commands.literal("hunting").executes { summonHerobrine(it, "hunting") }))
                 .then(Commands.literal("sys")
                     .then(Commands.literal("ping")
                         .requires { it.hasPermission(2) }
@@ -594,7 +605,8 @@ object AeonisCommands {
 
         // Main Features
         source.sendSuccess({ Component.literal("§2=== Main Features ===") }, false)
-        source.sendSuccess({ Component.literal("§a/aeonis features extra_mobs <true/false>§7 - Toggle Aeonis mobs") }, false)
+        source.sendSuccess({ Component.literal("§a/aeonis features extra_mobs <true/false>§7 - Toggle Aeonis mobs (Stalker & Herobrine)") }, false)
+        source.sendSuccess({ Component.literal("§a/aeonis summon_herobrine [behind|roaming|staring|hunting]§7 - Summon Herobrine") }, false)
         source.sendSuccess({ Component.literal("§a/transform <entity> [variant...]§7 - Become any mob! Optionally specify variants.") }, false)
         source.sendSuccess({ Component.literal("§a/untransform§7 - Return to normal") }, false)
         source.sendSuccess({ Component.literal("§a/aeonis soul§7 - Enter soul mode (spectator + possess existing mobs with P key)") }, false)
@@ -673,12 +685,40 @@ object AeonisCommands {
         if (enabled) {
             source.sendSuccess({ Component.literal("§a§l✓ Aeonis Extra Mobs ENABLED!") }, true)
             source.sendSuccess({ Component.literal("§7Stalkers will now spawn at night in the Overworld.") }, false)
+            source.sendSuccess({ Component.literal("§7Herobrine may appear behind you... be careful.") }, false)
         } else {
             source.sendSuccess({ Component.literal("§c§l✗ Aeonis Extra Mobs DISABLED!") }, true)
             source.sendSuccess({ Component.literal("§7Stalkers will no longer spawn naturally.") }, false)
+            source.sendSuccess({ Component.literal("§7Herobrine will no longer appear.") }, false)
         }
         
         return 1
+    }
+    
+    private fun summonHerobrine(ctx: CommandContext<CommandSourceStack>, mode: String): Int {
+        val source = ctx.source
+        val player = source.player as? ServerPlayer ?: run {
+            source.sendFailure(Component.literal("§cOnly players can summon Herobrine!"))
+            return 0
+        }
+        
+        val state = when (mode) {
+            "behind" -> HerobrineEntity.HerobrineState.WATCHING_BEHIND
+            "roaming" -> HerobrineEntity.HerobrineState.ROAMING
+            "staring" -> HerobrineEntity.HerobrineState.STARING
+            "hunting" -> HerobrineEntity.HerobrineState.HUNTING_ANIMALS
+            else -> HerobrineEntity.HerobrineState.WATCHING_BEHIND
+        }
+        
+        val success = HerobrineSpawner.forceSpawn(player, state)
+        
+        if (success) {
+            source.sendSuccess({ Component.literal("§c§lHerobrine has been summoned... ($mode mode)") }, true)
+        } else {
+            source.sendFailure(Component.literal("§cFailed to summon Herobrine. Make sure you're in the Overworld."))
+        }
+        
+        return if (success) 1 else 0
     }
     
     // ========== ENTITY TRANSFORM ==========
@@ -697,6 +737,12 @@ object AeonisCommands {
         val entityType = entityTypeRef.value() as? EntityType<Entity> ?: run {
             source.sendFailure(Component.literal("§cInvalid entity type!"))
             return 0
+        }
+        
+        // ========== HEROBRINE SPECIAL: You can't become ME! ==========
+        if (entityType == com.qc.aeonis.entity.AeonisEntities.HEROBRINE) {
+            triggerHerobrineScareSequence(player, level)
+            return 0 // Transformation denied!
         }
         
         // Check if already transformed
@@ -2179,5 +2225,153 @@ object AeonisCommands {
             mob.yBodyRot += 45f
             mob.navigation.moveTo(mob.x + mob.random.nextGaussian(), mob.y, mob.z + mob.random.nextGaussian(), 2.0)
         }
+    }
+    
+    // ========== HEROBRINE SCARE SEQUENCE ==========
+    // Triggered when player tries to /transform into Herobrine
+    
+    private val herobrineScareMessages = listOf(
+        "§4§lYou chose to be ME??? ENJOY...",
+        "§c§oI AM ALWAYS WATCHING",
+        "§4§lYOU CANNOT ESCAPE",
+        "§c§oLOOK BEHIND YOU",
+        "§4§lTHIS IS MY WORLD NOW",
+        "§c§oYOU SHOULD NOT HAVE DONE THAT",
+        "§4§lI SEE EVERYTHING",
+        "§c§oDID YOU REALLY THINK YOU COULD BE ME?",
+        "§4§lYOUR SOUL BELONGS TO ME NOW",
+        "§c§oRUN. IT WON'T HELP.",
+        "§4§lI HAVE BEEN HERE SINCE THE BEGINNING",
+        "§c§oYOU WILL NEVER SLEEP AGAIN"
+    )
+    
+    private fun triggerHerobrineScareSequence(player: ServerPlayer, level: net.minecraft.server.level.ServerLevel) {
+        // Apply 5 seconds of darkness effect
+        player.addEffect(MobEffectInstance(MobEffects.DARKNESS, 100, 1, false, false)) // 5 seconds
+        player.addEffect(MobEffectInstance(MobEffects.BLINDNESS, 40, 0, false, false)) // Brief blindness for initial shock
+        
+        // Play scary sounds
+        level.playSound(null, player.blockPosition(), SoundEvents.AMBIENT_CAVE.value(), SoundSource.HOSTILE, 1.5f, 0.5f)
+        level.playSound(null, player.blockPosition(), SoundEvents.WARDEN_AMBIENT, SoundSource.HOSTILE, 0.8f, 0.3f)
+        
+        // Spawn 5 Herobrines in a circle around the player (3-5 blocks away)
+        val herobrines = mutableListOf<HerobrineEntity>()
+        val playerPos = player.position()
+        val random = level.random
+        
+        for (i in 0 until 5) {
+            val angle = (i * 72.0) * (Math.PI / 180.0) // 360 / 5 = 72 degrees apart
+            val distance = 3.0 + random.nextDouble() * 2.0 // 3-5 blocks away
+            
+            val spawnX = playerPos.x + cos(angle) * distance
+            val spawnZ = playerPos.z + sin(angle) * distance
+            val spawnY = playerPos.y
+            
+            val herobrine = com.qc.aeonis.entity.AeonisEntities.HEROBRINE.create(level, EntitySpawnReason.COMMAND)
+            if (herobrine != null) {
+                herobrine.setPos(spawnX, spawnY, spawnZ)
+                
+                // Make them look at the player
+                val lookX = playerPos.x - spawnX
+                val lookZ = playerPos.z - spawnZ
+                val yaw = (Math.atan2(-lookX, lookZ) * (180.0 / Math.PI)).toFloat()
+                herobrine.yRot = yaw
+                herobrine.yBodyRot = yaw
+                herobrine.yHeadRot = yaw
+                
+                // Add to world
+                level.addFreshEntity(herobrine)
+                herobrines.add(herobrine)
+            }
+        }
+        
+        // Schedule the scare sequence with delayed messages
+        val server = level.server
+        val scheduler = java.util.concurrent.Executors.newSingleThreadScheduledExecutor()
+        
+        // Initial message after 0.5 seconds (darkness kicks in)
+        scheduler.schedule({
+            server.execute {
+                player.sendSystemMessage(Component.literal("§4§l§kXX§r §4§lYou chose to be ME??? §4§l§kXX"))
+            }
+        }, 500, java.util.concurrent.TimeUnit.MILLISECONDS)
+        
+        // Make Herobrines "laugh" by bobbing heads (simulated through quick teleports)
+        for (tick in 1..30) {
+            scheduler.schedule({
+                server.execute {
+                    for (herobrine in herobrines) {
+                        if (herobrine.isAlive) {
+                            // Simulate laughing by bobbing head pitch
+                            val bobAmount = if (tick % 4 < 2) 15f else -10f
+                            herobrine.xRot = bobAmount
+                            
+                            // Also wobble slightly
+                            val wobble = sin(tick * 0.5) * 3f
+                            herobrine.yHeadRot = herobrine.yRot + wobble.toFloat()
+                        }
+                    }
+                }
+            }, (tick * 100).toLong(), java.util.concurrent.TimeUnit.MILLISECONDS)
+        }
+        
+        // More scary messages at intervals
+        scheduler.schedule({
+            server.execute {
+                player.sendSystemMessage(Component.literal("§c§o*laughing echoes*"))
+                level.playSound(null, player.blockPosition(), SoundEvents.WITCH_CELEBRATE, SoundSource.HOSTILE, 1.2f, 0.2f)
+            }
+        }, 1500, java.util.concurrent.TimeUnit.MILLISECONDS)
+        
+        scheduler.schedule({
+            server.execute {
+                val randomMsg = herobrineScareMessages[random.nextInt(herobrineScareMessages.size)]
+                player.sendSystemMessage(Component.literal(randomMsg))
+            }
+        }, 2500, java.util.concurrent.TimeUnit.MILLISECONDS)
+        
+        scheduler.schedule({
+            server.execute {
+                player.sendSystemMessage(Component.literal("§4§l§kXXXX§r §c§oENJOY YOUR NIGHTMARE §4§l§kXXXX"))
+                level.playSound(null, player.blockPosition(), SoundEvents.WARDEN_ROAR, SoundSource.HOSTILE, 0.6f, 0.4f)
+            }
+        }, 3500, java.util.concurrent.TimeUnit.MILLISECONDS)
+        
+        // Final message and cleanup after 4.5 seconds
+        scheduler.schedule({
+            server.execute {
+                val finalMessages = listOf(
+                    "§4§lYOU CAN NEVER BE ME",
+                    "§c§oI will find you again...",
+                    "§4§l§kXXX§r §4TRANSFORMATION DENIED §4§l§kXXX"
+                )
+                for (msg in finalMessages) {
+                    player.sendSystemMessage(Component.literal(msg))
+                }
+                
+                // Despawn all the Herobrines with particle effects
+                for (herobrine in herobrines) {
+                    if (herobrine.isAlive) {
+                        // Smoke particles
+                        level.sendParticles(
+                            ParticleTypes.LARGE_SMOKE,
+                            herobrine.x, herobrine.y + 1.0, herobrine.z,
+                            20, 0.3, 0.5, 0.3, 0.02
+                        )
+                        level.sendParticles(
+                            ParticleTypes.SOUL,
+                            herobrine.x, herobrine.y + 1.0, herobrine.z,
+                            10, 0.2, 0.3, 0.2, 0.05
+                        )
+                        herobrine.discard()
+                    }
+                }
+                
+                // Play final sound
+                level.playSound(null, player.blockPosition(), SoundEvents.ENDERMAN_TELEPORT, SoundSource.HOSTILE, 1.0f, 0.5f)
+            }
+            
+            scheduler.shutdown()
+        }, 4500, java.util.concurrent.TimeUnit.MILLISECONDS)
     }
 }

@@ -218,11 +218,11 @@ class CopperStalkerEntity(entityType: EntityType<out CopperStalkerEntity>, level
 
     companion object {
         fun createAttributes(): AttributeSupplier.Builder = createMobAttributes()
-            .add(Attributes.MAX_HEALTH, 10.0) // Low health - fragile but cunning
-            .add(Attributes.MOVEMENT_SPEED, 0.32) // Faster to compensate for low health
-            .add(Attributes.ATTACK_DAMAGE, 4.0)
+            .add(Attributes.MAX_HEALTH, 30.0) // Decent health - tougher than zombie
+            .add(Attributes.MOVEMENT_SPEED, 0.32) // Fast and aggressive
+            .add(Attributes.ATTACK_DAMAGE, 6.0) // Zombie x2 damage (zombie = 3)
             .add(Attributes.FOLLOW_RANGE, 40.0)
-            .add(Attributes.KNOCKBACK_RESISTANCE, 0.0) // No knockback resistance - fragile
+            .add(Attributes.KNOCKBACK_RESISTANCE, 0.2) // Slight knockback resistance
 
         fun canSpawn(
             type: EntityType<CopperStalkerEntity>,
