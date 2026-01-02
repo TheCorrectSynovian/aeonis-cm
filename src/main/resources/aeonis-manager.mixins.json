@@ -13,7 +13,8 @@
 		"PlayerInventoryAccessor",
 		"EndermanHeldBlockMixin",
 		"BeeEntityAccessor",
-		"DeathMessageMixin"
+		"DeathMessageMixin",
+		"ChatMessageMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

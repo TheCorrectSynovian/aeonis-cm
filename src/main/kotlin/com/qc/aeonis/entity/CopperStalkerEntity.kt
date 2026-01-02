@@ -220,7 +220,7 @@ class CopperStalkerEntity(entityType: EntityType<out CopperStalkerEntity>, level
         fun createAttributes(): AttributeSupplier.Builder = createMobAttributes()
             .add(Attributes.MAX_HEALTH, 30.0) // Decent health - tougher than zombie
             .add(Attributes.MOVEMENT_SPEED, 0.32) // Fast and aggressive
-            .add(Attributes.ATTACK_DAMAGE, 6.0) // Zombie x2 damage (zombie = 3)
+            .add(Attributes.ATTACK_DAMAGE, 3.5) // Zombie + 0.5 damage (zombie = 3)
             .add(Attributes.FOLLOW_RANGE, 40.0)
             .add(Attributes.KNOCKBACK_RESISTANCE, 0.2) // Slight knockback resistance
 

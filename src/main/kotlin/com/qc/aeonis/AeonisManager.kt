@@ -5,8 +5,14 @@ import com.qc.aeonis.config.AeonisFeatures
 import com.qc.aeonis.entity.AeonisEntities
 import com.qc.aeonis.entity.HerobrineEntity
 import com.qc.aeonis.entity.HerobrineSpawner
+import com.qc.aeonis.llm.AeonisAssistant
+import com.qc.aeonis.llm.LlmCommands
+import com.qc.aeonis.llm.config.LlmConfigStorage
+import com.qc.aeonis.llm.network.LlmNetworking
+import com.qc.aeonis.llm.safety.SafetyLimiter
 import com.qc.aeonis.network.AeonisNetworking
 import net.fabricmc.api.ModInitializer
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents
 import net.fabricmc.fabric.api.event.player.PlayerBlockBreakEvents
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents
@@ -26,6 +32,29 @@ object AeonisManager : ModInitializer {
 		AeonisPossession.register()
 		AeonisCommands.register()
 		AeonisNetworking.registerServer()
+		
+		// Register LLM feature
+		LlmCommands.register()
+		LlmNetworking.registerServer()
+		
+		// Initialize LLM config storage when server starts
+		ServerLifecycleEvents.SERVER_STARTED.register { server ->
+			LlmConfigStorage.init(server)
+			val config = LlmConfigStorage.getInstance().config
+			SafetyLimiter.init(config.maxBlocksPerMinute, config.maxEditRadius, config.griefProtectionEnabled)
+			
+			// Initialize script manager
+			com.qc.aeonis.llm.script.AeonisScriptManager.initialize(server)
+			
+			logger.info("LLM config storage and script manager initialized")
+		}
+		
+		// Shutdown LLM on server stop
+		ServerLifecycleEvents.SERVER_STOPPING.register { server ->
+			AeonisAssistant.despawnAll()
+			LlmConfigStorage.shutdown()
+			logger.info("LLM shutdown complete")
+		}
 		
 		// Register block break event for Herobrine shrine detection
 		PlayerBlockBreakEvents.BEFORE.register { world, player, pos, state, blockEntity ->
