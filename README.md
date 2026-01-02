@@ -313,9 +313,9 @@ The revolutionary **Mob Possession System** lets you:
 
 | Command | Description |
 |---------|-------------|
-| `/ai summon_ai` | Spawn Aeonis AI assistant |
-| `/ai dismiss_ai` | Despawn Aeonis |
-| `/ai config` | Open configuration UI (client-side) |
+| `/ai llm spawn` | Spawn Aeonis AI assistant |
+| `/ai llm despawn` | Despawn Aeonis |
+| `/ai llm config` | Open configuration UI (client-side) |
 
 ### 🔌 Supported LLM Providers & Models
 
