@@ -2,7 +2,7 @@
   <img src="https://media.forgecdn.net/avatars/console-avatars/avatar_15441b09-293b-46b5-9f56-a72f7d35a1b7.png" alt="Aeonis: Command Master Banner"/>
 </p>
 
-<h1 align="center">⚡ Aeonis: Command Master v1.4.0 ⚡</h1>
+<h1 align="center">⚡ Aeonis: Command Master v1.6.0 ⚡</h1>
 
 <p align="center">
   <b>Take control. Command anything. Master the game.</b>
@@ -17,7 +17,7 @@
   <a href="https://www.curseforge.com/minecraft/mc-mods/aeonis-command-master"><img src="https://img.shields.io/badge/CurseForge-Download-orange?style=for-the-badge&logo=curseforge&logoColor=white" alt="CurseForge"></a>
   <a href="https://modrinth.com/mod/aeonis-command-master"><img src="https://img.shields.io/badge/Modrinth-Download-green?style=for-the-badge&logo=modrinth&logoColor=white" alt="Modrinth"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge" alt="License"></a>
-  <img src="https://img.shields.io/badge/Version-1.4.0-purple?style=for-the-badge" alt="Version">
+  <img src="https://img.shields.io/badge/Version-1.6.0-purple?style=for-the-badge" alt="Version">
 </p>
 
 <p align="center">
@@ -35,6 +35,14 @@
 
 
 # Aeonis: Command Master - Changelog
+
+## 1.6.0 - The AI Edition 🤖 (2026-01-02)
+- **Aeonis AI Assistant** - Spawn an LLM-powered AI companion that follows, chats, and executes commands
+- **Command Execution** - AI can run any Minecraft command with safety blocks
+- **Script System** - Create and save reusable multi-command scripts
+- **Custom Commands** - Define your own command aliases through AI
+- **Automation Tasks** - Schedule recurring commands with intervals
+- **Improved Navigation** - Better jumping and pathfinding
 
 ## 1.5.0 - The Horror Update Phase 1 🎃 (2026-01-01)
 - **Herobrine - The Legend Returns:**
