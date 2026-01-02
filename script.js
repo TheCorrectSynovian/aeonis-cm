@@ -126,7 +126,7 @@ const galleryItems = document.querySelectorAll('.gallery-item');
 galleryItems.forEach(item => {
     item.addEventListener('click', () => {
         const img = item.querySelector('img');
-        if (img && img.src && !img.src.includes('undefined')) {
+        if (img && img.complete && img.naturalWidth > 0) {
             // Simple alert for now - can be enhanced with a modal
             console.log('Image clicked:', img.alt);
         }
