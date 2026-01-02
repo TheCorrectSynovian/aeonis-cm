@@ -1,0 +1,24 @@
+{
+	"required": true,
+	"package": "com.qc.aeonis.mixin",
+	"compatibilityLevel": "JAVA_21",
+	"mixins": [
+		"PlayerAttackMixin",
+		"PlayerDamageMixin",
+		"PlayerWallMixin",
+		"MobTargetMixin",
+		"EntityCollisionMixin",
+		"FrogEntityAccessor",
+		"LivingEntityAccessor",
+		"PlayerInventoryAccessor",
+		"EndermanHeldBlockMixin",
+		"BeeEntityAccessor",
+		"DeathMessageMixin"
+	],
+	"injectors": {
+		"defaultRequire": 1
+	},
+	"overwrites": {
+		"requireAnnotations": false
+	}
+}
