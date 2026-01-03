@@ -1,5 +1,48 @@
 # Aeonis: Command Master - Changelog
 
+## 1.6.0 - The AI Edition 🤖 (2026-01-02)
+- **Aeonis AI Assistant - Your In-Game AI Companion:**
+  - Spawn a fully autonomous AI-controlled fake player named "Aeonis"
+  - Powered by LLM (Ollama/OpenAI-compatible) with conversational memory
+  - Follows players, navigates terrain, jumps obstacles automatically
+  - `/ai summon_ai` - Spawn Aeonis AI assistant
+  - `/ai dismiss_ai` - Despawn Aeonis
+  - `/ai config` - Configure LLM endpoint and model
+  
+- **AI Command Execution System:**
+  - Aeonis can execute ANY Minecraft command with OP privileges
+  - Safety-blocked dangerous commands (stop, ban, kick, op, deop, whitelist)
+  - Use `[CMD: /command]` tag in chat to request command execution
+  - Perfect for hands-free gameplay automation
+  
+- **Script System:**
+  - Create reusable multi-command scripts via AI
+  - `[SCRIPT: name | cmd1 | cmd2 | ...]` - Create and save scripts
+  - `[RUNSCRIPT: name]` - Execute saved scripts
+  - Scripts persist in `<game_dir>/aeonis/scripts/`
+  
+- **Custom Commands:**
+  - Define your own command aliases through AI
+  - `[NEWCMD: name | cmd1 | cmd2 | ...]` - Create custom command
+  - `[RUNCMD: name]` - Execute custom command
+  - Commands persist in `<game_dir>/aeonis/commands/`
+  
+- **Automation Tasks:**
+  - Schedule recurring tasks with customizable intervals
+  - `[AUTOMATION: name | interval | cmd1 | cmd2 | ...]` - Create automation
+  - `[STOPAUTO: name]` - Stop specific automation
+  - Great for auto-time set, weather control, periodic effects
+  
+- **Improved Navigation & Movement:**
+  - Enhanced obstacle detection and automatic jumping
+  - Better pathfinding to follow players smoothly
+  - Proper physics for jumps and momentum
+  
+- **Comprehensive AI Manual:**
+  - Detailed system prompt teaches Aeonis all capabilities
+  - Context-aware responses based on game state
+  - Remembers conversation history per session
+
 ## 1.5.0 - The Horror Update Phase 1 🎃 (2026-01-01)
 - **Herobrine - The Legend Returns:**
   - New mysterious entity that spawns naturally when `extra_mobs` is enabled
