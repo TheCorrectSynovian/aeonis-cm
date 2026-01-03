@@ -10,6 +10,8 @@ import com.qc.aeonis.llm.LlmCommands
 import com.qc.aeonis.llm.config.LlmConfigStorage
 import com.qc.aeonis.llm.network.LlmNetworking
 import com.qc.aeonis.llm.safety.SafetyLimiter
+import com.qc.aeonis.minigame.prophunt.PropHuntCommands
+import com.qc.aeonis.minigame.prophunt.PropHuntManager
 import com.qc.aeonis.network.AeonisNetworking
 import net.fabricmc.api.ModInitializer
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents
@@ -32,6 +34,11 @@ object AeonisManager : ModInitializer {
 		AeonisPossession.register()
 		AeonisCommands.register()
 		AeonisNetworking.registerServer()
+		
+		// Register Prop Hunt minigame
+		PropHuntManager.register()
+		PropHuntCommands.register()
+		logger.info("Prop Hunt minigame registered")
 		
 		// Register LLM feature
 		LlmCommands.register()

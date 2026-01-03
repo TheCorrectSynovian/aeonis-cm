@@ -15,7 +15,7 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 /**
- * Task for handling chat interactions with the LLM.
+ * Task for handling chat interactions with the LLM
  * Receives a message, sends it to the LLM, and responds as Aeonis.
  */
 public class ChatTask implements AeonisTask {

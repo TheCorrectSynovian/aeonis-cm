@@ -1,5 +1,64 @@
 # Aeonis: Command Master - Changelog
 
+## 1.7.0 - The Prop Hunt Update 🎭 (2026-01-03)
+- **Complete Prop Hunt Minigame System:**
+  - Full-featured hide-and-seek minigame with props and hunters
+  - Comprehensive command system with `/prophunt` (or `/ph` alias)
+  - Create games, join, leave, manage arenas all from commands
+  
+- **Prop Disguise System:**
+  - **50+ disguise types** including animals, mobs, boats, armor stands, minecarts
+  - Categorized props: Small (chicken, rabbit), Medium (pig, zombie), Large (horse, iron golem), Objects (armor stand, minecart)
+  - **Rotation Lock** - Lock your disguise's rotation to mimic inanimate objects
+  - **Movement Freeze** - Completely freeze in place for perfect hiding
+  - **Taunt System** - Sound decoys, particle bursts, fake footsteps, fake deaths
+  - Visual entity follows player while player remains invisible
+  
+- **Hunter Arsenal:**
+  - **Scanner Ability** - Pulse that reveals nearby props temporarily (30s cooldown)
+  - **Tracker Dart** - Marks the nearest prop with glowing effect through walls
+  - **Stun Grenades** - Area stun that freezes props and forces them to unfreeze
+  - **Prop Compass** - Direction hints toward nearest prop
+  - **False Hit Penalty** - Hitting non-props damages the hunter
+  
+- **Game Phases & Timing:**
+  - Waiting → Starting countdown → Hiding Phase → Seeking Phase → Round End
+  - Configurable hide time (default 30s), round time (default 3 minutes)
+  - Hunters frozen and blinded during hiding phase
+  - Automatic round restart and multi-round games (default 5 rounds)
+  
+- **Arena System:**
+  - Create arenas at current position or with custom boundaries
+  - Arena presets: small, medium, large, village, forest, cave, nether
+  - Safe spawn point generation with validation
+  - Chunk preloading for smooth teleportation
+  - Border enforcement with push-back mechanic
+  
+- **Team Balancing:**
+  - Dynamic team assignment based on player count
+  - Configurable hunter ratio (default 30%)
+  - Role rotation between rounds for fair play
+  - Scoreboard integration with colored team names
+  
+- **Quality of Life:**
+  - Actionbar status display for both teams
+  - Countdown sounds and visual effects
+  - Periodic hunter hints (configurable)
+  - Spectator mode for eliminated props with fly-around ability
+  - Comprehensive help system and control tips
+  
+- **Rewards & Statistics:**
+  - XP rewards for survival, finding props, winning
+  - Item loot drops for winners
+  - Achievement system (Master Hider, Perfect Hunter, etc.)
+  - Per-player statistics tracking
+  
+- **Configuration Options:**
+  - `/prophunt settings` - View and modify all settings
+  - Adjustable rounds, timers, cooldowns, team sizes
+  - Toggle hunter hints on/off
+  - Customize rewards and penalties
+
 ## 1.6.0 - The AI Edition 🤖 (2026-01-02)
 - **Aeonis AI Assistant - Your In-Game AI Companion:**
   - Spawn a fully autonomous AI-controlled fake player named "Aeonis"
