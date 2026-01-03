@@ -249,10 +249,11 @@ object ArenaManager {
     fun teleportToLobby(player: ServerPlayer, arena: PropHuntArena) {
         preloadChunksAround(player.level() as ServerLevel, arena.lobbySpawn, 3)
         
+        // Center player in block to avoid suffocation or clipping
         player.teleportTo(
-            arena.lobbySpawn.x + 0.5,
+            arena.lobbySpawn.x + 0.5, // Center X
             arena.lobbySpawn.y.toDouble(),
-            arena.lobbySpawn.z + 0.5
+            arena.lobbySpawn.z + 0.5  // Center Z
         )
         
         player.sendSystemMessage(Component.literal("§a[PropHunt] §7Teleported to arena lobby!"))
@@ -276,10 +277,11 @@ object ArenaManager {
         val spawn = spawns.random()
         preloadChunksAround(player.level() as ServerLevel, spawn, 2)
         
+        // Center player in block to avoid suffocation or clipping
         player.teleportTo(
-            spawn.x + 0.5,
+            spawn.x + 0.5, // Center X
             spawn.y.toDouble(),
-            spawn.z + 0.5
+            spawn.z + 0.5  // Center Z
         )
         
         // Random facing direction for props (helps with hiding)
@@ -305,6 +307,7 @@ object ArenaManager {
             val y = findSafeY(level, x, z)
             if (y != null && y >= arena.minBounds.y && y <= arena.maxBounds.y) {
                 preloadChunksAround(level, BlockPos(x, y, z), 2)
+                // Center player in block to avoid suffocation or clipping
                 player.teleportTo(x + 0.5, y.toDouble(), z + 0.5)
                 return true
             }
@@ -408,6 +411,7 @@ object ArenaManager {
     fun getDistanceToBorder(player: ServerPlayer, arena: PropHuntArena): Double {
         val pos = player.blockPosition()
         
+        // Calculate distance to each border (X, Y, Z)
         val distX = minOf(pos.x - arena.minBounds.x, arena.maxBounds.x - pos.x).toDouble()
         val distY = minOf(pos.y - arena.minBounds.y, arena.maxBounds.y - pos.y).toDouble()
         val distZ = minOf(pos.z - arena.minBounds.z, arena.maxBounds.z - pos.z).toDouble()
@@ -433,6 +437,7 @@ data class PropHuntArena(
 ) {
     /** Gets the arena's bounding box as an AABB */
     fun toAABB(): AABB = AABB(
+        // Convert BlockPos bounds to AABB (inclusive)
         minBounds.x.toDouble(), minBounds.y.toDouble(), minBounds.z.toDouble(),
         maxBounds.x.toDouble(), maxBounds.y.toDouble(), maxBounds.z.toDouble()
     )

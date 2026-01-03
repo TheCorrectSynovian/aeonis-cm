@@ -1,7 +1,12 @@
 # Aeonis: Command Master - Changelog
 
-## 1.7.0 - The Prop Hunt Update 🎭 (2026-01-03)
-- **Complete Prop Hunt Minigame System:**
+## 1.7.0 - The Hotfix Update 🔧 (2026-01-03)
+- **Prop Hunt Marked as Experimental:**
+  - Added warning message on world join: "Prop Hunt is EXPERIMENTAL and WIP!"
+  - Added warning when creating a Prop Hunt game
+  - Players are now clearly informed about the experimental nature
+
+- **Complete Prop Hunt Minigame System (EXPERIMENTAL - WIP):**
   - Full-featured hide-and-seek minigame with props and hunters
   - Comprehensive command system with `/prophunt` (or `/ph` alias)
   - Create games, join, leave, manage arenas all from commands

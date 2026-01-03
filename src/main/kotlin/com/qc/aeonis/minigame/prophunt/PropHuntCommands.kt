@@ -213,6 +213,16 @@ object PropHuntCommands {
         val arenaId = StringArgumentType.getString(ctx, "arena")
         val level = ctx.source.level
         
+        // Show experimental warning before creating game
+        player.sendSystemMessage(Component.literal(""))
+        player.sendSystemMessage(Component.literal("§6§l⚠ §c§lWARNING §6§l⚠"))
+        player.sendSystemMessage(Component.literal("§7━━━━━━━━━━━━━━━━━━━━━━━━━━━━"))
+        player.sendSystemMessage(Component.literal("§eProp Hunt is §c§lEXPERIMENTAL §eand §c§lWORK IN PROGRESS§e!"))
+        player.sendSystemMessage(Component.literal("§7You may encounter bugs or incomplete features."))
+        player.sendSystemMessage(Component.literal("§7Proceed at your own risk!"))
+        player.sendSystemMessage(Component.literal("§7━━━━━━━━━━━━━━━━━━━━━━━━━━━━"))
+        player.sendSystemMessage(Component.literal(""))
+        
         val game = PropHuntManager.createGame(arenaId, level, player)
         return if (game != null) {
             ctx.source.sendSuccess({ Component.literal("§a[PropHunt] §7Game created! Use §e/prophunt join $arenaId§7 to join.") }, true)

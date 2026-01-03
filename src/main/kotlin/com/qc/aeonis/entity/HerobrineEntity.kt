@@ -6,6 +6,7 @@ import net.minecraft.core.Direction
 import net.minecraft.core.particles.ParticleTypes
 import net.minecraft.network.chat.Component
 import net.minecraft.server.level.ServerLevel
+import net.minecraft.server.level.ServerPlayer
 import net.minecraft.sounds.SoundEvents
 import net.minecraft.sounds.SoundSource
 import net.minecraft.tags.BlockTags
@@ -107,6 +108,49 @@ class HerobrineEntity(entityType: EntityType<out HerobrineEntity>, level: Level)
         
         val serverLevel = level() as? ServerLevel ?: return
         existenceTicks++
+        
+        // --- CREEPYPASTA: Occasionally set random fires in forests at night ---
+        if (random.nextInt(1200) == 0 && targetPlayerId != null) { // ~1/minute
+            val player = serverLevel.getEntity(targetPlayerId!!) as? Player
+            if (player != null && serverLevel.dayTime in 13000..23000) { // Night time
+                trySetRandomFire(serverLevel, player)
+            }
+        }
+
+        // --- CREEPYPASTA: Occasionally place cryptic sign near player ---
+        if (random.nextInt(900) == 0 && targetPlayerId != null) { // ~1/45s
+            val player = serverLevel.getEntity(targetPlayerId!!) as? Player
+            if (player != null) {
+                tryPlaceCrypticSign(serverLevel, player)
+            }
+        }
+        
+        // --- CREEPYPASTA: Occasionally remove torches/lights near player ---
+        if (random.nextInt(600) == 0 && targetPlayerId != null) { // ~1/30s
+            val player = serverLevel.getEntity(targetPlayerId!!) as? Player
+            if (player != null) {
+                tryRemoveNearbyTorches(serverLevel, player)
+            }
+        }
+        
+        // --- CREEPYPASTA: Occasionally replace a block near player ---
+        if (random.nextInt(300) == 0 && targetPlayerId != null) { // ~1/15s
+            val player = serverLevel.getEntity(targetPlayerId!!) as? Player
+            if (player != null) {
+                tryReplaceBlockNearPlayer(serverLevel, player)
+            }
+        }
+        
+        // --- CREEPYPASTA: Occasionally whisper in chat ---
+        if (random.nextInt(1200) == 0 && targetPlayerId != null) { // ~1/minute
+            val player = serverLevel.getEntity(targetPlayerId!!) as? ServerPlayer
+            if (player != null) {
+                val whispers = listOf("You can't hide...", "I'm watching you...", "Leave this place...", "He is coming...")
+                player.sendSystemMessage(Component.literal("§8§o" + whispers.random()))
+                // Play a whisper sound
+                serverLevel.playSound(null, player.blockPosition(), SoundEvents.AMBIENT_CAVE.value(), SoundSource.HOSTILE, 0.3f, 0.5f)
+            }
+        }
         
         // Handle scheduled disappearance (when player looks at us)
         if (scheduledDisappearTicks > 0) {
@@ -690,8 +734,157 @@ class HerobrineEntity(entityType: EntityType<out HerobrineEntity>, level: Level)
         
         return result
     }
-    
-    companion object {
+
+        companion object {
+            /**
+             * Triggers the Herobrine dream event when a player tries to sleep in a bed.
+             * Spawns Herobrine at the edge of the player's vision, plays a sound, and sends a creepy message.
+             */
+            @JvmStatic
+            fun triggerDreamEvent(player: ServerPlayer) {
+                val serverLevel = player.level() as? ServerLevel ?: return
+                // Spawn Herobrine at the edge of render distance (32 blocks away)
+                val yaw = Math.toRadians(player.yRot.toDouble() + 180.0)
+                val distance = 32.0
+                val spawnX = player.x + sin(yaw) * distance
+                val spawnZ = player.z - cos(yaw) * distance
+                val spawnY = serverLevel.getHeight(net.minecraft.world.level.levelgen.Heightmap.Types.WORLD_SURFACE, spawnX.toInt(), spawnZ.toInt()).toDouble()
+                val herobrine = AeonisEntities.HEROBRINE.create(serverLevel, EntitySpawnReason.COMMAND)
+                if (herobrine != null) {
+                    herobrine.setPos(spawnX, spawnY, spawnZ)
+                    herobrine.yRot = player.yRot
+                    herobrine.xRot = 0f
+                    herobrine.setTargetPlayer(player)
+                    herobrine.setState(HerobrineState.STARING)
+                    herobrine.maxExistenceTicks = 40 // 2 seconds
+                    herobrine.hasBeenSeenOnce = true
+                    serverLevel.addFreshEntity(herobrine)
+                }
+                // Play cave ambient sound
+                serverLevel.playSound(null, player.blockPosition(), SoundEvents.AMBIENT_CAVE.value(), SoundSource.HOSTILE, 0.7f, 0.5f)
+                // Send creepy message
+                player.sendSystemMessage(Component.literal("§8§oYou feel a cold presence watching you in your dreams..."))
+            }
+            
+                        /**
+                         * Try to set a random fire near the player, only on flammable blocks and not in rain.
+                         */
+                        fun trySetRandomFire(serverLevel: ServerLevel, player: Player) {
+                            if (serverLevel.isRaining) return
+                            val basePos = player.blockPosition()
+                            val offsets = (-6..6).flatMap { x -> (-6..6).map { z -> BlockPos(x, 0, z) } }.shuffled()
+                            for (offset in offsets) {
+                                val pos = basePos.offset(offset)
+                                val below = pos.below()
+                                val stateBelow = serverLevel.getBlockState(below)
+                                if (stateBelow.`is`(BlockTags.LOGS) && serverLevel.getBlockState(pos).isAir) {
+                                    serverLevel.setBlock(pos, Blocks.FIRE.defaultBlockState(), 3)
+                                    // Subtle smoke and sound
+                                    serverLevel.sendParticles(ParticleTypes.SMOKE, pos.x + 0.5, pos.y + 0.8, pos.z + 0.5, 8, 0.2, 0.1, 0.2, 0.01)
+                                    serverLevel.playSound(null, pos, SoundEvents.FIRECHARGE_USE, SoundSource.HOSTILE, 0.5f, 0.8f)
+                                    break
+                                }
+                            }
+                        }
+                /**
+                 * Place a cryptic sign near the player with a random message
+                 */
+                private val crypticMessages = listOf(
+                    "Leave",
+                    "Stop",
+                    "I'm watching you",
+                    "He is here",
+                    "Run",
+                    "You can't hide",
+                    "Herobrine was here",
+                    "It is too late"
+                )
+
+                fun tryPlaceCrypticSign(serverLevel: ServerLevel, player: Player) {
+                    val basePos = player.blockPosition()
+                    val offsets = listOf(
+                        BlockPos(2, 0, 0), BlockPos(-2, 0, 0),
+                        BlockPos(0, 0, 2), BlockPos(0, 0, -2),
+                        BlockPos(2, 0, 2), BlockPos(-2, 0, -2)
+                    ).shuffled()
+                    for (offset in offsets) {
+                        val pos = basePos.offset(offset)
+                        val below = pos.below()
+                        if (serverLevel.getBlockState(pos).isAir && serverLevel.getBlockState(below).isSolid) {
+                            val signState = Blocks.OAK_SIGN.defaultBlockState()
+                            serverLevel.setBlock(pos, signState, 3)
+                            val signEntity = serverLevel.getBlockEntity(pos) as? SignBlockEntity
+                            if (signEntity != null) {
+                                val msg = crypticMessages.random()
+                                val text = SignText()
+                                    .setMessage(0, Component.literal(""))
+                                    .setMessage(1, Component.literal(msg))
+                                    .setMessage(2, Component.literal(""))
+                                    .setMessage(3, Component.literal(""))
+                                signEntity.setText(text, true)
+                            }
+                            // Subtle particle effect
+                            serverLevel.sendParticles(
+                                ParticleTypes.SMOKE,
+                                pos.x + 0.5, pos.y + 1.0, pos.z + 0.5,
+                                8, 0.2, 0.2, 0.2, 0.01
+                            )
+                            break
+                        }
+                    }
+                }
+                
+                /**
+                 * Attempts to remove torches or light sources near the player
+                 */
+                fun tryRemoveNearbyTorches(serverLevel: ServerLevel, player: Player) {
+                    val basePos = player.blockPosition()
+                    val range = 10 // Search within 10 blocks
+                    val lightBlocks = listOf(Blocks.TORCH, Blocks.WALL_TORCH, Blocks.SOUL_TORCH, Blocks.SOUL_WALL_TORCH, Blocks.LANTERN, Blocks.SOUL_LANTERN)
+                    
+                    for (x in -range..range) {
+                        for (y in -range..range) {
+                            for (z in -range..range) {
+                                val pos = basePos.offset(x, y, z)
+                                val blockState = serverLevel.getBlockState(pos)
+                                if (lightBlocks.contains(blockState.block)) {
+                                    // Remove the light source
+                                    serverLevel.setBlock(pos, Blocks.AIR.defaultBlockState(), 3)
+                                    // Play a subtle sound
+                                    serverLevel.playSound(null, pos, SoundEvents.WOOD_BREAK, SoundSource.BLOCKS, 0.5f, 1.0f)
+                                    // Send message to player
+                                    (player as? ServerPlayer)?.sendSystemMessage(Component.literal("§8§oThe light flickers and goes out..."))
+                                    return // Only remove one at a time
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                /**
+                 * Attempts to replace a block near the player with netherrack
+                 */
+                fun tryReplaceBlockNearPlayer(serverLevel: ServerLevel, player: Player) {
+                    val basePos = player.blockPosition()
+                    val range = 5
+                    for (x in -range..range) {
+                        for (y in -range..range) {
+                            for (z in -range..range) {
+                                val pos = basePos.offset(x, y, z)
+                                val blockState = serverLevel.getBlockState(pos)
+                                if (blockState.block != Blocks.AIR && blockState.block != Blocks.BEDROCK && blockState.block != Blocks.NETHERRACK) {
+                                    // Replace with netherrack
+                                    serverLevel.setBlock(pos, Blocks.NETHERRACK.defaultBlockState(), 3)
+                                    // Play sound
+                                    serverLevel.playSound(null, pos, SoundEvents.NETHERRACK_BREAK, SoundSource.BLOCKS, 0.5f, 1.0f)
+                                    // Send message
+                                    (player as? ServerPlayer)?.sendSystemMessage(Component.literal("§8§oThe block you placed feels... wrong..."))
+                                    return
+                                }
+                            }
+                        }
+                    }
+                }
         // Track shrine blocks across all Herobrines for block break detection
         private val shrineBlocks = ConcurrentHashMap<String, MutableSet<BlockPos>>()
         
@@ -813,6 +1006,9 @@ class HerobrineEntity(entityType: EntityType<out HerobrineEntity>, level: Level)
             herobrine.setState(state)
             
             serverLevel.addFreshEntity(herobrine)
+            
+            // Cause thunderstorm on appearance
+            serverLevel.setWeatherParameters(0, 6000, true, true)
             
             return herobrine
         }

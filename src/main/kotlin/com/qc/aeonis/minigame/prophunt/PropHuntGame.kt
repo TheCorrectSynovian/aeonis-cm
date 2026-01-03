@@ -320,10 +320,11 @@ data class PropHuntPlayerData(
         player.setGameMode(originalGameMode)
         
         // Restore position
+        // Center player in block to avoid suffocation or clipping
         player.teleportTo(
-            originalPosition.x.toDouble() + 0.5,
+            originalPosition.x.toDouble() + 0.5, // Center X
             originalPosition.y.toDouble(),
-            originalPosition.z.toDouble() + 0.5
+            originalPosition.z.toDouble() + 0.5  // Center Z
         )
         
         // Restore inventory

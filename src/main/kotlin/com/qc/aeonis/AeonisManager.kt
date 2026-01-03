@@ -14,6 +14,7 @@ import com.qc.aeonis.minigame.prophunt.PropHuntCommands
 import com.qc.aeonis.minigame.prophunt.PropHuntManager
 import com.qc.aeonis.network.AeonisNetworking
 import net.fabricmc.api.ModInitializer
+import net.fabricmc.fabric.api.entity.event.v1.EntitySleepEvents
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents
 import net.fabricmc.fabric.api.event.player.PlayerBlockBreakEvents
@@ -70,6 +71,13 @@ object AeonisManager : ModInitializer {
 				HerobrineEntity.onBlockBroken(world, pos, player)
 			}
 			true // Allow the break to continue
+		}
+		
+		// Register sleep event for Herobrine dream event (creepypasta feature)
+		EntitySleepEvents.START_SLEEPING.register { entity, sleepingPos ->
+			if (entity is ServerPlayer) {
+				HerobrineEntity.triggerDreamEvent(entity)
+			}
 		}
 		
 		// Register tick event for transformed players - sync mob position and handle flying
@@ -172,6 +180,18 @@ object AeonisManager : ModInitializer {
 					player.sendSystemMessage(Component.literal("§7━━━━━━━━━━━━━━━━━━━━━━━━━━━━"))
 					player.sendSystemMessage(Component.literal(""))
 				}
+			}
+			
+			// Show Prop Hunt experimental warning message on join
+			server.execute {
+				player.sendSystemMessage(Component.literal(""))
+				player.sendSystemMessage(Component.literal("§6§l⚠ §e§lProp Hunt Notice §6§l⚠"))
+				player.sendSystemMessage(Component.literal("§7━━━━━━━━━━━━━━━━━━━━━━━━━━━━"))
+				player.sendSystemMessage(Component.literal("§eThe new §6§lProp Hunt §efeature is §c§lEXPERIMENTAL §eand §c§lWIP§e!"))
+				player.sendSystemMessage(Component.literal("§7Some features may not work as expected."))
+				player.sendSystemMessage(Component.literal("§7Report bugs on our GitHub!"))
+				player.sendSystemMessage(Component.literal("§7━━━━━━━━━━━━━━━━━━━━━━━━━━━━"))
+				player.sendSystemMessage(Component.literal(""))
 			}
 
 			// Additional possession state validation / sync

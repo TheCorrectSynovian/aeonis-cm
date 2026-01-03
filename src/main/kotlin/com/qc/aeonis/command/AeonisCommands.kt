@@ -731,6 +731,30 @@ object AeonisCommands {
             return 0
         }
         val level = player.level() as net.minecraft.server.level.ServerLevel
+
+        // Store original gamemode in case we need to restore it on failure
+        val originalMode = player.gameMode.gameModeForPlayer
+
+        // --- FUN ENHANCEMENT: Play sound and spawn particles ---
+        try {
+            // Play a random fun sound (e.g. villager celebrate, totem use, or generic)
+            val sounds = listOf(
+                net.minecraft.sounds.SoundEvents.PLAYER_LEVELUP,
+                net.minecraft.sounds.SoundEvents.FIREWORK_ROCKET_LARGE_BLAST,
+                net.minecraft.sounds.SoundEvents.AMETHYST_CLUSTER_BREAK,
+                net.minecraft.sounds.SoundEvents.GOAT_SCREAMING_AMBIENT
+            )
+            val sound = sounds.random()
+            level.playSound(null, player.blockPosition(), sound, net.minecraft.sounds.SoundSource.PLAYERS, 1.2f, 1.0f)
+            // Spawn some particles (e.g. happy villager, explosion, or portal)
+            val particles = listOf(
+                net.minecraft.core.particles.ParticleTypes.HAPPY_VILLAGER,
+                net.minecraft.core.particles.ParticleTypes.EXPLOSION,
+                net.minecraft.core.particles.ParticleTypes.PORTAL
+            )
+            val particle = particles.random()
+            level.sendParticles(particle, player.x, player.y + 1.0, player.z, 32, 0.5, 1.0, 0.5, 0.1)
+        } catch (_: Exception) {}
         
         // Get entity type from argument
         val entityTypeRef = ResourceArgument.getEntityType(ctx, "entity")
@@ -742,12 +766,16 @@ object AeonisCommands {
         // ========== HEROBRINE SPECIAL: You can't become ME! ==========
         if (entityType == com.qc.aeonis.entity.AeonisEntities.HEROBRINE) {
             triggerHerobrineScareSequence(player, level)
+            // Restore original gamemode if transform fails
+            player.setGameMode(originalMode)
             return 0 // Transformation denied!
         }
         
         // Check if already transformed
         if (transformedEntities.containsKey(player.uuid)) {
             source.sendFailure(Component.literal("§cYou're already transformed! Use /untransform first."))
+            // Restore original gamemode if transform fails
+            player.setGameMode(originalMode)
             return 0
         }
         
@@ -760,6 +788,8 @@ object AeonisCommands {
         
         if (entity == null) {
             source.sendFailure(Component.literal("§cFailed to spawn entity!"))
+            // Restore original gamemode if transform fails
+            player.setGameMode(originalMode)
             return 0
         }
         
@@ -815,8 +845,21 @@ object AeonisCommands {
         player.teleportTo(entity.x, entity.y, entity.z)
         
         val entityName = entityType.description.string
+        // --- FUN ENHANCEMENT: Random fun message ---
+        val funMessages = listOf(
+            "Did you know? Some mobs just want a hug!",
+            "§dTransformation complete! Don't forget to moo if you're a cow.",
+            "§bYou feel... different. Is that a tail?",
+            "§eRemember: With great power comes great responsibility.",
+            "§aYou are now the ultimate imposter!",
+            "§6Fun fact: Creepers were a coding bug.",
+            "§5Try not to get sheared if you're a sheep!",
+            "§cWarning: May cause spontaneous dancing.",
+            "§9You have unlocked the secrets of morphing!"
+        )
+        val funMsg = funMessages.random()
         source.sendSuccess({ 
-            Component.literal("§a✨ You transformed into a §b$entityName$variantInfo§a! Use WASD to move, SPACE to jump. §e/untransform§a to return.") 
+            Component.literal("§a✨ You transformed into a §b$entityName$variantInfo§a! Use WASD to move, SPACE to jump. §e/untransform§a to return.\n$funMsg") 
         }, true)
         return 1
     }
