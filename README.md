@@ -2,7 +2,7 @@
   <img src="https://media.forgecdn.net/avatars/console-avatars/avatar_15441b09-293b-46b5-9f56-a72f7d35a1b7.png" alt="Aeonis: Command Master Banner"/>
 </p>
 
-<h1 align="center">⚡ Aeonis: Command Master v1.4.0 ⚡</h1>
+<h1 align="center">⚡ Aeonis: Command Master v1.6.0 ⚡</h1>
 
 <p align="center">
   <b>Take control. Command anything. Master the game.</b>
@@ -17,7 +17,7 @@
   <a href="https://www.curseforge.com/minecraft/mc-mods/aeonis-command-master"><img src="https://img.shields.io/badge/CurseForge-Download-orange?style=for-the-badge&logo=curseforge&logoColor=white" alt="CurseForge"></a>
   <a href="https://modrinth.com/mod/aeonis-command-master"><img src="https://img.shields.io/badge/Modrinth-Download-green?style=for-the-badge&logo=modrinth&logoColor=white" alt="Modrinth"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge" alt="License"></a>
-  <img src="https://img.shields.io/badge/Version-1.4.0-purple?style=for-the-badge" alt="Version">
+  <img src="https://img.shields.io/badge/Version-1.6.0-purple?style=for-the-badge" alt="Version">
 </p>
 
 <p align="center">
@@ -35,6 +35,14 @@
 
 
 # Aeonis: Command Master - Changelog
+
+## 1.6.0 - The AI Edition 🤖 (2026-01-02)
+- **Aeonis AI Assistant** - Spawn an LLM-powered AI companion that follows, chats, and executes commands
+- **Command Execution** - AI can run any Minecraft command with safety blocks
+- **Script System** - Create and save reusable multi-command scripts
+- **Custom Commands** - Define your own command aliases through AI
+- **Automation Tasks** - Schedule recurring commands with intervals
+- **Improved Navigation** - Better jumping and pathfinding
 
 ## 1.5.0 - The Horror Update Phase 1 🎃 (2026-01-01)
 - **Herobrine - The Legend Returns:**
@@ -295,6 +303,216 @@ The revolutionary **Mob Possession System** lets you:
 
 ---
 
+## 🤖 Aeonis AI Assistant - Complete Manual
+
+<p align="center">
+  <img src="https://readme-typing-svg.herokuapp.com?font=Fira+Code&weight=600&size=20&pause=1000&color=00FF88&center=true&vCenter=true&width=600&lines=AI-Powered+In-Game+Assistant;Execute+Commands+with+OP+Privileges;Create+Scripts+%26+Automations;LLM+Integration+(OpenAI%2C+Gemini%2C+OpenRouter)" alt="AI Features" />
+</p>
+
+### 🚀 Quick Start
+
+| Command | Description |
+|---------|-------------|
+| `/ai llm spawn` | Spawn Aeonis AI assistant |
+| `/ai llm despawn` | Despawn Aeonis |
+| `/ai llm config` | Open configuration UI (client-side) |
+
+### 🔌 Supported LLM Providers & Models
+
+<table>
+<tr>
+<th>Provider</th>
+<th>API Endpoint</th>
+<th>Supported Models</th>
+</tr>
+<tr>
+<td><b>🟢 OpenAI</b></td>
+<td><code>https://api.openai.com/v1</code></td>
+<td>
+• gpt-4o<br>
+• gpt-4o-mini (default)<br>
+• gpt-4-turbo<br>
+• gpt-5 / gpt-5.1 / gpt-5.2<br>
+• gpt-4<br>
+• gpt-3.5-turbo
+</td>
+</tr>
+<tr>
+<td><b>🔵 Gemini</b></td>
+<td><code>https://generativelanguage.googleapis.com/v1beta</code></td>
+<td>
+• gemini-2.0-flash-exp<br>
+• gemini-2.5-pro<br>
+• gemini-2.5-flash<br>
+• gemini-1.0-pro
+</td>
+</tr>
+<tr>
+<td><b>🟣 OpenRouter</b></td>
+<td><code>https://openrouter.ai/api/v1</code></td>
+<td>
+• openai/gpt-oss-20b:free<br>
+• nousresearch/deephermes-3-llama-3-8b-preview:free<br>
+• mistralai/mistral-small-3.1-24b-instruct:free<br>
+• anthropic/claude-3.5-sonnet<br>
+• google/gemini-pro-1.5<br>
+• meta-llama/llama-3.1-70b-instruct<br>
+• mistralai/mixtral-8x7b-instruct
+</td>
+</tr>
+</table>
+
+> 💡 **Tip:** OpenRouter offers FREE models! Perfect for testing without API costs.
+
+---
+
+### ⚡ AI Command Execution
+
+Aeonis can execute **ANY Minecraft command** with full OP privileges! Just chat with Aeonis and ask.
+
+**Tag Syntax:** `[CMD: /command]`
+
+**Examples:**
+```
+User: "Can you give me some diamonds?"
+Aeonis: "Sure! [CMD: /give @p diamond 64]"
+
+User: "Make it daytime please"
+Aeonis: "Done! [CMD: /time set day]"
+
+User: "Spawn some pigs around me"
+Aeonis: "Here they come! [CMD: /summon pig ~ ~ ~] [CMD: /summon pig ~2 ~ ~] [CMD: /summon pig ~-2 ~ ~]"
+```
+
+**Common Commands Aeonis Uses:**
+| Request | Command Executed |
+|---------|-----------------|
+| Give items | `/give @p <item> <count>` |
+| Set time | `/time set day/night/noon` |
+| Weather | `/weather clear/rain/thunder` |
+| Teleport | `/tp @p <x> <y> <z>` |
+| Spawn mobs | `/summon <entity> ~ ~ ~` |
+| Effects | `/effect give @p <effect> <duration>` |
+| Gamemode | `/gamemode creative/survival @p` |
+| Build | `/fill` and `/setblock` commands |
+
+---
+
+### 📜 Script System
+
+Create **persistent scripts** that save to disk and survive game restarts!
+
+**Location:** `<game_dir>/aeonis/scripts/`
+
+**Create Script:**
+```
+[SCRIPT: starter_kit]
+# Give basic survival gear
+/give @p iron_sword 1
+/give @p iron_pickaxe 1
+/give @p torch 64
+/give @p cooked_beef 32
+/effect give @p regeneration 60 1
+[/SCRIPT]
+```
+
+**Run Script:** `[RUNSCRIPT: starter_kit]`
+
+**Example Scripts:**
+| Script Name | Purpose |
+|-------------|---------|
+| `starter_kit` | Basic survival gear |
+| `quick_base` | Build a simple shelter |
+| `combat_prep` | Battle buffs and gear |
+| `night_vision` | Permanent cave exploration |
+
+---
+
+### 🎮 Custom Commands
+
+Create **new abilities** that Aeonis (or you) can use anytime!
+
+**Location:** `<game_dir>/aeonis/commands/`
+
+**Create Custom Command:**
+```
+[NEWCMD: battle_ready | Prepares player for combat]
+/effect give @p strength 300 2
+/effect give @p resistance 300 1
+/effect give @p speed 300 1
+/give @p golden_apple 8
+[/NEWCMD]
+```
+
+**Run Custom Command:** `[RUNCMD: battle_ready]`
+
+---
+
+### ⏰ Automation System
+
+Schedule **repeating tasks** that run automatically!
+
+**Location:** `<game_dir>/aeonis/automation/`
+
+**Create Automation:**
+```
+[AUTOMATION: auto_heal | 60]
+/effect give @a regeneration 5 1
+[/AUTOMATION]
+```
+
+**Stop Automation:** `[STOPAUTO: auto_heal]`
+
+**Automation Ideas:**
+| Name | Interval | Purpose |
+|------|----------|---------|
+| `keep_day` | 300s | Maintain daytime |
+| `auto_heal` | 60s | Periodic healing |
+| `mob_alert` | 30s | Creeper warnings |
+| `hunger_fix` | 120s | Auto saturation |
+
+---
+
+### 🚶 Physical Movement
+
+Aeonis has a **physical body** and can move around!
+
+| Command | Description |
+|---------|-------------|
+| `/ai llm follow <player>` | Follow a player |
+| `/ai llm walkTo <x> <y> <z>` | Walk to coordinates |
+| `/ai llm build <preset>` | Build structures |
+| `/ai llm stop` | Stop current action |
+
+**Build Presets:** `small_hut`, `tower`, `wall_segment`, `platform`
+
+---
+
+### 🔒 Safety Restrictions
+
+For server safety, these commands are **blocked**:
+- `/stop` (server shutdown)
+- `/ban`, `/ban-ip`
+- `/kick`
+- `/op`, `/deop`
+- `/whitelist`
+
+---
+
+### 📋 Quick Reference
+
+| Tag | Purpose | Example |
+|-----|---------|---------|
+| `[CMD: /...]` | Execute command | `[CMD: /give @p diamond 64]` |
+| `[SCRIPT: name]...[/SCRIPT]` | Create script | Multi-line script |
+| `[RUNSCRIPT: name]` | Run script | `[RUNSCRIPT: starter_kit]` |
+| `[NEWCMD: name \| desc]...[/NEWCMD]` | Create command | Custom ability |
+| `[RUNCMD: name]` | Run command | `[RUNCMD: battle_ready]` |
+| `[AUTOMATION: name \| sec]...[/AUTOMATION]` | Auto task | Repeating action |
+| `[STOPAUTO: name]` | Stop automation | `[STOPAUTO: keep_day]` |
+
+---
+
 ### 📊 System & Feature Commands
 
 | Command | Description |
@@ -369,7 +587,7 @@ Enable with: `/aeonis features extra_mobs true`
 
 - **Developer:** QuantumCreeper / TheCorrectSynovian
 - **Mod ID:** `aeonis-manager`
-- **Version:** 1.4.0
+- **Version:** 1.6.0
 
 ---
 
