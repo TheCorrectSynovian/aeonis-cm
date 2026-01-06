@@ -1,5 +1,93 @@
 # Aeonis: Command Master - Changelog
 
+## 2.0.0 - Minecraft 1.21.11 Migration 🚀 (2026-01-07)
+
+### 🎮 **Version Update**
+- **Minecraft:** 1.21.10 → **1.21.11**
+- **Fabric Loader:** 0.18.4
+- **Fabric Loom:** 1.14-SNAPSHOT → **1.14.10**
+- **Fabric Language Kotlin:** 1.13.8+kotlin.2.3.0
+- **Fabric API:** 0.138.4 → **0.141.1+1.21.11**
+
+### 🔧 **Major API Changes (Technical)**
+
+#### Class Renames
+| Old (1.21.10) | New (1.21.11) |
+|--------------|---------------|
+| `net.minecraft.resources.ResourceLocation` | `net.minecraft.resources.Identifier` |
+| `ResourceLocation.fromNamespaceAndPath()` | `Identifier.fromNamespaceAndPath()` |
+
+#### Method Renames
+| Old (1.21.10) | New (1.21.11) |
+|--------------|---------------|
+| `resourceKey.location()` | `resourceKey.identifier()` |
+| `entity.hasImpulse` | `entity.hurtMarked` |
+| `team.playerPrefix = x` | `team.setPlayerPrefix(x)` |
+| `team.displayName = x` | `team.setDisplayName(x)` |
+
+#### Permission System Overhaul
+| Old (1.21.10) | New (1.21.11) |
+|--------------|---------------|
+| `source.hasPermission(2)` | `source.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER)` |
+| `player.hasPermissions(2)` | `player.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER)` |
+| `.withPermission(4)` | `.withPermission(PermissionSet.ALL_PERMISSIONS)` |
+
+#### Entity Package Migrations
+Many entity classes moved to subpackages:
+- `entity.monster.Zombie` → `entity.monster.zombie.Zombie`
+- `entity.monster.Skeleton` → `entity.monster.skeleton.Skeleton`
+- `entity.monster.Drowned` → `entity.monster.zombie.Drowned`
+- `entity.monster.Stray` → `entity.monster.skeleton.Stray`
+- `entity.monster.Pillager` → `entity.monster.illager.Pillager`
+- `entity.animal.Bee` → `entity.animal.bee.Bee`
+- `entity.animal.Parrot` → `entity.animal.parrot.Parrot`
+- `entity.animal.WaterAnimal` → `entity.animal.fish.WaterAnimal`
+- `entity.projectile.AbstractArrow` → `entity.projectile.arrow.AbstractArrow`
+- `entity.vehicle.Minecart` → `entity.vehicle.minecart.Minecart`
+
+#### GUI Component Changes
+- `CycleButton.builder<T> { }.withInitialValue(v)` → `CycleButton.builder(function, defaultValue)`
+- Builder now takes two parameters: the display function and initial value
+
+#### Mixin Signature Changes
+- `Camera.setup` first parameter: `BlockGetter` → `Level`
+
+#### Removed Methods
+- `player.playNotifySound()` - **REMOVED** 
+  - Created custom `SoundUtils.kt` extension function as replacement
+  - Uses `ClientboundSoundPacket` directly
+
+### ✨ **New Features**
+- **BodyEntity Protection:** `/transform aeonis:body` now blocked with helpful error message
+  - Directs players to use the Soul Possession system instead
+- **Updated Window Title:** Now shows "Minecraft 1.21.11 (Aeonis Plus v2.0.0)"
+
+### 🐛 **Bug Fixes**
+- Fixed `LlmCommands.isSinglePlayer()` null pointer crash on command registration
+- Fixed all mixin target signatures for 1.21.11 compatibility
+- Fixed entity renderer imports for client-side code
+
+### 📁 **Files Modified**
+- `gradle.properties` - Version updates
+- `SoundUtils.kt` (NEW) - playNotifySound extension function
+- `AeonisNetworking.kt` - Entity imports
+- `ManhuntCommands.kt` - Permission API
+- `HerobrineEntity.kt` - identifier() method
+- `HunterEntity.kt` - hurtMarked field
+- `PropHuntManager.kt` - Team setter methods
+- `PropDisguiseManager.kt` - Minecart import
+- `HunterAbilityManager.kt` - identifier() method
+- `LlmCommands.java` - Permission API + null safety
+- `LlmNetworking.java` - Permission API
+- `AeonisAssistant.java` - Permission API + identifier()
+- `AeonisLlmConfigScreen.java` - CycleButton API
+- `CameraMixin.java` - Level parameter + identifier()
+- `LocalPlayerMixin.java` - Entity imports + identifier()
+- All client-side Kotlin files - ResourceLocation → Identifier
+- Multiple Java mixins - Entity package imports
+
+---
+
 ## 1.7.0 - The Hotfix Update 🔧 (2026-01-03)
 - **Prop Hunt Marked as Experimental:**
   - Added warning message on world join: "Prop Hunt is EXPERIMENTAL and WIP!"

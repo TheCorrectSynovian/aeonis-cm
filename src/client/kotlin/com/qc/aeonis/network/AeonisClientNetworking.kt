@@ -118,6 +118,14 @@ object AeonisClientNetworking {
         ClientPlayNetworking.registerGlobalReceiver(AeonisNetworking.SoulModePayload.ID) { payload, _ ->
             isInSoulMode = payload.enabled
         }
+        
+        // Handle open manhunt GUI packet from server
+        ClientPlayNetworking.registerGlobalReceiver(AeonisNetworking.OpenManhuntGuiPayload.ID) { _, _ ->
+            val mc = Minecraft.getInstance()
+            mc.execute {
+                mc.setScreen(com.qc.aeonis.screen.ManhuntSetupScreen())
+            }
+        }
 
         // Register tick event to send movement inputs
         ClientTickEvents.END_CLIENT_TICK.register { client ->

@@ -17,6 +17,7 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ClientInformation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.permissions.PermissionSet;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.ChatVisiblity;
 import net.minecraft.world.level.GameType;
@@ -78,7 +79,7 @@ public class AeonisAssistant extends ServerPlayer {
         // Set initial position
         this.setGameMode(GameType.SURVIVAL);
         
-        LOGGER.info("Aeonis assistant created in {}", level.dimension().location());
+        LOGGER.info("Aeonis assistant created in {}", level.dimension().identifier());
     }
     
     private static GameProfile createGameProfile() {
@@ -673,7 +674,7 @@ public class AeonisAssistant extends ServerPlayer {
                 .withEntity(this)
                 .withPosition(this.position())
                 .withLevel((ServerLevel) this.level())
-                .withPermission(4) // OP level 4 (full permissions)
+                .withPermission(PermissionSet.ALL_PERMISSIONS) // Full permissions
                 .withSuppressedOutput();
             
             dispatcher.execute(command, source);

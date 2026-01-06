@@ -2,7 +2,7 @@
   <img src="https://media.forgecdn.net/avatars/console-avatars/avatar_15441b09-293b-46b5-9f56-a72f7d35a1b7.png" alt="Aeonis: Command Master Banner"/>
 </p>
 
-<h1 align="center">⚡ Aeonis: Command Master v1.7.0 ⚡</h1>
+<h1 align="center">⚡ Aeonis: Command Master v2.0.0 ⚡</h1>
 
 <p align="center">
   <b>Take control. Command anything. Master the game.</b>
@@ -13,11 +13,11 @@
 </p>
 
 <p align="center">
-  <a href="https://fabricmc.net/"><img src="https://img.shields.io/badge/Fabric-1.21.10-blue?style=for-the-badge&logo=fabric&logoColor=white" alt="Fabric"></a>
+  <a href="https://fabricmc.net/"><img src="https://img.shields.io/badge/Fabric-1.21.11-blue?style=for-the-badge&logo=fabric&logoColor=white" alt="Fabric"></a>
   <a href="https://www.curseforge.com/minecraft/mc-mods/aeonis-command-master"><img src="https://img.shields.io/badge/CurseForge-Download-orange?style=for-the-badge&logo=curseforge&logoColor=white" alt="CurseForge"></a>
   <a href="https://modrinth.com/mod/aeonis-command-master"><img src="https://img.shields.io/badge/Modrinth-Download-green?style=for-the-badge&logo=modrinth&logoColor=white" alt="Modrinth"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge" alt="License"></a>
-  <img src="https://img.shields.io/badge/Version-1.7.0-purple?style=for-the-badge" alt="Version">
+  <img src="https://img.shields.io/badge/Version-2.0.0-purple?style=for-the-badge" alt="Version">
 </p>
 
 <p align="center">
@@ -35,6 +35,13 @@
 
 
 # Aeonis: Command Master - Changelog
+
+## 2.0.0 - Minecraft 1.21.11 Migration 🚀 (2026-01-07)
+- **Minecraft 1.21.11 Support** - Full migration to latest Minecraft version
+- **Major API Changes** - Complete codebase refactor for 1.21.11 compatibility
+- **BodyEntity Protection** - `/transform aeonis:body` now blocked (internal use only)
+- **Improved Stability** - Fixed numerous mixin and API issues
+- See CHANGELOG.md for full technical details
 
 ## 1.7.0 - The Hotfix Update 🔧 (2026-01-03)
 - **Prop Hunt Minigame (Experimental):**

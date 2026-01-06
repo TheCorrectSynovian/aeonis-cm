@@ -25,9 +25,9 @@ import net.minecraft.world.entity.ai.goal.Goal
 import net.minecraft.world.entity.ai.goal.MeleeAttackGoal
 import net.minecraft.world.entity.ai.goal.RandomStrollGoal
 import net.minecraft.world.entity.ai.goal.target.NearestAttackableTargetGoal
-import net.minecraft.world.entity.animal.Chicken
-import net.minecraft.world.entity.animal.Cow
-import net.minecraft.world.entity.animal.Pig
+import net.minecraft.world.entity.animal.chicken.Chicken
+import net.minecraft.world.entity.animal.cow.Cow
+import net.minecraft.world.entity.animal.pig.Pig
 import net.minecraft.world.entity.player.Player
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.Items
@@ -109,43 +109,51 @@ class HerobrineEntity(entityType: EntityType<out HerobrineEntity>, level: Level)
         val serverLevel = level() as? ServerLevel ?: return
         existenceTicks++
         
-        // --- CREEPYPASTA: Occasionally set random fires in forests at night ---
-        if (random.nextInt(1200) == 0 && targetPlayerId != null) { // ~1/minute
-            val player = serverLevel.getEntity(targetPlayerId!!) as? Player
-            if (player != null && serverLevel.dayTime in 13000..23000) { // Night time
-                trySetRandomFire(serverLevel, player)
+        // --- CREEPYPASTA EVENTS ---
+        // All creepy actions only happen AFTER the player has seen Herobrine
+        // This way Herobrine appears silently first, giving the player a scare,
+        // THEN the creepy stuff starts happening
+        
+        if (hasBeenSeenOnce) {
+            // Occasionally set random fires in forests at night
+            if (random.nextInt(1200) == 0 && targetPlayerId != null) { // ~1/minute
+                val player = serverLevel.getEntity(targetPlayerId!!) as? Player
+                if (player != null && serverLevel.dayTime in 13000..23000) { // Night time
+                    trySetRandomFire(serverLevel, player)
+                }
             }
-        }
 
-        // --- CREEPYPASTA: Occasionally place cryptic sign near player ---
-        if (random.nextInt(900) == 0 && targetPlayerId != null) { // ~1/45s
-            val player = serverLevel.getEntity(targetPlayerId!!) as? Player
-            if (player != null) {
-                tryPlaceCrypticSign(serverLevel, player)
+            // Occasionally place cryptic sign near player
+            if (random.nextInt(900) == 0 && targetPlayerId != null) { // ~1/45s
+                val player = serverLevel.getEntity(targetPlayerId!!) as? Player
+                if (player != null) {
+                    tryPlaceCrypticSign(serverLevel, player)
+                }
             }
-        }
-        
-        // --- CREEPYPASTA: Occasionally remove torches/lights near player ---
-        if (random.nextInt(600) == 0 && targetPlayerId != null) { // ~1/30s
-            val player = serverLevel.getEntity(targetPlayerId!!) as? Player
-            if (player != null) {
-                tryRemoveNearbyTorches(serverLevel, player)
+            
+            // Occasionally remove torches/lights near player
+            if (random.nextInt(600) == 0 && targetPlayerId != null) { // ~1/30s
+                val player = serverLevel.getEntity(targetPlayerId!!) as? Player
+                if (player != null) {
+                    tryRemoveNearbyTorches(serverLevel, player)
+                }
             }
-        }
-        
-        // --- CREEPYPASTA: Occasionally replace a block near player ---
-        if (random.nextInt(300) == 0 && targetPlayerId != null) { // ~1/15s
-            val player = serverLevel.getEntity(targetPlayerId!!) as? Player
-            if (player != null) {
-                tryReplaceBlockNearPlayer(serverLevel, player)
+            
+            // Occasionally replace a block near player
+            if (random.nextInt(300) == 0 && targetPlayerId != null) { // ~1/15s
+                val player = serverLevel.getEntity(targetPlayerId!!) as? Player
+                if (player != null) {
+                    tryReplaceBlockNearPlayer(serverLevel, player)
+                }
             }
         }
         
         // --- CREEPYPASTA: Occasionally whisper in chat ---
-        if (random.nextInt(1200) == 0 && targetPlayerId != null) { // ~1/minute
+        // Only whisper AFTER the player has seen Herobrine (surprise first, then creepy messages)
+        if (random.nextInt(1200) == 0 && targetPlayerId != null && hasBeenSeenOnce) { // ~1/minute, only after spotted
             val player = serverLevel.getEntity(targetPlayerId!!) as? ServerPlayer
             if (player != null) {
-                val whispers = listOf("You can't hide...", "I'm watching you...", "Leave this place...", "He is coming...")
+                val whispers = listOf("You can't hide...", "I'm watching you...", "Leave this place...", "He is coming...", "Did you see me?", "I was right behind you...")
                 player.sendSystemMessage(Component.literal("§8§o" + whispers.random()))
                 // Play a whisper sound
                 serverLevel.playSound(null, player.blockPosition(), SoundEvents.AMBIENT_CAVE.value(), SoundSource.HOSTILE, 0.3f, 0.5f)
@@ -892,7 +900,7 @@ class HerobrineEntity(entityType: EntityType<out HerobrineEntity>, level: Level)
          * Register a block as part of a Herobrine shrine
          */
         fun registerShrineBlock(level: ServerLevel, pos: BlockPos) {
-            val key = level.dimension().location().toString()
+            val key = level.dimension().identifier().toString()
             shrineBlocks.getOrPut(key) { ConcurrentHashMap.newKeySet() }.add(pos)
         }
         
@@ -901,7 +909,7 @@ class HerobrineEntity(entityType: EntityType<out HerobrineEntity>, level: Level)
          * Call this from block break events
          */
         fun onBlockBroken(level: ServerLevel, pos: BlockPos, player: Player): Boolean {
-            val key = level.dimension().location().toString()
+            val key = level.dimension().identifier().toString()
             val blocks = shrineBlocks[key] ?: return false
             
             if (blocks.remove(pos)) {
@@ -1007,8 +1015,8 @@ class HerobrineEntity(entityType: EntityType<out HerobrineEntity>, level: Level)
             
             serverLevel.addFreshEntity(herobrine)
             
-            // Cause thunderstorm on appearance
-            serverLevel.setWeatherParameters(0, 6000, true, true)
+            // Herobrine appears silently - no weather change, no announcement
+            // The fear comes from the surprise of seeing him
             
             return herobrine
         }

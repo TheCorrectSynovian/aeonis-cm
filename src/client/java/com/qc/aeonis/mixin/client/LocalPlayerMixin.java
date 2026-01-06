@@ -101,9 +101,9 @@ public abstract class LocalPlayerMixin {
                mob instanceof net.minecraft.world.entity.monster.Blaze ||
                mob instanceof net.minecraft.world.entity.monster.Phantom ||
                mob instanceof net.minecraft.world.entity.monster.Vex ||
-               mob instanceof net.minecraft.world.entity.animal.Bee ||
+               mob instanceof net.minecraft.world.entity.animal.bee.Bee ||
                mob instanceof net.minecraft.world.entity.animal.allay.Allay ||
-               mob instanceof net.minecraft.world.entity.animal.Parrot ||
+               mob instanceof net.minecraft.world.entity.animal.parrot.Parrot ||
                mob instanceof net.minecraft.world.entity.boss.wither.WitherBoss ||
                mob instanceof net.minecraft.world.entity.boss.enderdragon.EnderDragon ||
                mob instanceof net.minecraft.world.entity.monster.breeze.Breeze ||
@@ -115,7 +115,7 @@ public abstract class LocalPlayerMixin {
         // Check if it's a Ghast or any mob with "ghast" in its name (like Happy Ghast)
         if (mob instanceof Ghast) return true;
         try {
-            String typePath = mob.getType().builtInRegistryHolder().key().location().getPath();
+            String typePath = mob.getType().builtInRegistryHolder().key().identifier().getPath();
             return typePath.toLowerCase().contains("ghast");
         } catch (Exception e) {
             return false;

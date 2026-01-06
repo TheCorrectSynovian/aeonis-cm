@@ -14,6 +14,7 @@ import net.minecraft.commands.arguments.coordinates.Vec3Argument;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.permissions.Permissions;
 import net.minecraft.world.phys.Vec3;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -48,13 +49,13 @@ public class LlmCommands {
             .then(Commands.literal("llm")
                 // /ai llm spawn - Opens GUI for config and spawns bot
                 .then(Commands.literal("spawn")
-                    .requires(source -> source.hasPermission(2) || isSinglePlayer(source))
+                    .requires(source -> source.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER) || isSinglePlayer(source))
                     .executes(LlmCommands::openConfigGui)
                 )
                 
                 // /ai llm despawn - Removes the bot
                 .then(Commands.literal("despawn")
-                    .requires(source -> source.hasPermission(2) || isSinglePlayer(source))
+                    .requires(source -> source.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER) || isSinglePlayer(source))
                     .executes(LlmCommands::despawnBot)
                 )
                 
@@ -106,7 +107,7 @@ public class LlmCommands {
                 
                 // /ai llm config - Opens config GUI
                 .then(Commands.literal("config")
-                    .requires(source -> source.hasPermission(2) || isSinglePlayer(source))
+                    .requires(source -> source.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER) || isSinglePlayer(source))
                     .executes(LlmCommands::openConfigGui)
                 )
             )
@@ -116,7 +117,8 @@ public class LlmCommands {
     }
     
     private static boolean isSinglePlayer(CommandSourceStack source) {
-        return source.getServer().isSingleplayer();
+        var server = source.getServer();
+        return server != null && server.isSingleplayer();
     }
     
     // ================ COMMAND HANDLERS ================

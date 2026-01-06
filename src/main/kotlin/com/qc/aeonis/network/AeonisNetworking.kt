@@ -5,18 +5,20 @@ import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking
 import net.minecraft.network.FriendlyByteBuf
 import net.minecraft.network.codec.StreamCodec
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload
-import net.minecraft.resources.ResourceLocation
+import net.minecraft.resources.Identifier
 import net.minecraft.server.level.ServerPlayer
 import net.minecraft.world.entity.Entity
 import net.minecraft.world.entity.EquipmentSlot
 import net.minecraft.world.entity.LivingEntity
 import net.minecraft.world.entity.Mob
 import net.minecraft.world.entity.monster.Monster
+import net.minecraft.world.entity.monster.zombie.Zombie
+import net.minecraft.world.entity.monster.skeleton.Skeleton
 import net.minecraft.world.entity.animal.wolf.Wolf
-import net.minecraft.world.entity.animal.IronGolem
+import net.minecraft.world.entity.animal.golem.IronGolem
 import net.minecraft.world.entity.animal.allay.Allay
-import net.minecraft.world.entity.animal.Bee
-import net.minecraft.world.entity.animal.Parrot
+import net.minecraft.world.entity.animal.bee.Bee
+import net.minecraft.world.entity.animal.parrot.Parrot
 import net.minecraft.world.entity.boss.wither.WitherBoss
 import net.minecraft.world.entity.boss.enderdragon.EnderDragon
 import net.minecraft.world.entity.boss.enderdragon.phases.EnderDragonPhase
@@ -26,22 +28,22 @@ import net.minecraft.world.entity.monster.Phantom
 import net.minecraft.world.entity.monster.Vex
 import net.minecraft.world.entity.monster.EnderMan
 import net.minecraft.world.entity.monster.Creeper
-import net.minecraft.world.entity.monster.AbstractSkeleton
+import net.minecraft.world.entity.monster.skeleton.AbstractSkeleton
 import net.minecraft.world.entity.monster.breeze.Breeze
-import net.minecraft.world.entity.monster.Pillager
-import net.minecraft.world.entity.animal.Chicken
-import net.minecraft.world.entity.projectile.Arrow
-import net.minecraft.world.entity.projectile.WitherSkull
-import net.minecraft.world.entity.projectile.DragonFireball
-import net.minecraft.world.entity.projectile.SmallFireball
-import net.minecraft.world.entity.projectile.LargeFireball
-import net.minecraft.world.entity.projectile.Snowball
-import net.minecraft.world.entity.projectile.windcharge.BreezeWindCharge
+import net.minecraft.world.entity.monster.illager.Pillager
+import net.minecraft.world.entity.animal.chicken.Chicken
+import net.minecraft.world.entity.projectile.arrow.Arrow
+import net.minecraft.world.entity.projectile.hurtingprojectile.WitherSkull
+import net.minecraft.world.entity.projectile.hurtingprojectile.DragonFireball
+import net.minecraft.world.entity.projectile.hurtingprojectile.SmallFireball
+import net.minecraft.world.entity.projectile.hurtingprojectile.LargeFireball
+import net.minecraft.world.entity.projectile.throwableitemprojectile.Snowball
+import net.minecraft.world.entity.projectile.hurtingprojectile.windcharge.BreezeWindCharge
 import net.minecraft.world.entity.item.ItemEntity
 import net.minecraft.world.entity.monster.Witch
-import net.minecraft.world.entity.monster.Evoker
+import net.minecraft.world.entity.monster.illager.Evoker
 import net.minecraft.world.entity.monster.warden.Warden
-import net.minecraft.world.entity.animal.SnowGolem
+import net.minecraft.world.entity.animal.golem.SnowGolem
 import net.minecraft.world.entity.projectile.EvokerFangs
 import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.Vec3
@@ -66,7 +68,7 @@ data class MobControlPayload(
     
     companion object {
         val ID = CustomPacketPayload.Type<MobControlPayload>(
-            ResourceLocation.fromNamespaceAndPath("aeonis-manager", "mob_control")
+            Identifier.fromNamespaceAndPath("aeonis-manager", "mob_control")
         )
         
         val CODEC: StreamCodec<FriendlyByteBuf, MobControlPayload> = StreamCodec.of(
@@ -109,7 +111,7 @@ data class ControlModePayload(
     
     companion object {
         val ID = CustomPacketPayload.Type<ControlModePayload>(
-            ResourceLocation.fromNamespaceAndPath("aeonis-manager", "control_mode")
+            Identifier.fromNamespaceAndPath("aeonis-manager", "control_mode")
         )
         
         val CODEC: StreamCodec<FriendlyByteBuf, ControlModePayload> = StreamCodec.of(
@@ -134,7 +136,7 @@ data class PossessPayload(
 ) : CustomPacketPayload {
     companion object {
         val ID = CustomPacketPayload.Type<PossessPayload>(
-            ResourceLocation.fromNamespaceAndPath("aeonis-manager", "possess_mob")
+            Identifier.fromNamespaceAndPath("aeonis-manager", "possess_mob")
         )
         val CODEC: StreamCodec<FriendlyByteBuf, PossessPayload> = StreamCodec.of(
             { buf, payload ->
@@ -155,7 +157,7 @@ data class ReleasePayload(
 ) : CustomPacketPayload {
     companion object {
         val ID = CustomPacketPayload.Type<ReleasePayload>(
-            ResourceLocation.fromNamespaceAndPath("aeonis-manager", "release_mob")
+            Identifier.fromNamespaceAndPath("aeonis-manager", "release_mob")
         )
         val CODEC: StreamCodec<FriendlyByteBuf, ReleasePayload> = StreamCodec.of(
             { buf, payload ->
@@ -173,7 +175,7 @@ data class ReleasePayload(
 class AbilityPayload : CustomPacketPayload {
     companion object {
         val ID = CustomPacketPayload.Type<AbilityPayload>(
-            ResourceLocation.fromNamespaceAndPath("aeonis-manager", "ability")
+            Identifier.fromNamespaceAndPath("aeonis-manager", "ability")
         )
         val CODEC: StreamCodec<FriendlyByteBuf, AbilityPayload> = StreamCodec.of(
             { _, _ -> },
@@ -187,7 +189,7 @@ class AbilityPayload : CustomPacketPayload {
 data class SelectedSlotPayload(val selectedSlot: Int) : CustomPacketPayload {
     companion object {
         val ID = CustomPacketPayload.Type<SelectedSlotPayload>(
-            ResourceLocation.fromNamespaceAndPath("aeonis-manager", "selected_slot")
+            Identifier.fromNamespaceAndPath("aeonis-manager", "selected_slot")
         )
         val CODEC: StreamCodec<FriendlyByteBuf, SelectedSlotPayload> = StreamCodec.of(
             { buf, payload -> buf.writeInt(payload.selectedSlot) },
@@ -243,7 +245,7 @@ object AeonisNetworking {
     data class SyncControllingPlayersPayload(val playerUUIDs: List<java.util.UUID>) : CustomPacketPayload {
         companion object {
             val ID = CustomPacketPayload.Type<SyncControllingPlayersPayload>(
-                ResourceLocation.fromNamespaceAndPath("aeonis-manager", "sync_controlling_players")
+                Identifier.fromNamespaceAndPath("aeonis-manager", "sync_controlling_players")
             )
             val CODEC: StreamCodec<FriendlyByteBuf, SyncControllingPlayersPayload> = StreamCodec.of(
                 { buf, payload ->
@@ -272,7 +274,7 @@ object AeonisNetworking {
     data class ControlledEntityStatusPayload(val entityId: Int, val health: Float, val maxHealth: Float, val name: String) : CustomPacketPayload {
         companion object {
             val ID = CustomPacketPayload.Type<ControlledEntityStatusPayload>(
-                ResourceLocation.fromNamespaceAndPath("aeonis-manager", "controlled_entity_status")
+                Identifier.fromNamespaceAndPath("aeonis-manager", "controlled_entity_status")
             )
             val CODEC: StreamCodec<FriendlyByteBuf, ControlledEntityStatusPayload> = StreamCodec.of(
                 { buf, payload ->
@@ -292,7 +294,7 @@ object AeonisNetworking {
     data class SoulModePayload(val enabled: Boolean) : CustomPacketPayload {
         companion object {
             val ID = CustomPacketPayload.Type<SoulModePayload>(
-                ResourceLocation.fromNamespaceAndPath("aeonis-manager", "soul_mode")
+                Identifier.fromNamespaceAndPath("aeonis-manager", "soul_mode")
             )
             val CODEC: StreamCodec<FriendlyByteBuf, SoulModePayload> = StreamCodec.of(
                 { buf, payload -> buf.writeBoolean(payload.enabled) },
@@ -306,7 +308,7 @@ object AeonisNetworking {
     data class SoulPossessPayload(val mobId: Int) : CustomPacketPayload {
         companion object {
             val ID = CustomPacketPayload.Type<SoulPossessPayload>(
-                ResourceLocation.fromNamespaceAndPath("aeonis-manager", "soul_possess")
+                Identifier.fromNamespaceAndPath("aeonis-manager", "soul_possess")
             )
             val CODEC: StreamCodec<FriendlyByteBuf, SoulPossessPayload> = StreamCodec.of(
                 { buf, payload -> buf.writeInt(payload.mobId) },
@@ -314,6 +316,20 @@ object AeonisNetworking {
             )
         }
         override fun type(): CustomPacketPayload.Type<SoulPossessPayload> = ID
+    }
+    
+    // Server -> Client payload: open manhunt setup GUI
+    class OpenManhuntGuiPayload : CustomPacketPayload {
+        companion object {
+            val ID = CustomPacketPayload.Type<OpenManhuntGuiPayload>(
+                Identifier.fromNamespaceAndPath("aeonis-manager", "open_manhunt_gui")
+            )
+            val CODEC: StreamCodec<FriendlyByteBuf, OpenManhuntGuiPayload> = StreamCodec.of(
+                { _, _ -> },
+                { _ -> OpenManhuntGuiPayload() }
+            )
+        }
+        override fun type(): CustomPacketPayload.Type<OpenManhuntGuiPayload> = ID
     }
 
     // Register server-side networking handlers and periodic status updates
@@ -323,6 +339,7 @@ object AeonisNetworking {
         PayloadTypeRegistry.playS2C().register(ControlModePayload.ID, ControlModePayload.CODEC)
         PayloadTypeRegistry.playS2C().register(SyncControllingPlayersPayload.ID, SyncControllingPlayersPayload.CODEC)
         PayloadTypeRegistry.playS2C().register(SoulModePayload.ID, SoulModePayload.CODEC)
+        PayloadTypeRegistry.playS2C().register(OpenManhuntGuiPayload.ID, OpenManhuntGuiPayload.CODEC)
         
         // Register client->server payload types
         PayloadTypeRegistry.playC2S().register(SelectedSlotPayload.ID, SelectedSlotPayload.CODEC)
@@ -480,6 +497,13 @@ object AeonisNetworking {
         ServerPlayNetworking.send(player, SoulModePayload(enabled))
     }
     
+    /**
+     * Send packet to open Manhunt setup GUI on client
+     */
+    fun sendOpenManhuntGuiPacket(player: ServerPlayer) {
+        ServerPlayNetworking.send(player, OpenManhuntGuiPayload())
+    }
+    
     private fun handleMobControl(player: ServerPlayer, payload: MobControlPayload) {
         val entityId = controlledEntities[player.uuid] ?: return
         val level = player.level() as? net.minecraft.server.level.ServerLevel ?: return
@@ -573,8 +597,8 @@ object AeonisNetworking {
         } catch (_: Exception) {
             // Fallback damage based on mob type
             damage = when (controlledMob) {
-                is net.minecraft.world.entity.monster.Zombie -> 3.0f
-                is net.minecraft.world.entity.monster.Skeleton -> 2.5f
+                is Zombie -> 3.0f
+                is Skeleton -> 2.5f
                 is net.minecraft.world.entity.boss.wither.WitherBoss -> 8.0f
                 is net.minecraft.world.entity.boss.enderdragon.EnderDragon -> 10.0f
                 is IronGolem -> 15.0f
@@ -620,7 +644,7 @@ object AeonisNetworking {
             mob is net.minecraft.world.entity.monster.Ghast -> 6.0
             mob.type == net.minecraft.world.entity.EntityType.GIANT -> 8.0
             mob.type == net.minecraft.world.entity.EntityType.WITHER -> 5.0
-            mob is net.minecraft.world.entity.animal.Bee -> 1.5
+            mob is Bee -> 1.5
             else -> {
                 // Default: base reach on mob's bounding box size
                 val width = mob.bbWidth.toDouble()
@@ -1032,7 +1056,7 @@ object AeonisNetworking {
 
     private fun isGhastLike(entity: Entity): Boolean {
         return try {
-            val path = entity.type.builtInRegistryHolder().key().location().path
+            val path = entity.type.builtInRegistryHolder().key().identifier().path
             path.contains("ghast", ignoreCase = true)
         } catch (e: Exception) {
             false

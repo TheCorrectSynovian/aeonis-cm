@@ -1,5 +1,7 @@
 package com.qc.aeonis.minigame.prophunt
 
+import com.qc.aeonis.util.playNotifySound
+
 import com.qc.aeonis.network.AeonisNetworking
 import net.minecraft.core.particles.ParticleTypes
 import net.minecraft.network.chat.Component
@@ -15,7 +17,7 @@ import net.minecraft.world.entity.animal.armadillo.Armadillo
 import net.minecraft.world.entity.animal.frog.Frog
 import net.minecraft.world.entity.decoration.ArmorStand
 import net.minecraft.world.entity.monster.*
-import net.minecraft.world.entity.vehicle.Minecart
+import net.minecraft.world.entity.vehicle.minecart.Minecart
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.Items
 import net.minecraft.world.level.GameType

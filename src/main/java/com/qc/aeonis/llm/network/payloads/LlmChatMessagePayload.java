@@ -3,7 +3,7 @@ package com.qc.aeonis.llm.network.payloads;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 
 /**
  * Packet sent from client to server when a player sends a chat message
@@ -14,7 +14,7 @@ public record LlmChatMessagePayload(
 ) implements CustomPacketPayload {
     
     public static final Type<LlmChatMessagePayload> ID = new Type<>(
-        ResourceLocation.fromNamespaceAndPath("aeonis-manager", "llm_chat_message")
+        Identifier.fromNamespaceAndPath("aeonis-manager", "llm_chat_message")
     );
     
     public static final StreamCodec<FriendlyByteBuf, LlmChatMessagePayload> CODEC = StreamCodec.of(

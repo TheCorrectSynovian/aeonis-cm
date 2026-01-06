@@ -74,7 +74,7 @@ object PropHuntCommands {
                     .executes { showHelp(it) })
                 
                 .then(Commands.literal("create")
-                    .requires { it.hasPermission(2) }
+                    .requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
                     .then(Commands.argument("arena", StringArgumentType.word())
                         .executes { createGame(it) }))
                 
@@ -109,22 +109,22 @@ object PropHuntCommands {
                 
                 // === ADMIN COMMANDS ===
                 .then(Commands.literal("start")
-                    .requires { it.hasPermission(2) }
+                    .requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
                     .executes { forceStart(it) })
                 
                 .then(Commands.literal("stop")
-                    .requires { it.hasPermission(2) }
+                    .requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
                     .executes { stopCurrentGame(it) }
                     .then(Commands.argument("arena", StringArgumentType.word())
                         .executes { stopGame(it) }))
                 
                 .then(Commands.literal("skip")
-                    .requires { it.hasPermission(2) }
+                    .requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
                     .executes { skipPhase(it) })
                 
                 // === ARENA MANAGEMENT ===
                 .then(Commands.literal("arena")
-                    .requires { it.hasPermission(2) }
+                    .requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
                     .then(Commands.literal("create")
                         .then(Commands.argument("id", StringArgumentType.word())
                             .executes { createArenaHere(it) }
@@ -147,7 +147,7 @@ object PropHuntCommands {
                 
                 // === SETTINGS ===
                 .then(Commands.literal("settings")
-                    .requires { it.hasPermission(2) }
+                    .requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
                     .then(Commands.literal("rounds")
                         .then(Commands.argument("count", IntegerArgumentType.integer(1, 20))
                             .executes { setRounds(it) }))

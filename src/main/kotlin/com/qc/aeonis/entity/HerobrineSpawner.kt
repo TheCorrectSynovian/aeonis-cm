@@ -28,12 +28,12 @@ object HerobrineSpawner {
     // Maximum Herobrines per player
     private const val MAX_HEROBRINES_PER_PLAYER = 2
     
-    // Spawn interval: 2-5 minutes (2400-6000 ticks) - more frequent for more fun
-    private const val MIN_SPAWN_INTERVAL = 2400  // 2 minutes
-    private const val MAX_SPAWN_INTERVAL = 6000  // 5 minutes
+    // Spawn interval: 8-12 minutes (9600-14400 ticks) - less frequent for more surprise/fear
+    private const val MIN_SPAWN_INTERVAL = 9600   // 8 minutes
+    private const val MAX_SPAWN_INTERVAL = 14400  // 12 minutes
     
     // Spawn chance when timer expires
-    private const val SPAWN_CHANCE = 0.85 // 85% chance when timer expires
+    private const val SPAWN_CHANCE = 0.70 // 70% chance when timer expires - more unpredictable
     
     /**
      * Called every server tick to manage Herobrine spawns

@@ -3,7 +3,7 @@ package com.qc.aeonis.item
 import com.qc.aeonis.entity.AeonisEntities
 import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.core.registries.Registries
-import net.minecraft.resources.ResourceLocation
+import net.minecraft.resources.Identifier
 import net.minecraft.resources.ResourceKey
 import net.minecraft.world.item.Item
 import net.minecraft.world.item.SpawnEggItem
@@ -40,7 +40,7 @@ object AeonisItems {
     }
 
     private fun register(name: String, factory: (Item.Properties) -> Item): Item {
-        val id = ResourceLocation.fromNamespaceAndPath("aeonis", name)
+        val id = Identifier.fromNamespaceAndPath("aeonis", name)
         val key = ResourceKey.create(Registries.ITEM, id)
         val props = Item.Properties().setId(key)
         return Registry.register(BuiltInRegistries.ITEM, id, factory(props))

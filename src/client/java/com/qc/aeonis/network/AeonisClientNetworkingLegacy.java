@@ -1,7 +1,6 @@
 package com.qc.aeonis.network;
 
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.client.Minecraft;
 import com.qc.aeonis.network.ControlModePayload;
 

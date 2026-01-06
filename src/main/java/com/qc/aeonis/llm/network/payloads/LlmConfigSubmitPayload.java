@@ -3,7 +3,7 @@ package com.qc.aeonis.llm.network.payloads;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 
 /**
  * Packet sent from client to server to submit LLM configuration.
@@ -24,7 +24,7 @@ public record LlmConfigSubmitPayload(
 ) implements CustomPacketPayload {
     
     public static final Type<LlmConfigSubmitPayload> ID = new Type<>(
-        ResourceLocation.fromNamespaceAndPath("aeonis-manager", "llm_config_submit")
+        Identifier.fromNamespaceAndPath("aeonis-manager", "llm_config_submit")
     );
     
     public static final StreamCodec<FriendlyByteBuf, LlmConfigSubmitPayload> CODEC = StreamCodec.of(

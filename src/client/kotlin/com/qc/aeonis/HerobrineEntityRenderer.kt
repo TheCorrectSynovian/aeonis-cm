@@ -6,7 +6,7 @@ import net.minecraft.client.model.geom.ModelLayers
 import net.minecraft.client.renderer.entity.EntityRendererProvider
 import net.minecraft.client.renderer.entity.HumanoidMobRenderer
 import net.minecraft.client.renderer.entity.state.HumanoidRenderState
-import net.minecraft.resources.ResourceLocation
+import net.minecraft.resources.Identifier
 
 /**
  * Renderer for Herobrine using the player (humanoid) model
@@ -20,10 +20,10 @@ class HerobrineEntityRenderer(ctx: EntityRendererProvider.Context) :
     ) {
 
     companion object {
-        private val HEROBRINE_TEXTURE = ResourceLocation.fromNamespaceAndPath("aeonis", "textures/entity/herobrine.png")
+        private val HEROBRINE_TEXTURE = Identifier.fromNamespaceAndPath("aeonis", "textures/entity/herobrine.png")
     }
 
     override fun createRenderState(): HumanoidRenderState = HumanoidRenderState()
 
-    override fun getTextureLocation(state: HumanoidRenderState): ResourceLocation = HEROBRINE_TEXTURE
+    override fun getTextureLocation(state: HumanoidRenderState): Identifier = HEROBRINE_TEXTURE
 }

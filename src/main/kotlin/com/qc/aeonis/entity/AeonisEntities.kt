@@ -7,7 +7,7 @@ import net.minecraft.core.Registry
 import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.core.registries.Registries
 import net.minecraft.resources.ResourceKey
-import net.minecraft.resources.ResourceLocation
+import net.minecraft.resources.Identifier
 import net.minecraft.world.entity.EntityType
 import net.minecraft.world.entity.MobCategory
 import net.minecraft.world.entity.SpawnPlacementTypes
@@ -17,7 +17,7 @@ import net.minecraft.world.level.levelgen.Heightmap
 object AeonisEntities {
     private val COPPER_STALKER_KEY: ResourceKey<EntityType<*>> = ResourceKey.create(
         Registries.ENTITY_TYPE,
-        ResourceLocation.fromNamespaceAndPath("aeonis", "copper_stalker")
+        Identifier.fromNamespaceAndPath("aeonis", "copper_stalker")
     )
 
     val COPPER_STALKER: EntityType<CopperStalkerEntity> = Registry.register(
@@ -31,7 +31,7 @@ object AeonisEntities {
     
     private val HEROBRINE_KEY: ResourceKey<EntityType<*>> = ResourceKey.create(
         Registries.ENTITY_TYPE,
-        ResourceLocation.fromNamespaceAndPath("aeonis", "herobrine")
+        Identifier.fromNamespaceAndPath("aeonis", "herobrine")
     )
     
     val HEROBRINE: EntityType<HerobrineEntity> = Registry.register(
@@ -43,11 +43,26 @@ object AeonisEntities {
             .build(HEROBRINE_KEY)
     )
     
+    private val HUNTER_KEY: ResourceKey<EntityType<*>> = ResourceKey.create(
+        Registries.ENTITY_TYPE,
+        Identifier.fromNamespaceAndPath("aeonis", "hunter")
+    )
+    
+    val HUNTER: EntityType<HunterEntity> = Registry.register(
+        BuiltInRegistries.ENTITY_TYPE,
+        HUNTER_KEY,
+        EntityType.Builder.of(::HunterEntity, MobCategory.MONSTER)
+            .sized(0.6f, 1.95f)
+            .clientTrackingRange(200) // Large tracking range for manhunt
+            .build(HUNTER_KEY)
+    )
+    
     lateinit var BODY: EntityType<BodyEntity>
 
     fun register() {
         FabricDefaultAttributeRegistry.register(COPPER_STALKER, CopperStalkerEntity.createAttributes())
         FabricDefaultAttributeRegistry.register(HEROBRINE, HerobrineEntity.createAttributes())
+        FabricDefaultAttributeRegistry.register(HUNTER, HunterEntity.createAttributes())
 
         SpawnPlacements.register(
             COPPER_STALKER,
@@ -65,7 +80,7 @@ object AeonisEntities {
             2
         )
         // Register Body entity used by the possession system
-        val BODY_KEY = ResourceKey.create(Registries.ENTITY_TYPE, ResourceLocation.fromNamespaceAndPath("aeonis", "body"))
+        val BODY_KEY = ResourceKey.create(Registries.ENTITY_TYPE, Identifier.fromNamespaceAndPath("aeonis", "body"))
         BODY = Registry.register(
             BuiltInRegistries.ENTITY_TYPE,
             BODY_KEY,

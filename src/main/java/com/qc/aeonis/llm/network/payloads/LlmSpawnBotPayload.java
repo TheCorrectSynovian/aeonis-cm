@@ -3,7 +3,7 @@ package com.qc.aeonis.llm.network.payloads;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 
 /**
  * Packet sent from client to server to spawn or despawn the Aeonis bot.
@@ -13,7 +13,7 @@ public record LlmSpawnBotPayload(
 ) implements CustomPacketPayload {
     
     public static final Type<LlmSpawnBotPayload> ID = new Type<>(
-        ResourceLocation.fromNamespaceAndPath("aeonis-manager", "llm_spawn_bot")
+        Identifier.fromNamespaceAndPath("aeonis-manager", "llm_spawn_bot")
     );
     
     public static final StreamCodec<FriendlyByteBuf, LlmSpawnBotPayload> CODEC = StreamCodec.of(

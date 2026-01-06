@@ -1,5 +1,7 @@
 package com.qc.aeonis.minigame.prophunt
 
+import com.qc.aeonis.util.playNotifySound
+
 import net.minecraft.core.particles.ParticleTypes
 import net.minecraft.network.chat.Component
 import net.minecraft.server.level.ServerLevel

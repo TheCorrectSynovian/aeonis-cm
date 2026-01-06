@@ -6,7 +6,7 @@ import net.minecraft.client.renderer.entity.HumanoidMobRenderer
 import net.minecraft.client.model.HumanoidModel
 import net.minecraft.client.model.geom.ModelLayers
 import net.minecraft.client.renderer.entity.state.HumanoidRenderState
-import net.minecraft.resources.ResourceLocation
+import net.minecraft.resources.Identifier
 
 class BodyEntityRenderer(ctx: EntityRendererProvider.Context) :
     HumanoidMobRenderer<BodyEntity, HumanoidRenderState, HumanoidModel<HumanoidRenderState>>(
@@ -15,7 +15,7 @@ class BodyEntityRenderer(ctx: EntityRendererProvider.Context) :
         0.6f
     ) {
 
-    private val DEFAULT_BODY_TEXTURE = ResourceLocation.fromNamespaceAndPath("aeonis", "textures/entity/body.png")
+    private val DEFAULT_BODY_TEXTURE = Identifier.fromNamespaceAndPath("aeonis", "textures/entity/body.png")
 
     override fun createRenderState(): HumanoidRenderState = HumanoidRenderState()
 
@@ -37,7 +37,7 @@ class BodyEntityRenderer(ctx: EntityRendererProvider.Context) :
     }
 
     // Return texture based on render state (skin not implemented yet)
-    override fun getTextureLocation(state: HumanoidRenderState): ResourceLocation {
+    override fun getTextureLocation(state: HumanoidRenderState): Identifier {
         if (state is com.qc.aeonis.BodyEntityRenderState && state.skinTexture != null) {
             return state.skinTexture!!
         }

@@ -1,5 +1,7 @@
 package com.qc.aeonis.minigame.prophunt
 
+import com.qc.aeonis.util.playNotifySound
+
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents
 import net.minecraft.network.chat.Component
 import net.minecraft.server.MinecraftServer
@@ -581,8 +583,8 @@ object PropHuntManager {
         var team = scoreboard.getPlayerTeam(name)
         if (team == null) {
             team = scoreboard.addPlayerTeam(name)
-            team.playerPrefix = Component.literal(color)
-            team.displayName = Component.literal(displayName)
+            team.setPlayerPrefix(Component.literal(color))
+            team.setDisplayName(Component.literal(displayName))
             team.isAllowFriendlyFire = false
             team.setSeeFriendlyInvisibles(true)
         }

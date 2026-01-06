@@ -35,7 +35,7 @@ import net.minecraft.world.entity.EntitySpawnReason
 import net.minecraft.world.entity.EntityType
 import net.minecraft.world.entity.LightningBolt
 import net.minecraft.world.entity.Mob
-import net.minecraft.world.entity.animal.IronGolem
+import net.minecraft.world.entity.animal.golem.IronGolem
 import net.minecraft.world.entity.animal.wolf.Wolf
 import net.minecraft.world.entity.boss.enderdragon.EnderDragon
 import net.minecraft.world.entity.boss.enderdragon.phases.EnderDragonPhase
@@ -51,15 +51,15 @@ import net.minecraft.world.level.ClipContext
 import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.HitResult
 import net.minecraft.world.phys.Vec3
-import net.minecraft.world.entity.monster.Zombie
-import net.minecraft.world.entity.monster.Skeleton
+import net.minecraft.world.entity.monster.zombie.Zombie
+import net.minecraft.world.entity.monster.skeleton.Skeleton
 import net.minecraft.world.entity.monster.Creeper
 import net.minecraft.world.entity.monster.Slime
-import net.minecraft.world.entity.animal.horse.Horse
-import net.minecraft.world.entity.animal.Pig
+import net.minecraft.world.entity.animal.equine.Horse
+import net.minecraft.world.entity.animal.pig.Pig
 import net.minecraft.world.entity.animal.axolotl.Axolotl
-import net.minecraft.world.entity.animal.Parrot
-import net.minecraft.world.entity.animal.Dolphin
+import net.minecraft.world.entity.animal.parrot.Parrot
+import net.minecraft.world.entity.animal.dolphin.Dolphin
 import net.minecraft.world.entity.animal.goat.Goat
 import net.minecraft.world.entity.animal.frog.Frog
 import net.minecraft.world.item.DyeColor
@@ -275,7 +275,7 @@ object AeonisCommands {
         // /transform <entity> [variants...]
         dispatcher.register(
             Commands.literal("transform")
-                .requires { it.hasPermission(2) }
+                .requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
                 .then(Commands.argument("entity", ResourceArgument.resource(registryAccess, Registries.ENTITY_TYPE))
                     .executes { transformIntoEntity(it, emptyList()) }
                     .then(Commands.argument("variant", StringArgumentType.word())
@@ -299,7 +299,7 @@ object AeonisCommands {
         // /untransform - Exit spectator and kill the entity
         dispatcher.register(
             Commands.literal("untransform")
-                .requires { it.hasPermission(2) }
+                .requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
                 .executes { untransform(it) }
         )
     }
@@ -425,7 +425,7 @@ object AeonisCommands {
     private fun registerAiCommand(dispatcher: CommandDispatcher<CommandSourceStack>) {
         dispatcher.register(
             Commands.literal("ai")
-                .requires { it.hasPermission(2) }
+                .requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
                 .then(Commands.literal("chaotic")
                     .then(Commands.argument("targets", EntityArgument.entities())
                         .executes { makeChaotic(it) }
@@ -471,12 +471,12 @@ object AeonisCommands {
                 .then(Commands.literal("help").executes { showHelp(it) })
                 .then(Commands.literal("features")
                     .then(Commands.literal("extra_mobs")
-                        .requires { it.hasPermission(2) }
+                        .requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
                         .executes { showExtraMobsStatus(it) }
                         .then(Commands.argument("enabled", BoolArgumentType.bool())
                             .executes { setExtraMobs(it) })))
                 .then(Commands.literal("summon_herobrine")
-                    .requires { it.hasPermission(2) }
+                    .requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
                     .executes { summonHerobrine(it, "behind") }
                     .then(Commands.literal("behind").executes { summonHerobrine(it, "behind") })
                     .then(Commands.literal("roaming").executes { summonHerobrine(it, "roaming") })
@@ -484,19 +484,19 @@ object AeonisCommands {
                     .then(Commands.literal("hunting").executes { summonHerobrine(it, "hunting") }))
                 .then(Commands.literal("sys")
                     .then(Commands.literal("ping")
-                        .requires { it.hasPermission(2) }
+                        .requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
                         .executes { systemPing(it) })
                     .then(Commands.literal("story")
-                        .requires { it.hasPermission(2) }
+                        .requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
                         .executes { tellStory(it) }))
                 .then(Commands.literal("reload")
-                    .requires { it.hasPermission(2) }
+                    .requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
                     .executes { reloadMod(it) })
                 .then(Commands.literal("soul")
-                    .requires { it.hasPermission(2) }
+                    .requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
                     .executes { enterSoulMode(it) })
                 .then(Commands.literal("unsoul")
-                    .requires { it.hasPermission(2) }
+                    .requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
                     .executes { exitSoulMode(it) })
         )
     }
@@ -504,7 +504,7 @@ object AeonisCommands {
     private fun registerPrankCommand(dispatcher: CommandDispatcher<CommandSourceStack>) {
         dispatcher.register(
             Commands.literal("prank")
-                .requires { it.hasPermission(2) }
+                .requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
                 .then(Commands.literal("smite")
                     .then(Commands.argument("targets", EntityArgument.players())
                         .executes { smitePlayer(it) }))
@@ -545,7 +545,7 @@ object AeonisCommands {
     private fun registerAbilityCommand(dispatcher: CommandDispatcher<CommandSourceStack>) {
         dispatcher.register(
             Commands.literal("ability")
-                .requires { it.hasPermission(2) }
+                .requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
                 .then(Commands.literal("mimic")
                     .then(Commands.literal("zombie").executes { mimicSound(it, "zombie") })
                     .then(Commands.literal("wither").executes { mimicSound(it, "wither") })
@@ -573,7 +573,7 @@ object AeonisCommands {
     private fun registerEventCommand(dispatcher: CommandDispatcher<CommandSourceStack>) {
         dispatcher.register(
             Commands.literal("event")
-                .requires { it.hasPermission(2) }
+                .requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
                 .then(Commands.literal("ambush")
                     .executes { ambushMode(it) })
                 .then(Commands.literal("scan")
@@ -769,6 +769,13 @@ object AeonisCommands {
             // Restore original gamemode if transform fails
             player.setGameMode(originalMode)
             return 0 // Transformation denied!
+        }
+        
+        // ========== BODY ENTITY: Internal use only ==========
+        if (entityType == com.qc.aeonis.entity.AeonisEntities.BODY) {
+            source.sendFailure(Component.literal("§cThe Body entity is for internal use only! Use /event possess with a Soul item instead."))
+            player.setGameMode(originalMode)
+            return 0
         }
         
         // Check if already transformed
@@ -1961,7 +1968,7 @@ object AeonisCommands {
         
         source.sendSuccess({ Component.literal("§6§l═══════ AEONIS SYSTEM ═══════") }, false)
         source.sendSuccess({ Component.literal("§e§lMOD INFO") }, false)
-        source.sendSuccess({ Component.literal("  §7ID: §baeonis-command-master §7| §7Ver: §b1.3") }, false)
+        source.sendSuccess({ Component.literal("  §7ID: §baeonis-command-master §7| §7Ver: §b2.0.0") }, false)
         source.sendSuccess({ Component.literal("  §7Extra Mobs: " + if (AeonisFeatures.isExtraMobsEnabled(server)) "§aON" else "§cOFF") }, false)
         
         source.sendSuccess({ Component.literal("§c§l⚡ PERFORMANCE") }, false)

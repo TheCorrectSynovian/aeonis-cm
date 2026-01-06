@@ -8,7 +8,7 @@ import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.monster.Ghast;
-import net.minecraft.world.level.BlockGetter;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -30,7 +30,7 @@ public abstract class CameraMixin {
     protected abstract void move(float distanceOffset, float verticalOffset, float horizontalOffset);
     
     @Inject(method = "setup", at = @At("TAIL"))
-    private void aeonis$adjustCameraForMob(BlockGetter area, Entity focusedEntity, boolean thirdPerson, boolean inverseView, float partialTicks, CallbackInfo ci) {
+    private void aeonis$adjustCameraForMob(Level area, Entity focusedEntity, boolean thirdPerson, boolean inverseView, float partialTicks, CallbackInfo ci) {
         if (!AeonisClientNetworking.INSTANCE.isControlling() || AeonisClientNetworking.INSTANCE.getControlledMobId() <= 0) {
             return;
         }
@@ -119,7 +119,7 @@ public abstract class CameraMixin {
     private static boolean isGhastLike(LivingEntity mob) {
         if (mob instanceof Ghast) return true;
         try {
-            String typePath = mob.getType().builtInRegistryHolder().key().location().getPath();
+            String typePath = mob.getType().builtInRegistryHolder().key().identifier().getPath();
             return typePath.toLowerCase().contains("ghast");
         } catch (Exception e) {
             return false;

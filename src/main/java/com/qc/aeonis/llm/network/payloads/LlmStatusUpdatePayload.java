@@ -3,7 +3,7 @@ package com.qc.aeonis.llm.network.payloads;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 
 /**
  * Packet sent from server to client with status updates.
@@ -24,7 +24,7 @@ public record LlmStatusUpdatePayload(
     }
     
     public static final Type<LlmStatusUpdatePayload> ID = new Type<>(
-        ResourceLocation.fromNamespaceAndPath("aeonis-manager", "llm_status_update")
+        Identifier.fromNamespaceAndPath("aeonis-manager", "llm_status_update")
     );
     
     public static final StreamCodec<FriendlyByteBuf, LlmStatusUpdatePayload> CODEC = StreamCodec.of(

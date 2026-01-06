@@ -1,5 +1,7 @@
 package com.qc.aeonis.minigame.prophunt
 
+import com.qc.aeonis.util.playNotifySound
+
 import net.minecraft.core.particles.ParticleTypes
 import net.minecraft.network.chat.Component
 import net.minecraft.server.level.ServerLevel
@@ -10,7 +12,7 @@ import net.minecraft.world.effect.MobEffectInstance
 import net.minecraft.world.effect.MobEffects
 import net.minecraft.world.entity.Entity
 import net.minecraft.world.entity.LivingEntity
-import net.minecraft.world.entity.projectile.Snowball
+import net.minecraft.world.entity.projectile.throwableitemprojectile.Snowball
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.Items
 import net.minecraft.world.level.GameType
@@ -423,7 +425,7 @@ object HunterAbilityManager {
      */
     private fun getBiomeName(player: ServerPlayer): String {
         val biome = player.level().getBiome(player.blockPosition())
-        return biome.unwrapKey().map { it.location().path.replace("_", " ") }.orElse("unknown area")
+        return biome.unwrapKey().map { it.identifier().path.replace("_", " ") }.orElse("unknown area")
     }
     
     /**

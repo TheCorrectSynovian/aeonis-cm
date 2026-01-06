@@ -3,7 +3,7 @@ package com.qc.aeonis.llm.network.payloads;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 
 /**
  * Packet sent from client to server to issue a task command to Aeonis.
@@ -23,7 +23,7 @@ public record LlmTaskPayload(
     }
     
     public static final Type<LlmTaskPayload> ID = new Type<>(
-        ResourceLocation.fromNamespaceAndPath("aeonis-manager", "llm_task")
+        Identifier.fromNamespaceAndPath("aeonis-manager", "llm_task")
     );
     
     public static final StreamCodec<FriendlyByteBuf, LlmTaskPayload> CODEC = StreamCodec.of(

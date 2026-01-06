@@ -3,7 +3,7 @@ package com.qc.aeonis.llm.network.payloads;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 
 /**
  * Packet sent from client to server to test the LLM connection.
@@ -17,7 +17,7 @@ public record LlmTestConnectionPayload(
 ) implements CustomPacketPayload {
     
     public static final Type<LlmTestConnectionPayload> ID = new Type<>(
-        ResourceLocation.fromNamespaceAndPath("aeonis-manager", "llm_test_connection")
+        Identifier.fromNamespaceAndPath("aeonis-manager", "llm_test_connection")
     );
     
     public static final StreamCodec<FriendlyByteBuf, LlmTestConnectionPayload> CODEC = StreamCodec.of(

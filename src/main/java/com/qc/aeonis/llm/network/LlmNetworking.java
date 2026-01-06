@@ -14,6 +14,7 @@ import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.permissions.Permissions;
 import net.minecraft.world.phys.Vec3;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -273,7 +274,7 @@ public class LlmNetworking {
      * Requires OP level 2+ or singleplayer
      */
     private static boolean hasPermission(ServerPlayer player) {
-        return player.hasPermissions(2) || getServerLevel(player).getServer().isSingleplayer();
+        return player.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER) || getServerLevel(player).getServer().isSingleplayer();
     }
     
     /**

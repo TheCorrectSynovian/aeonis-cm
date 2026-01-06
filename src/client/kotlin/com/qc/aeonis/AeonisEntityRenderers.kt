@@ -8,11 +8,11 @@ import net.minecraft.client.model.geom.ModelLayers
 import net.minecraft.client.renderer.entity.EntityRendererProvider
 import net.minecraft.client.renderer.entity.HumanoidMobRenderer
 import net.minecraft.client.renderer.entity.state.HumanoidRenderState
-import net.minecraft.resources.ResourceLocation
+import net.minecraft.resources.Identifier
 
 object AeonisEntityRenderers {
-    private val TEXTURE = ResourceLocation.fromNamespaceAndPath("aeonis", "textures/entity/copper_stalker.png")
-    private val BODY_TEXTURE = ResourceLocation.fromNamespaceAndPath("aeonis", "textures/entity/body.png")
+    private val TEXTURE = Identifier.fromNamespaceAndPath("aeonis", "textures/entity/copper_stalker.png")
+    private val BODY_TEXTURE = Identifier.fromNamespaceAndPath("aeonis", "textures/entity/body.png")
 
     fun register() {
         EntityRendererRegistry.register(AeonisEntities.COPPER_STALKER) { ctx ->
@@ -26,6 +26,10 @@ object AeonisEntityRenderers {
         EntityRendererRegistry.register(AeonisEntities.HEROBRINE) { ctx ->
             HerobrineEntityRenderer(ctx)
         }
+        // Register Hunter entity renderer for Manhunt minigame
+        EntityRendererRegistry.register(AeonisEntities.HUNTER) { ctx ->
+            HunterEntityRenderer(ctx)
+        }
     }
 
     private class CopperStalkerRenderer(ctx: EntityRendererProvider.Context) :
@@ -37,6 +41,6 @@ object AeonisEntityRenderers {
         
         override fun createRenderState(): HumanoidRenderState = HumanoidRenderState()
 
-        override fun getTextureLocation(state: HumanoidRenderState): ResourceLocation = TEXTURE
+        override fun getTextureLocation(state: HumanoidRenderState): Identifier = TEXTURE
     }
 }

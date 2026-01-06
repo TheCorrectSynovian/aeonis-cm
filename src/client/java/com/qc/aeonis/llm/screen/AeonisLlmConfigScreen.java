@@ -124,9 +124,9 @@ public class AeonisLlmConfigScreen extends Screen {
         List<String> models = selectedProvider.getDefaultModels();
         String[] modelArray = models.toArray(new String[0]);
         
-        modelSelector = CycleButton.<String>builder(Component::literal)
+        String initialModel = models.contains(selectedModel) ? selectedModel : models.get(0);
+        modelSelector = CycleButton.<String>builder(Component::literal, initialModel)
             .withValues(modelArray)
-            .withInitialValue(models.contains(selectedModel) ? selectedModel : models.get(0))
             .create(centerX - 150, currentY, 300, 20, 
                 Component.literal("Model"), 
                 (btn, value) -> selectedModel = value);

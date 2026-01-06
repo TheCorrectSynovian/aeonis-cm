@@ -16,6 +16,6 @@ public class WindowTitleMixin {
     
     @Inject(method = "updateTitle", at = @At("TAIL"))
     private void modifyWindowTitle(CallbackInfo ci) {
-        this.window.setTitle("Minecraft 1.21.10 (Aeonis Plus)");
+        this.window.setTitle("Minecraft 1.21.11 (Aeonis Plus)");
     }
 }

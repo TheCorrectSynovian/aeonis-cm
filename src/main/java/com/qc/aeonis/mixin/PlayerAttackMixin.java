@@ -14,8 +14,8 @@ import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.attributes.Attributes;
-import net.minecraft.world.entity.animal.Bee;
-import net.minecraft.world.entity.animal.IronGolem;
+import net.minecraft.world.entity.animal.bee.Bee;
+import net.minecraft.world.entity.animal.golem.IronGolem;
 import net.minecraft.world.entity.monster.Ghast;
 import net.minecraft.world.entity.monster.Ravager;
 import net.minecraft.world.entity.player.Player;
@@ -264,7 +264,7 @@ public abstract class PlayerAttackMixin {
     @Unique
     private static boolean isGhastLike(Mob mob) {
         try {
-            String typePath = mob.getType().builtInRegistryHolder().key().location().getPath();
+            String typePath = mob.getType().builtInRegistryHolder().key().identifier().getPath();
             return typePath.toLowerCase().contains("ghast");
         } catch (Exception e) {
             return false;

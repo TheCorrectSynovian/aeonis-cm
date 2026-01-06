@@ -41,6 +41,11 @@ object AeonisManager : ModInitializer {
 		PropHuntCommands.register()
 		logger.info("Prop Hunt minigame registered")
 		
+		// Register Manhunt minigame
+		com.qc.aeonis.minigame.manhunt.ManhuntManager.register()
+		com.qc.aeonis.minigame.manhunt.ManhuntCommands.register()
+		logger.info("Manhunt minigame registered")
+		
 		// Register LLM feature
 		LlmCommands.register()
 		LlmNetworking.registerServer()
