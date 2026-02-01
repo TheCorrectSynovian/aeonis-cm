@@ -2,12 +2,9 @@ package com.qc.aeonis.network
 
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking
-import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper
 import net.minecraft.client.Minecraft
-import net.minecraft.client.KeyMapping
 import net.minecraft.network.chat.Component
-import com.mojang.blaze3d.platform.InputConstants
-import org.lwjgl.glfw.GLFW
+import com.qc.aeonis.client.AeonisKeyBindings
 
 object AeonisClientNetworking {
     
@@ -41,33 +38,12 @@ object AeonisClientNetworking {
     
     // Soul mode (spectator mode with ability to possess existing mobs)
     private var isInSoulMode = false
-    
-    // Register teleport keybind  
-    private val TELEPORT_KEY: KeyMapping = KeyBindingHelper.registerKeyBinding(
-        KeyMapping(
-            "key.aeonis.teleport",
-            InputConstants.Type.KEYSYM,
-            GLFW.GLFW_KEY_T,
-            KeyMapping.Category.GAMEPLAY
-        )
-    )
 
-    private val POSSESS_KEY: KeyMapping = KeyBindingHelper.registerKeyBinding(
-        KeyMapping("key.aeonis.possess", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_G, KeyMapping.Category.GAMEPLAY)
-    )
-
-    private val RELEASE_KEY: KeyMapping = KeyBindingHelper.registerKeyBinding(
-        KeyMapping("key.aeonis.release", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_H, KeyMapping.Category.GAMEPLAY)
-    )
-
-    private val ABILITY_KEY: KeyMapping = KeyBindingHelper.registerKeyBinding(
-        KeyMapping("key.aeonis.ability", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_R, KeyMapping.Category.GAMEPLAY)
-    )
-    
-    // Soul possess key (P) - used to possess existing mobs when in soul mode
-    private val SOUL_POSSESS_KEY: KeyMapping = KeyBindingHelper.registerKeyBinding(
-        KeyMapping("key.aeonis.soul_possess", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_P, KeyMapping.Category.GAMEPLAY)
-    )
+    private val TELEPORT_KEY get() = AeonisKeyBindings.TELEPORT_KEY
+    private val POSSESS_KEY get() = AeonisKeyBindings.POSSESS_KEY
+    private val RELEASE_KEY get() = AeonisKeyBindings.RELEASE_KEY
+    private val ABILITY_KEY get() = AeonisKeyBindings.ABILITY_KEY
+    private val SOUL_POSSESS_KEY get() = AeonisKeyBindings.SOUL_POSSESS_KEY
     
     fun register() {
         // Note: Payload types are already registered by the server/common code

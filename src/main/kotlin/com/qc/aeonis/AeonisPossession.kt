@@ -165,8 +165,9 @@ object AeonisPossession {
     }
 
     fun handleRelease(player: ServerPlayer, clientBodyX: Double, clientBodyY: Double, clientBodyZ: Double) {
-        // Additional cleanup: ensure controlled entity mapping removed when releasing
+        // Additional cleanup: save the controlled entity before clearing its mapping
         val playerId = player.uuid
+        val controlledId = AeonisNetworking.getControlledEntityId(playerId)
         AeonisNetworking.removeControlledEntity(player)
         if (!activePossessions.getOrDefault(playerId, false)) return
 
@@ -175,7 +176,6 @@ object AeonisPossession {
         bodyPositions.remove(playerId)
 
         // Save current player inventory back to mob if controlling one
-        val controlledId = AeonisNetworking.getControlledEntityId(player.uuid)
         if (controlledId != null) {
             val entity = player.level().getEntity(controlledId)
             if (entity is LivingEntity) {
@@ -192,9 +192,6 @@ object AeonisPossession {
                 if (stack != null) player.inventory.setItem(i, stack)
             }
         }
-
-        // Remove controlled entity association
-        AeonisNetworking.removeControlledEntity(player)
 
         // Restore gamemode and visibility
         player.isInvisible = false
@@ -254,7 +251,7 @@ object AeonisPossession {
         val arr = Array<ItemStack?>(size) { null }
         for (i in 0 until size) {
             val s = player.inventory.getItem(i)
-            arr[i] = s?.copy()
+            arr[i] = s.copy()
         }
         mobInventories[mob.id] = arr
     }

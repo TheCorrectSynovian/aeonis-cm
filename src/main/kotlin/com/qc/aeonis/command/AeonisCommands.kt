@@ -1968,7 +1968,7 @@ object AeonisCommands {
         
         source.sendSuccess({ Component.literal("§6§l═══════ AEONIS SYSTEM ═══════") }, false)
         source.sendSuccess({ Component.literal("§e§lMOD INFO") }, false)
-        source.sendSuccess({ Component.literal("  §7ID: §baeonis-command-master §7| §7Ver: §b2.0.0") }, false)
+        source.sendSuccess({ Component.literal("  §7ID: §bAeonis §7| §7Ver: §b2.0.0") }, false)
         source.sendSuccess({ Component.literal("  §7Extra Mobs: " + if (AeonisFeatures.isExtraMobsEnabled(server)) "§aON" else "§cOFF") }, false)
         
         source.sendSuccess({ Component.literal("§c§l⚡ PERFORMANCE") }, false)

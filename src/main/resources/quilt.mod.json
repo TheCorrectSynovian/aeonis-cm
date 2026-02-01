@@ -2,7 +2,7 @@
 	"schema_version": 1,
 	"quilt_loader": {
 		"group": "com.qc.aeonis",
-		"id": "aeonis-command-master",
+	"id": "aeonis",
 		"version": "${version}",
 		"metadata": {
 			"name": "Aeonis: Command Master",
@@ -53,7 +53,7 @@
 		],
 		"provides": [
 			{
-				"id": "aeonis-command-master",
+				"id": "aeonis",
 				"version": "${version}"
 			}
 		]
