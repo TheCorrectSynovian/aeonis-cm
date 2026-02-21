@@ -791,8 +791,8 @@ object AeonisCommands {
             return 0
         }
         
-        // Check if already transformed
-        if (transformedEntities.containsKey(player.uuid)) {
+        // Check if already controlling any entity (command-transform, soul mode possess, or possession mode)
+        if (AeonisNetworking.isPlayerTransformed(player.uuid)) {
             source.sendFailure(Component.literal("§cYou're already transformed! Use /untransform first."))
             // Restore original gamemode if transform fails
             player.setGameMode(originalMode)
@@ -1175,14 +1175,20 @@ object AeonisCommands {
             return 0
         }
         
-        // Check if transformed
-        if (!transformedEntities.containsKey(player.uuid)) {
-            source.sendFailure(Component.literal("§cYou're not transformed!"))
-            return 0
+        // Handle command-transform path
+        if (transformedEntities.containsKey(player.uuid)) {
+            autoUntransform(player, showMessage = true)
+            return 1
         }
-        
-        autoUntransform(player, showMessage = true)
-        return 1
+
+        // Handle possession-mode path
+        if (com.qc.aeonis.AeonisPossession.isActivelyPossessing(player.uuid)) {
+            com.qc.aeonis.AeonisPossession.handleRelease(player, player.x, player.y, player.z)
+            return 1
+        }
+
+        source.sendFailure(Component.literal("§cYou're not transformed!"))
+        return 0
     }
     
     /**
@@ -1236,7 +1242,7 @@ object AeonisCommands {
         }
         
         // Check if already transformed
-        if (transformedEntities.containsKey(player.uuid)) {
+        if (AeonisNetworking.isPlayerTransformed(player.uuid)) {
             source.sendFailure(Component.literal("§cYou're already controlling a mob! Use /untransform first."))
             return 0
         }

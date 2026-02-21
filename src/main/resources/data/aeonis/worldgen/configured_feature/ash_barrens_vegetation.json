@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:nether_forest_vegetation",
+  "config": {
+    "state_provider": {
+      "type": "minecraft:weighted_state_provider",
+      "entries": [
+        { "data": { "Name": "minecraft:dead_bush" }, "weight": 40 },
+        { "data": { "Name": "minecraft:fire", "Properties": { "age": "0", "east": "false", "north": "false", "south": "false", "up": "false", "west": "false" } }, "weight": 15 },
+        { "data": { "Name": "aeonis:charred_gravel" }, "weight": 30 },
+        { "data": { "Name": "minecraft:bone_block", "Properties": { "axis": "y" } }, "weight": 15 }
+      ]
+    },
+    "spread_width": 8,
+    "spread_height": 1
+  }
+}

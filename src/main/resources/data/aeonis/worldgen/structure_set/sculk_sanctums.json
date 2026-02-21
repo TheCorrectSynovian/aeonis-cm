@@ -1,0 +1,11 @@
+{
+  "placement": {
+    "type": "minecraft:random_spread",
+    "salt": 60127841,
+    "spacing": 36,
+    "separation": 14
+  },
+  "structures": [
+    { "structure": "aeonis:sculk_sanctum", "weight": 1 }
+  ]
+}

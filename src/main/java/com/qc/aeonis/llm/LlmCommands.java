@@ -171,6 +171,10 @@ public class LlmCommands {
             ctx.getSource().sendFailure(Component.literal("Aeonis is not spawned. Use /ai llm spawn first."));
             return 0;
         }
+        if (!canControlAssistant(player, assistant)) {
+            ctx.getSource().sendFailure(Component.literal("You don't have permission to control Aeonis."));
+            return 0;
+        }
         
         assistant.getAeonisBrain().follow(target);
         return 1;
@@ -185,6 +189,10 @@ public class LlmCommands {
             ctx.getSource().sendFailure(Component.literal("Aeonis is not spawned. Use /ai llm spawn first."));
             return 0;
         }
+        if (!canControlAssistant(player, assistant)) {
+            ctx.getSource().sendFailure(Component.literal("You don't have permission to control Aeonis."));
+            return 0;
+        }
         
         assistant.getAeonisBrain().navigateTo(pos);
         return 1;
@@ -197,6 +205,10 @@ public class LlmCommands {
         AeonisAssistant assistant = AeonisAssistant.getInstance(getServerLevel(player));
         if (assistant == null) {
             ctx.getSource().sendFailure(Component.literal("Aeonis is not spawned. Use /ai llm spawn first."));
+            return 0;
+        }
+        if (!canControlAssistant(player, assistant)) {
+            ctx.getSource().sendFailure(Component.literal("You don't have permission to control Aeonis."));
             return 0;
         }
         
@@ -218,6 +230,10 @@ public class LlmCommands {
         AeonisAssistant assistant = AeonisAssistant.getInstance(getServerLevel(player));
         if (assistant == null) {
             ctx.getSource().sendFailure(Component.literal("Aeonis is not spawned."));
+            return 0;
+        }
+        if (!canControlAssistant(player, assistant)) {
+            ctx.getSource().sendFailure(Component.literal("You don't have permission to control Aeonis."));
             return 0;
         }
         
@@ -247,5 +263,19 @@ public class LlmCommands {
             String.format("%.1f, %.1f, %.1f", assistant.getX(), assistant.getY(), assistant.getZ())), false);
         
         return 1;
+    }
+
+    private static boolean canControlAssistant(ServerPlayer player, AeonisAssistant assistant) {
+        if (player.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER) || getServerLevel(player).getServer().isSingleplayer()) {
+            return true;
+        }
+        if (assistant.getOwnerUuid() != null && assistant.getOwnerUuid().equals(player.getUUID())) {
+            return true;
+        }
+        LlmConfigStorage storage = LlmConfigStorage.getInstance();
+        return storage != null
+            && storage.getConfig() != null
+            && storage.getConfig().ownerUuid != null
+            && storage.getConfig().ownerUuid.equals(player.getUUID());
     }
 }

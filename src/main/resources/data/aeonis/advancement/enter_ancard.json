@@ -1,0 +1,37 @@
+{
+  "display": {
+    "icon": {
+      "id": "aeonis:ancard_stone"
+    },
+    "title": {
+      "text": "Into the Abyss",
+      "color": "#FF4500",
+      "bold": true
+    },
+    "description": {
+      "text": "Enter the Ancard dimension for the first time",
+      "color": "#c0c0c0"
+    },
+    "frame": "challenge",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "parent": "aeonis:root",
+  "criteria": {
+    "entered_ancard": {
+      "trigger": "minecraft:changed_dimension",
+      "conditions": {
+        "to": "aeonis:ancard"
+      }
+    }
+  },
+  "requirements": [
+    [
+      "entered_ancard"
+    ]
+  ],
+  "rewards": {
+    "experience": 100
+  }
+}

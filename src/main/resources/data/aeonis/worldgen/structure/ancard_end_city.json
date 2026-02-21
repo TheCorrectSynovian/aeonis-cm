@@ -1,6 +1,0 @@
-{
-  "type": "minecraft:end_city",
-  "biomes": "#aeonis:has_structure/ancard_end_city",
-  "spawn_overrides": {},
-  "step": "surface_structures"
-}

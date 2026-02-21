@@ -1,0 +1,33 @@
+{
+  "display": {
+    "icon": {
+      "id": "minecraft:compass",
+      "components": {
+        "minecraft:enchantment_glint_override": true
+      }
+    },
+    "title": {
+    "translate": "advancement.deeper_dark.underground_map.title",
+    "fallback": "Underground Map"
+},
+    "description": {
+    "translate": "advancement.deeper_dark.underground_map.desc",
+    "fallback": "Find a Locator Compass"
+},
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "parent": "deeper_dark:root",
+  "criteria": {
+    "criteria": {
+      "trigger": "minecraft:impossible"
+    }
+  },
+  "requirements": [
+    [
+      "criteria"
+    ]
+  ]
+}

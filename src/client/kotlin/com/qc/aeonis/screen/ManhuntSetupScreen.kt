@@ -205,8 +205,7 @@ class ManhuntSetupScreen : Screen(Component.literal("Manhunt Setup")) {
     }
     
     override fun render(graphics: GuiGraphics, mouseX: Int, mouseY: Int, partialTick: Float) {
-        // Render background
-        renderBackground(graphics, mouseX, mouseY, partialTick)
+        // Background is already rendered by Screen#renderWithTooltip; calling renderBackground here double-blurs and crashes.
         
         // Render title
         graphics.drawCenteredString(

@@ -57,6 +57,7 @@ object AeonisPossession {
     }
 
     fun isPlayerInPossessionMode(uuid: UUID): Boolean = playersInPossessionMode.contains(uuid)
+    fun isActivelyPossessing(uuid: UUID): Boolean = activePossessions[uuid] == true
 
     fun register() {
         // UseEntity callback for soul possession interactions (using SOUL item)
@@ -165,11 +166,12 @@ object AeonisPossession {
     }
 
     fun handleRelease(player: ServerPlayer, clientBodyX: Double, clientBodyY: Double, clientBodyZ: Double) {
-        // Additional cleanup: save the controlled entity before clearing its mapping
         val playerId = player.uuid
+        if (!activePossessions.getOrDefault(playerId, false)) return
+
+        // Additional cleanup: save the controlled entity before clearing its mapping
         val controlledId = AeonisNetworking.getControlledEntityId(playerId)
         AeonisNetworking.removeControlledEntity(player)
-        if (!activePossessions.getOrDefault(playerId, false)) return
 
         val body = playerBodies.remove(playerId)
         activePossessions.remove(playerId)

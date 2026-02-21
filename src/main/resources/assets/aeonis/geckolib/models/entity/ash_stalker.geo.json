@@ -1,0 +1,191 @@
+{
+  "format_version": "1.12.0",
+  "minecraft:geometry": [
+    {
+      "description": {
+        "identifier": "geometry.ash_stalker",
+        "texture_width": 64,
+        "texture_height": 64,
+        "visible_bounds_width": 3,
+        "visible_bounds_height": 3.5,
+        "visible_bounds_offset": [
+          0,
+          1.5,
+          0
+        ]
+      },
+      "bones": [
+        {
+          "name": "root",
+          "pivot": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "main",
+          "parent": "root",
+          "pivot": [
+            0,
+            0,
+            0
+          ],
+          "cubes": [
+            {
+              "origin": [
+                -5,
+                8,
+                -3
+              ],
+              "size": [
+                10,
+                8,
+                6
+              ],
+              "uv": [
+                0,
+                0
+              ]
+            }
+          ]
+        },
+        {
+          "name": "head",
+          "parent": "main",
+          "pivot": [
+            0,
+            16,
+            -3
+          ],
+          "cubes": [
+            {
+              "origin": [
+                -3,
+                16,
+                -6
+              ],
+              "size": [
+                6,
+                5,
+                6
+              ],
+              "uv": [
+                0,
+                16
+              ]
+            }
+          ]
+        },
+        {
+          "name": "left_leg",
+          "parent": "main",
+          "pivot": [
+            -3,
+            8,
+            0
+          ],
+          "cubes": [
+            {
+              "origin": [
+                -4,
+                0,
+                -1
+              ],
+              "size": [
+                3,
+                8,
+                3
+              ],
+              "uv": [
+                32,
+                0
+              ]
+            }
+          ]
+        },
+        {
+          "name": "right_leg",
+          "parent": "main",
+          "pivot": [
+            3,
+            8,
+            0
+          ],
+          "cubes": [
+            {
+              "origin": [
+                1,
+                0,
+                -1
+              ],
+              "size": [
+                3,
+                8,
+                3
+              ],
+              "uv": [
+                32,
+                12
+              ]
+            }
+          ]
+        },
+        {
+          "name": "left_arm",
+          "parent": "main",
+          "pivot": [
+            -5,
+            14,
+            0
+          ],
+          "cubes": [
+            {
+              "origin": [
+                -8,
+                6,
+                -1
+              ],
+              "size": [
+                3,
+                10,
+                3
+              ],
+              "uv": [
+                44,
+                0
+              ]
+            }
+          ]
+        },
+        {
+          "name": "right_arm",
+          "parent": "main",
+          "pivot": [
+            5,
+            14,
+            0
+          ],
+          "cubes": [
+            {
+              "origin": [
+                5,
+                6,
+                -1
+              ],
+              "size": [
+                3,
+                10,
+                3
+              ],
+              "uv": [
+                44,
+                14
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -199,7 +199,7 @@ class AeonisControlScreen(private val parentScreen: Screen?) : Screen(Component.
     }
 
     override fun render(graphics: GuiGraphics, mouseX: Int, mouseY: Int, partialTick: Float) {
-        renderBackground(graphics, mouseX, mouseY, partialTick)
+        // Background is already rendered by Screen#renderWithTooltip; calling renderBackground here double-blurs and crashes.
         graphics.drawCenteredString(font, Component.translatable("options.aeonis.title"), width / 2, 14, 0xFFD050)
         graphics.drawString(font, Component.translatable("options.aeonis.list_label"), 10, entityListTop - 26, 0xFFFFFF)
         graphics.drawString(font, Component.translatable("options.aeonis.list_description"), 10, entityListTop - 12, 0xAAAAAA)

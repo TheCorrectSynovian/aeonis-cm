@@ -3,6 +3,8 @@ package com.qc.aeonis
 import com.qc.aeonis.command.AeonisCommands
 import com.qc.aeonis.config.AeonisFeatures
 import com.qc.aeonis.entity.AeonisEntities
+import com.qc.aeonis.entity.ancard.AncardEntities
+import com.qc.aeonis.entity.ancard.arda.AncardArdaEntities
 import com.qc.aeonis.entity.HerobrineEntity
 import com.qc.aeonis.entity.HerobrineSpawner
 import com.qc.aeonis.llm.AeonisAssistant
@@ -10,6 +12,8 @@ import com.qc.aeonis.llm.LlmCommands
 import com.qc.aeonis.llm.config.LlmConfigStorage
 import com.qc.aeonis.llm.network.LlmNetworking
 import com.qc.aeonis.llm.safety.SafetyLimiter
+import com.qc.aeonis.companion.CompanionBotManager
+import com.qc.aeonis.companion.CompanionCommands
 import com.qc.aeonis.minigame.prophunt.PropHuntCommands
 import com.qc.aeonis.minigame.prophunt.PropHuntManager
 import com.qc.aeonis.network.AeonisNetworking
@@ -22,6 +26,7 @@ import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents
 import net.minecraft.network.chat.Component
 import net.minecraft.server.level.ServerLevel
 import net.minecraft.server.level.ServerPlayer
+import net.minecraft.util.Mth
 import net.minecraft.world.level.GameType
 import org.slf4j.LoggerFactory
 
@@ -30,9 +35,14 @@ object AeonisManager : ModInitializer {
 
 	override fun onInitialize() {
 		com.qc.aeonis.block.AeonisBlocks.register()
+		com.qc.aeonis.block.entity.AeonisBlockEntities.register()
+		com.qc.aeonis.block.AncardBlocks.register()
 		AeonisEntities.register()
+		AncardEntities.register()
+		AncardArdaEntities.register()
 		com.qc.aeonis.item.AeonisItems.register()
 		com.qc.aeonis.data.AeonisLootModifiers.register()
+		com.qc.aeonis.effect.AncardEffects.register()
 		AeonisPossession.register()
 		AeonisCommands.register()
 		AeonisNetworking.registerServer()
@@ -41,11 +51,21 @@ object AeonisManager : ModInitializer {
 		PropHuntManager.register()
 		PropHuntCommands.register()
 		logger.info("Prop Hunt minigame registered")
+
+		CompanionBotManager.register()
+		CompanionCommands.register()
+		logger.info("Companion bot system registered")
 		
 		// Register Manhunt minigame
 		com.qc.aeonis.minigame.manhunt.ManhuntManager.register()
 		com.qc.aeonis.minigame.manhunt.ManhuntCommands.register()
 		logger.info("Manhunt minigame registered")
+		
+		// Register Ancard dimension rules and events
+		com.qc.aeonis.dimension.AncardDimensionRules.register()
+		com.qc.aeonis.dimension.AncardEclipseEvent.register()
+		com.qc.aeonis.dimension.AncardSovereignSpawnManager.register()
+		logger.info("Ancard dimension systems registered")
 		
 		// Register LLM feature
 		LlmCommands.register()
@@ -114,7 +134,8 @@ object AeonisManager : ModInitializer {
 					if (mob is net.minecraft.world.entity.LivingEntity) {
 						val mobSpeedAttr = mob.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.MOVEMENT_SPEED)
 						if (mobSpeedAttr != null) {
-							val targetSpeed = mobSpeedAttr.baseValue.coerceIn(0.05, 0.7)
+							val profileMul = getMovementProfileMultiplier(mob)
+							val targetSpeed = (mobSpeedAttr.baseValue * profileMul).coerceIn(0.06, 0.42)
 							player.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.MOVEMENT_SPEED)?.baseValue = targetSpeed
 						}
 					}
@@ -123,14 +144,42 @@ object AeonisManager : ModInitializer {
 					// This is the QCmod approach - player is the "driver" and mob is the "visual"
 					// The camera positioning is handled client-side in CameraMixin
 					mob.setPos(player.x, player.y, player.z)
-					mob.setYRot(player.yRot)
-					mob.setXRot(player.xRot)
-					mob.setYHeadRot(player.yRot)
+					val desiredYaw = player.yRot
+					val yawBlend = getYawBlend(mob)
+					val smoothedYaw = mob.yRot + Mth.wrapDegrees(desiredYaw - mob.yRot) * yawBlend
+					mob.setYRot(smoothedYaw)
+					mob.setYHeadRot(smoothedYaw)
 					if (mob is net.minecraft.world.entity.LivingEntity) {
-						mob.yBodyRot = player.yRot
+						mob.yBodyRot = smoothedYaw
+					}
+					val flightLike = AeonisNetworking.canMobFly(mob) || mob.isInWater || mob.isInLava
+					if (flightLike) {
+						val desiredPitch = player.xRot
+						val smoothedPitch = mob.xRot + (desiredPitch - mob.xRot) * 0.35f
+						mob.setXRot(smoothedPitch)
+					} else {
+						// Ground mobs should not fully pitch with camera; it looks unnatural.
+						mob.setXRot(0.0f)
+					}
+					if (mob is net.minecraft.world.entity.Mob) {
+						val input = AeonisNetworking.getLatestControlInput(player.uuid)
+						if (input != null) {
+							mob.setZza(input.forward)
+							mob.setXxa(input.strafe)
+						} else {
+							mob.setZza(0.0f)
+							mob.setXxa(0.0f)
+						}
 					}
 					mob.setDeltaMovement(player.deltaMovement)
-					mob.setOnGround(player.onGround())
+					if (mob is net.minecraft.world.entity.LivingEntity) {
+						val horizontalSpeed = kotlin.math.sqrt(
+							player.deltaMovement.x * player.deltaMovement.x +
+							player.deltaMovement.z * player.deltaMovement.z
+						).toFloat()
+						val animSpeed = (horizontalSpeed * 5.8f).coerceIn(0.0f, 1.8f)
+						mob.walkAnimation.setSpeed(animSpeed)
+					}
 					mob.hurtMarked = true
 					
 					// Sync mob equipment with player's held items
@@ -172,8 +221,8 @@ object AeonisManager : ModInitializer {
 					if (!player.isInvisible) {
 						player.isInvisible = true
 					}
-					// Disable player collision by making them spectator-like but still in survival
-					player.noPhysics = true
+					// Keep normal physics for natural movement while transformed.
+					player.noPhysics = false
 				}
 			}
 		}
@@ -222,5 +271,37 @@ object AeonisManager : ModInitializer {
 		}
 		
 		logger.info("Aeonis Plus core initialized")
+	}
+
+	private fun getYawBlend(entity: net.minecraft.world.entity.Entity): Float {
+		val width = entity.bbWidth
+		return when {
+			entity.type == net.minecraft.world.entity.EntityType.SPIDER ||
+				entity.type == net.minecraft.world.entity.EntityType.CAVE_SPIDER -> 0.52f
+			width <= 0.7f -> 0.55f
+			width <= 1.2f -> 0.45f
+			width <= 2.0f -> 0.36f
+			else -> 0.30f
+		}
+	}
+
+	private fun getMovementProfileMultiplier(entity: net.minecraft.world.entity.Entity): Double {
+		return when (entity.type) {
+			net.minecraft.world.entity.EntityType.ZOMBIE -> 0.92
+			net.minecraft.world.entity.EntityType.HUSK -> 0.90
+			net.minecraft.world.entity.EntityType.DROWNED -> 0.88
+			net.minecraft.world.entity.EntityType.CREEPER -> 0.90
+			net.minecraft.world.entity.EntityType.SPIDER -> 1.12
+			net.minecraft.world.entity.EntityType.CAVE_SPIDER -> 1.16
+			net.minecraft.world.entity.EntityType.ENDERMAN -> 1.06
+			net.minecraft.world.entity.EntityType.SKELETON -> 0.98
+			net.minecraft.world.entity.EntityType.STRAY -> 0.96
+			net.minecraft.world.entity.EntityType.WITHER_SKELETON -> 0.94
+			net.minecraft.world.entity.EntityType.IRON_GOLEM -> 0.78
+			net.minecraft.world.entity.EntityType.RAVAGER -> 0.74
+			net.minecraft.world.entity.EntityType.WARDEN -> 0.80
+			net.minecraft.world.entity.EntityType.BEE -> 1.12
+			else -> 1.0
+		}
 	}
 }

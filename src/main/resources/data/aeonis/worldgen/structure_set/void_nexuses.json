@@ -1,0 +1,12 @@
+{
+  "placement": {
+    "type": "minecraft:random_spread",
+    "salt": 70214953,
+    "spacing": 48,
+    "separation": 22,
+    "spread_type": "triangular"
+  },
+  "structures": [
+    { "structure": "aeonis:void_nexus", "weight": 1 }
+  ]
+}

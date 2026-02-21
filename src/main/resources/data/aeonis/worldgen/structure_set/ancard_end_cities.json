@@ -2,13 +2,13 @@
   "placement": {
     "type": "minecraft:random_spread",
     "salt": 10387313,
-    "separation": 10,
-    "spacing": 18,
+    "spacing": 16,
+    "separation": 8,
     "spread_type": "triangular"
   },
   "structures": [
     {
-      "structure": "aeonis:ancard_end_city",
+      "structure": "minecraft:end_city",
       "weight": 1
     }
   ]

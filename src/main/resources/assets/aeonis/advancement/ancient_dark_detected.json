@@ -1,0 +1,30 @@
+{
+  "display": {
+    "icon": {
+      "id": "minecraft:warden_spawn_egg"
+    },
+    "title": {
+    "translate": "advancement.deeper_dark.ancient_dark_detected.title",
+    "fallback": "Intruder Alert!"
+},
+    "description": {
+    "translate": "advancement.deeper_dark.ancient_dark_detected.desc",
+    "fallback": "Alert The Ancient Dark To Your Presence by Touching Sculk"
+},
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "parent": "deeper_dark:ancient_dark",
+  "criteria": {
+    "criteria": {
+      "trigger": "minecraft:impossible"
+    }
+  },
+  "requirements": [
+    [
+      "criteria"
+    ]
+  ]
+}

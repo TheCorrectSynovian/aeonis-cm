@@ -1,0 +1,52 @@
+{
+  "values": [
+    {
+      "id": "deeper_dark:sculk_converter/recipes/enchantment_addition",
+      "required": false
+    },
+    {
+      "id": "deeper_dark:sculk_converter/recipes/soul_sand",
+      "required": false
+    },
+    {
+      "id": "deeper_dark:sculk_converter/recipes/soul_soil",
+      "required": false
+    },
+    {
+      "id": "deeper_dark:sculk_converter/recipes/echo_shard",
+      "required": false
+    },
+    {
+      "id": "deeper_dark:sculk_converter/recipes/experience_bottle",
+      "required": false
+    },
+    {
+      "id": "deeper_dark:sculk_converter/recipes/sculk_catalyst",
+      "required": false
+    },
+    {
+      "id": "deeper_dark:sculk_converter/recipes/reinforced_deepslate",
+      "required": false
+    },
+    {
+      "id": "deeper_dark:sculk_converter/recipes/blindness_potion",
+      "required": false
+    },
+    {
+      "id": "deeper_dark:sculk_converter/recipes/activated_sculk_shrieker",
+      "required": false
+    },
+    {
+      "id": "deeper_dark:sculk_converter/recipes/warden_tracker",
+      "required": false
+    },
+    {
+      "id": "deeper_dark:sculk_converter/recipes/key",
+      "required": false
+    },
+    {
+      "id": "deeper_dark:sculk_converter/recipes/enchanted_golden_apple",
+      "required": false
+    }
+  ]
+}

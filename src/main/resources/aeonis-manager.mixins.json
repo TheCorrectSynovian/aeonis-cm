@@ -14,7 +14,9 @@
 		"EndermanHeldBlockMixin",
 		"BeeEntityAccessor",
 		"DeathMessageMixin",
-		"ChatMessageMixin"
+		"ChatMessageMixin",
+		"FlintAndSteelMixin",
+		"AncardSeedMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

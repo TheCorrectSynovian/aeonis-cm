@@ -74,7 +74,7 @@ public class OpenRouterProvider implements LlmProvider {
                     .header("Content-Type", "application/json")
                     .header("Authorization", "Bearer " + config.apiKey())
                     .header("HTTP-Referer", "https://github.com/TheCorrectSynovian/Aeonis-mod")
-                    .header("X-Title", "Aeonis Command Master")
+                    .header("X-Title", "Aeonis")
                     .timeout(Duration.ofSeconds(60))
                     .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
                     .build();

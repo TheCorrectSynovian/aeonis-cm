@@ -1,0 +1,34 @@
+{
+  "variants": {
+    "facing=north,type=single":       { "model": "aeonis:block/safe_chest" },
+    "facing=east,type=single":        { "model": "aeonis:block/safe_chest", "y": 90 },
+    "facing=south,type=single":       { "model": "aeonis:block/safe_chest", "y": 180 },
+    "facing=west,type=single":        { "model": "aeonis:block/safe_chest", "y": 270 },
+
+    "facing=north,type=left":         { "model": "aeonis:block/safe_chest_left" },
+    "facing=east,type=left":          { "model": "aeonis:block/safe_chest_left", "y": 90 },
+    "facing=south,type=left":         { "model": "aeonis:block/safe_chest_left", "y": 180 },
+    "facing=west,type=left":          { "model": "aeonis:block/safe_chest_left", "y": 270 },
+
+    "facing=north,type=right":        { "model": "aeonis:block/safe_chest_right" },
+    "facing=east,type=right":         { "model": "aeonis:block/safe_chest_right", "y": 90 },
+    "facing=south,type=right":        { "model": "aeonis:block/safe_chest_right", "y": 180 },
+    "facing=west,type=right":         { "model": "aeonis:block/safe_chest_right", "y": 270 },
+
+    "facing=north,type=triple_left":  { "model": "aeonis:block/safe_chest_left" },
+    "facing=east,type=triple_left":   { "model": "aeonis:block/safe_chest_left", "y": 90 },
+    "facing=south,type=triple_left":  { "model": "aeonis:block/safe_chest_left", "y": 180 },
+    "facing=west,type=triple_left":   { "model": "aeonis:block/safe_chest_left", "y": 270 },
+
+    "facing=north,type=triple_middle": { "model": "aeonis:block/safe_chest_middle" },
+    "facing=east,type=triple_middle":  { "model": "aeonis:block/safe_chest_middle", "y": 90 },
+    "facing=south,type=triple_middle": { "model": "aeonis:block/safe_chest_middle", "y": 180 },
+    "facing=west,type=triple_middle":  { "model": "aeonis:block/safe_chest_middle", "y": 270 },
+
+    "facing=north,type=triple_right": { "model": "aeonis:block/safe_chest_right" },
+    "facing=east,type=triple_right":  { "model": "aeonis:block/safe_chest_right", "y": 90 },
+    "facing=south,type=triple_right": { "model": "aeonis:block/safe_chest_right", "y": 180 },
+    "facing=west,type=triple_right":  { "model": "aeonis:block/safe_chest_right", "y": 270 }
+  }
+}
+

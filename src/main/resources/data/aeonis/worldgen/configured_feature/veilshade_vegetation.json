@@ -1,0 +1,14 @@
+{
+  "type": "minecraft:nether_forest_vegetation",
+  "config": {
+    "state_provider": {
+      "type": "minecraft:weighted_state_provider",
+      "entries": [
+        {"data": {"Name": "aeonis:veilshade_fungus"}, "weight": 60},
+        {"data": {"Name": "aeonis:veilshade_spore_block"}, "weight": 40}
+      ]
+    },
+    "spread_width": 8,
+    "spread_height": 4
+  }
+}

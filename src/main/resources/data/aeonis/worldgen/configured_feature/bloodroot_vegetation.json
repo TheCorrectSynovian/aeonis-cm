@@ -1,0 +1,14 @@
+{
+  "type": "minecraft:nether_forest_vegetation",
+  "config": {
+    "state_provider": {
+      "type": "minecraft:weighted_state_provider",
+      "entries": [
+        {"data": {"Name": "aeonis:bloodroot_mushroom"}, "weight": 70},
+        {"data": {"Name": "aeonis:bloodroot_vine"}, "weight": 30}
+      ]
+    },
+    "spread_width": 8,
+    "spread_height": 4
+  }
+}

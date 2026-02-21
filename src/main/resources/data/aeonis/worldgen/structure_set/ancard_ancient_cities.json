@@ -1,13 +1,14 @@
 {
   "placement": {
     "type": "minecraft:random_spread",
-    "salt": 7843921,
+    "salt": 20083232,
     "spacing": 20,
-    "separation": 6
+    "separation": 6,
+    "spread_type": "linear"
   },
   "structures": [
     {
-      "structure": "aeonis:ancard_ancient_city",
+      "structure": "minecraft:ancient_city",
       "weight": 1
     }
   ]

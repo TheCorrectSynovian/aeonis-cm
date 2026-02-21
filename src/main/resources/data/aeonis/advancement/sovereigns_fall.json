@@ -1,0 +1,39 @@
+{
+  "display": {
+    "icon": {
+      "id": "aeonis:ancard_sovereign_spawn_egg"
+    },
+    "title": {
+      "text": "Sovereign's Fall",
+      "color": "#FFD700",
+      "bold": true
+    },
+    "description": {
+      "text": "Defeat the Ancard Sovereign, ruler of the forsaken realm",
+      "color": "#c0c0c0"
+    },
+    "frame": "challenge",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": true
+  },
+  "parent": "aeonis:enter_ancard",
+  "criteria": {
+    "killed_sovereign": {
+      "trigger": "minecraft:player_killed_entity",
+      "conditions": {
+        "entity": {
+          "type": "aeonis:ancard_sovereign"
+        }
+      }
+    }
+  },
+  "requirements": [
+    [
+      "killed_sovereign"
+    ]
+  ],
+  "rewards": {
+    "experience": 500
+  }
+}

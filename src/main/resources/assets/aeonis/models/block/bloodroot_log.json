@@ -1,0 +1,7 @@
+{
+  "parent": "minecraft:block/cube_column",
+  "textures": {
+    "end": "aeonis:block/bloodroot_log_top",
+    "side": "aeonis:block/bloodroot_log"
+  }
+}

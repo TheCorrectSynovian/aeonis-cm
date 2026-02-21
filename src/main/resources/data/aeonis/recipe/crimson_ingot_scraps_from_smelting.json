@@ -1,0 +1,11 @@
+{
+  "type": "minecraft:smelting",
+  "category": "misc",
+  "cookingtime": 200,
+  "experience": 2.0,
+  "ingredient": "aeonis:raw_crimson",
+  "result": {
+    "count": 1,
+    "id": "aeonis:crimson_ingot_scraps"
+  }
+}

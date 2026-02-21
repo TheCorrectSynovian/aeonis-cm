@@ -2,8 +2,8 @@
 	"schemaVersion": 1,
 	"id": "aeonis",
 	"version": "${version}",
-	"name": "Aeonis: Command Master",
-	"description": "A powerful command utility mod! Take control of any mob, spawn custom entities, and unlock fun gameplay commands. Works standalone or as the perfect companion for modpacks. Features: Mob Possession, Custom Mobs (Copper Stalker & more), Admin Commands, and endless fun!",
+	"name": "Aeonis",
+	"description": "Aeonis is a multi-system Minecraft framework combining transformation mechanics, AI-assisted command systems, custom dimensions, unique mobs, and advanced rendering enhancements into one unified experience.",
 	"authors": [
 		"Quantum_Creeper"
 	],
@@ -55,6 +55,7 @@
 		"minecraft": "~1.21.11",
 		"java": ">=21",
 		"fabric-api": "*",
-		"fabric-language-kotlin": "*"
+		"fabric-language-kotlin": "*",
+		"geckolib": "*"
 	}
 }

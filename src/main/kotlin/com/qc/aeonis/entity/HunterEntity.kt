@@ -28,11 +28,13 @@ import net.minecraft.world.entity.ai.goal.MeleeAttackGoal
 import net.minecraft.world.entity.ai.navigation.PathNavigation
 import net.minecraft.world.entity.player.Player
 import net.minecraft.world.item.ItemStack
+import net.minecraft.world.item.Item
 import net.minecraft.world.item.Items
 import net.minecraft.world.level.Level
 import net.minecraft.world.level.ServerLevelAccessor
 import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.level.block.state.BlockState
+import net.minecraft.world.level.material.Fluids
 import net.minecraft.world.phys.Vec3
 import java.util.EnumSet
 import java.util.UUID
@@ -64,6 +66,7 @@ class HunterEntity(entityType: EntityType<out HunterEntity>, level: Level) : Pat
     enum class HunterState {
         IDLE,           // Waiting for game to start
         HUNTING,        // Actively chasing players
+        GATHERING,      // Collecting resources/crafting between pressure windows
         BUILDING,       // Placing blocks to climb
         BREAKING,       // Breaking blocks to reach target
         BRIDGING,       // Building bridges over gaps
@@ -98,6 +101,33 @@ class HunterEntity(entityType: EntityType<out HunterEntity>, level: Level) : Pat
     // Inventory - blocks the hunter can place
     private val blockInventory = mutableMapOf<BlockState, Int>()
     private val maxBlocks = 128
+
+    // Advanced survival resource/crafting economy
+    private var woodLogs = 0
+    private var woodPlanks = 0
+    private var sticks = 0
+    private var cobblestoneCount = 0
+    private var dirtCount = 0
+    private var coalCount = 0
+    private var ironOreCount = 0
+    private var ironIngotCount = 0
+
+    private var hasCraftingTable = false
+    private var hasFurnace = false
+    private var hasWoodAxe = false
+    private var hasStonePickaxe = false
+    private var hasIronPickaxe = false
+    private var hasStoneSword = false
+    private var hasIronSword = false
+
+    private var smeltProgress = 0
+    private var gatherTargetPos: BlockPos? = null
+    private var gatherRetargetCooldown = 0
+    private var gatherFocusTicks = 0
+    private var bedScanCooldown = 0
+    private var waterSearchCooldown = 0
+    private var homeSpawnPos: BlockPos? = null
+    private var bedSpawnPos: BlockPos? = null
     
     // Special abilities
     private var sprintBurstCooldown = 0
@@ -105,10 +135,6 @@ class HunterEntity(entityType: EntityType<out HunterEntity>, level: Level) : Pat
     private var rageModeTimer = 0
     private var rageCooldown = 0
     private var lastAbilityUseTick = 0L
-    
-    // Teleportation for render distance
-    private var ticksTargetOutOfRange = 0
-    private val teleportThreshold = 200 // 10 seconds out of range triggers teleport
     
     // Combat
     private var attackCooldown = 0
@@ -124,8 +150,6 @@ class HunterEntity(entityType: EntityType<out HunterEntity>, level: Level) : Pat
         goalSelector.addGoal(0, HunterFreezeGoal(this))
         goalSelector.addGoal(1, HunterMeleeAttackGoal(this, 1.2, true))
         goalSelector.addGoal(2, HunterChaseGoal(this))
-        goalSelector.addGoal(3, HunterBuildGoal(this))
-        goalSelector.addGoal(4, HunterBreakGoal(this))
     }
     
     override fun finalizeSpawn(
@@ -162,6 +186,29 @@ class HunterEntity(entityType: EntityType<out HunterEntity>, level: Level) : Pat
         blockInventory[Blocks.COBBLESTONE.defaultBlockState()] = 64
         blockInventory[Blocks.DIRT.defaultBlockState()] = 32
         blockInventory[Blocks.OAK_PLANKS.defaultBlockState()] = 32
+
+        // Seed economy from starting inventory
+        cobblestoneCount = 64
+        dirtCount = 32
+        woodPlanks = 32
+        sticks = 8
+        woodLogs = 0
+        coalCount = 0
+        ironOreCount = 0
+        ironIngotCount = 0
+        hasCraftingTable = true
+        hasFurnace = true
+        hasWoodAxe = true
+        hasStonePickaxe = true
+        hasIronPickaxe = false
+        hasStoneSword = false
+        hasIronSword = true
+        smeltProgress = 0
+        gatherTargetPos = null
+        gatherRetargetCooldown = 0
+        gatherFocusTicks = 0
+        bedScanCooldown = 0
+        waterSearchCooldown = 0
     }
     
     // ════════════════════════════════════════════════════════════════════════
@@ -194,12 +241,16 @@ class HunterEntity(entityType: EntityType<out HunterEntity>, level: Level) : Pat
         
         // Find and update target
         updateTarget(serverLevel)
+
+        // Advanced movement/survival helpers
+        updateBedRespawnAnchor(serverLevel)
+        handleFallSurvival(serverLevel)
+
+        // Keep hunter pressure on speedrunners; no passive gathering drift during active manhunt.
+        maintainHuntPressure(serverLevel)
         
         // Handle special abilities
         handleSpecialAbilities(serverLevel)
-        
-        // Handle render distance teleportation
-        handleRenderDistanceTeleport(serverLevel)
         
         // Spawn hunting particles
         if (currentState == HunterState.HUNTING && tickCount % 10 == 0) {
@@ -218,6 +269,9 @@ class HunterEntity(entityType: EntityType<out HunterEntity>, level: Level) : Pat
         if (leapCooldown > 0) leapCooldown--
         if (rageCooldown > 0) rageCooldown--
         if (attackCooldown > 0) attackCooldown--
+        if (gatherRetargetCooldown > 0) gatherRetargetCooldown--
+        if (bedScanCooldown > 0) bedScanCooldown--
+        if (waterSearchCooldown > 0) waterSearchCooldown--
     }
     
     // ════════════════════════════════════════════════════════════════════════
@@ -334,6 +388,9 @@ class HunterEntity(entityType: EntityType<out HunterEntity>, level: Level) : Pat
         if (blockState.isAir) return false
         if (blockState.getDestroySpeed(serverLevel, pos) < 0) return false
         if (blockState.`is`(BlockTags.FEATURES_CANNOT_REPLACE)) return false
+
+        // Equip context-appropriate tool before mining.
+        equipToolForBlock(blockState)
         
         // Start or continue breaking
         if (currentBreakingPos != pos) {
@@ -343,7 +400,13 @@ class HunterEntity(entityType: EntityType<out HunterEntity>, level: Level) : Pat
         
         // Calculate break time based on block hardness and difficulty
         val hardness = blockState.getDestroySpeed(serverLevel, pos)
-        val breakTime = ((hardness * 30) / difficultyMultiplier).toInt().coerceAtLeast(5)
+        val base = ((hardness * 45) / difficultyMultiplier.coerceAtLeast(0.8f)).toInt().coerceAtLeast(12)
+        val toolMul = when {
+            blockState.`is`(BlockTags.LOGS) && hasAnyAxe() -> 0.9
+            blockState.`is`(BlockTags.MINEABLE_WITH_PICKAXE) && hasAnyPickaxe() -> 0.85
+            else -> 1.8
+        }
+        val breakTime = (base * toolMul).toInt().coerceAtLeast(10)
         
         blockBreakProgress++
         
@@ -361,16 +424,11 @@ class HunterEntity(entityType: EntityType<out HunterEntity>, level: Level) : Pat
         if (blockBreakProgress >= breakTime) {
             // Destroy block
             serverLevel.destroyBlock(pos, false)
-            
-            // Maybe collect the block
-            if (getTotalBlocks() < maxBlocks && random.nextFloat() < 0.5f) {
-                val cobble = Blocks.COBBLESTONE.defaultBlockState()
-                blockInventory[cobble] = (blockInventory[cobble] ?: 0) + 1
-            }
+            collectResourceFromBrokenBlock(blockState)
             
             currentBreakingPos = null
             blockBreakProgress = 0
-            blockBreakCooldown = baseBlockBreakCooldown
+            blockBreakCooldown = baseBlockBreakCooldown + 8
             
             return true
         }
@@ -379,6 +437,261 @@ class HunterEntity(entityType: EntityType<out HunterEntity>, level: Level) : Pat
     }
     
     private fun getTotalBlocks(): Int = blockInventory.values.sum()
+
+    // ════════════════════════════════════════════════════════════════════════
+    // ADVANCED SURVIVAL AI
+    // ════════════════════════════════════════════════════════════════════════
+
+    private fun maintainHuntPressure(serverLevel: ServerLevel) {
+        val targetPlayer = target as? Player
+        gatherTargetPos = null
+        gatherFocusTicks = 0
+
+        if (currentState == HunterState.GATHERING || currentState == HunterState.BUILDING || currentState == HunterState.BREAKING) {
+            setState(HunterState.HUNTING)
+        }
+
+        convertLogsToPlanksAndSticks()
+        craftProgression()
+        smeltProgression()
+
+        if (targetPlayer == null) return
+
+        val dist = distanceTo(targetPlayer)
+        equipCombatWeapon()
+
+        if (dist > 2.8) {
+            val baseSpeed = if (currentState == HunterState.RAGING) 1.45 else 1.15
+            navigation.moveTo(targetPlayer, (baseSpeed * difficultyMultiplier).coerceIn(0.9, 1.9))
+        }
+
+        if (dist > 4.0 && !hasLineOfSight(targetPlayer)) {
+            tryBreakObstacleTowards(targetPlayer)
+        }
+    }
+
+    private fun tryBreakObstacleTowards(targetEntity: Entity) {
+        if (blockBreakCooldown > 0) return
+        if (distanceTo(targetEntity) > 32.0) return
+
+        val direction = Vec3(
+            targetEntity.x - x,
+            targetEntity.y - y,
+            targetEntity.z - z
+        ).normalize()
+
+        val eyePos = blockPosition().above()
+        val front = eyePos.offset(
+            direction.x.toInt().coerceIn(-1, 1),
+            0,
+            direction.z.toInt().coerceIn(-1, 1)
+        )
+        val frontLow = front.below()
+
+        if (!level().getBlockState(front).isAir) {
+            tryBreakBlock(front)
+            return
+        }
+        if (!level().getBlockState(frontLow).isAir) {
+            tryBreakBlock(frontLow)
+        }
+    }
+
+    private fun chooseGatherTarget(level: ServerLevel): BlockPos? {
+        val needWood = !hasWoodAxe || woodPlanks < 16
+        val needStone = !hasStonePickaxe || cobblestoneCount < 24
+        val needIron = !hasIronSword || !hasIronPickaxe
+        val needDirt = dirtCount < 24
+
+        if (needWood) {
+            findNearestBlock(level, 14) { it.`is`(BlockTags.LOGS) }?.let { return it }
+        }
+        if (needStone) {
+            findNearestBlock(level, 12) { state ->
+                state.`is`(BlockTags.MINEABLE_WITH_PICKAXE) &&
+                    (state.`is`(Blocks.STONE) || state.`is`(Blocks.COBBLESTONE) || state.`is`(Blocks.DEEPSLATE))
+            }?.let { return it }
+        }
+        if (needIron && canMineIron()) {
+            findNearestBlock(level, 16) { state ->
+                state.`is`(Blocks.IRON_ORE) || state.`is`(Blocks.DEEPSLATE_IRON_ORE) ||
+                    state.`is`(Blocks.COAL_ORE) || state.`is`(Blocks.DEEPSLATE_COAL_ORE)
+            }?.let { return it }
+        }
+        if (needDirt) {
+            findNearestBlock(level, 10) { state ->
+                state.`is`(Blocks.DIRT) || state.`is`(Blocks.GRASS_BLOCK) || state.`is`(Blocks.COARSE_DIRT)
+            }?.let { return it }
+        }
+        return null
+    }
+
+    private fun isValidGatherTarget(level: ServerLevel, pos: BlockPos): Boolean {
+        val state = level.getBlockState(pos)
+        return !state.isAir && state.getDestroySpeed(level, pos) >= 0f
+    }
+
+    private fun findNearestBlock(
+        level: ServerLevel,
+        radius: Int,
+        predicate: (BlockState) -> Boolean
+    ): BlockPos? {
+        val origin = blockPosition()
+        var best: BlockPos? = null
+        var bestDist = Double.MAX_VALUE
+
+        for (dx in -radius..radius) {
+            for (dy in -4..4) {
+                for (dz in -radius..radius) {
+                    val pos = origin.offset(dx, dy, dz)
+                    val state = level.getBlockState(pos)
+                    if (!predicate(state)) continue
+                    val dist = origin.distSqr(pos).toDouble()
+                    if (dist < bestDist) {
+                        bestDist = dist
+                        best = pos
+                    }
+                }
+            }
+        }
+        return best
+    }
+
+    private fun collectResourceFromBrokenBlock(state: BlockState) {
+        when {
+            state.`is`(BlockTags.LOGS) -> woodLogs += 1
+            state.`is`(Blocks.IRON_ORE) || state.`is`(Blocks.DEEPSLATE_IRON_ORE) -> ironOreCount += 1
+            state.`is`(Blocks.COAL_ORE) || state.`is`(Blocks.DEEPSLATE_COAL_ORE) -> coalCount += 1
+            state.`is`(Blocks.DIRT) || state.`is`(Blocks.GRASS_BLOCK) || state.`is`(Blocks.COARSE_DIRT) -> {
+                dirtCount += 1
+                addBuildingBlock(Blocks.DIRT.defaultBlockState(), 1)
+            }
+            state.`is`(BlockTags.MINEABLE_WITH_PICKAXE) -> {
+                cobblestoneCount += 1
+                addBuildingBlock(Blocks.COBBLESTONE.defaultBlockState(), 1)
+            }
+        }
+    }
+
+    private fun convertLogsToPlanksAndSticks() {
+        if (woodLogs > 0) {
+            woodPlanks += woodLogs * 4
+            woodLogs = 0
+        }
+        // Keep a baseline stick supply for tools.
+        while (woodPlanks >= 2 && sticks < 16) {
+            woodPlanks -= 2
+            sticks += 4
+        }
+    }
+
+    private fun craftProgression() {
+        if (!hasCraftingTable && woodPlanks >= 4) {
+            woodPlanks -= 4
+            hasCraftingTable = true
+        }
+        if (!hasWoodAxe && hasCraftingTable && woodPlanks >= 3 && sticks >= 2) {
+            woodPlanks -= 3
+            sticks -= 2
+            hasWoodAxe = true
+        }
+        if (!hasStonePickaxe && hasCraftingTable && cobblestoneCount >= 3 && sticks >= 2) {
+            cobblestoneCount -= 3
+            sticks -= 2
+            hasStonePickaxe = true
+        }
+        if (!hasStoneSword && hasCraftingTable && cobblestoneCount >= 2 && sticks >= 1) {
+            cobblestoneCount -= 2
+            sticks -= 1
+            hasStoneSword = true
+        }
+        if (!hasFurnace && hasCraftingTable && cobblestoneCount >= 8) {
+            cobblestoneCount -= 8
+            hasFurnace = true
+        }
+        if (!hasIronPickaxe && hasCraftingTable && ironIngotCount >= 3 && sticks >= 2) {
+            ironIngotCount -= 3
+            sticks -= 2
+            hasIronPickaxe = true
+        }
+        if (!hasIronSword && hasCraftingTable && ironIngotCount >= 2 && sticks >= 1) {
+            ironIngotCount -= 2
+            sticks -= 1
+            hasIronSword = true
+        }
+
+        refillBuildingBlocks()
+        equipCombatWeapon()
+    }
+
+    private fun smeltProgression() {
+        if (!hasFurnace || ironOreCount <= 0) return
+
+        val hasFuel = coalCount > 0 || woodPlanks >= 2
+        if (!hasFuel) return
+
+        smeltProgress++
+        val smeltNeeded = (90 / difficultyMultiplier).toInt().coerceAtLeast(25)
+        if (smeltProgress < smeltNeeded) return
+
+        smeltProgress = 0
+        ironOreCount -= 1
+        if (coalCount > 0) coalCount -= 1 else woodPlanks -= 2
+        ironIngotCount += 1
+    }
+
+    private fun refillBuildingBlocks() {
+        if (cobblestoneCount > 0 && (blockInventory[Blocks.COBBLESTONE.defaultBlockState()] ?: 0) < 64) {
+            val toMove = minOf(cobblestoneCount, 64 - (blockInventory[Blocks.COBBLESTONE.defaultBlockState()] ?: 0))
+            cobblestoneCount -= toMove
+            addBuildingBlock(Blocks.COBBLESTONE.defaultBlockState(), toMove)
+        }
+        if (dirtCount > 0 && (blockInventory[Blocks.DIRT.defaultBlockState()] ?: 0) < 48) {
+            val toMove = minOf(dirtCount, 48 - (blockInventory[Blocks.DIRT.defaultBlockState()] ?: 0))
+            dirtCount -= toMove
+            addBuildingBlock(Blocks.DIRT.defaultBlockState(), toMove)
+        }
+        if (woodPlanks > 0 && (blockInventory[Blocks.OAK_PLANKS.defaultBlockState()] ?: 0) < 48) {
+            val toMove = minOf(woodPlanks, 48 - (blockInventory[Blocks.OAK_PLANKS.defaultBlockState()] ?: 0))
+            woodPlanks -= toMove
+            addBuildingBlock(Blocks.OAK_PLANKS.defaultBlockState(), toMove)
+        }
+    }
+
+    private fun addBuildingBlock(state: BlockState, count: Int) {
+        val current = blockInventory[state] ?: 0
+        blockInventory[state] = (current + count).coerceAtMost(maxBlocks)
+    }
+
+    private fun canMineIron(): Boolean = hasStonePickaxe || hasIronPickaxe
+
+    private fun hasAnyAxe(): Boolean = hasWoodAxe
+    private fun hasAnyPickaxe(): Boolean = hasStonePickaxe || hasIronPickaxe
+
+    private fun equipCombatWeapon() {
+        if (rageModeTimer > 0) return
+        val item = when {
+            hasIronSword -> Items.IRON_SWORD
+            hasStoneSword -> Items.STONE_SWORD
+            else -> Items.WOODEN_SWORD
+        }
+        setItemSlot(EquipmentSlot.MAINHAND, ItemStack(item))
+    }
+
+    private fun equipToolForBlock(state: BlockState) {
+        val toolItem: Item = when {
+            state.`is`(BlockTags.LOGS) && hasAnyAxe() -> Items.WOODEN_AXE
+            state.`is`(BlockTags.MINEABLE_WITH_PICKAXE) && hasIronPickaxe -> Items.IRON_PICKAXE
+            state.`is`(BlockTags.MINEABLE_WITH_PICKAXE) && hasStonePickaxe -> Items.STONE_PICKAXE
+            else -> {
+                equipCombatWeapon()
+                return
+            }
+        }
+        if (mainHandItem.item != toolItem) {
+            setItemSlot(EquipmentSlot.MAINHAND, ItemStack(toolItem))
+        }
+    }
     
     /**
      * Build up towards target (tower up)
@@ -390,11 +703,16 @@ class HunterEntity(entityType: EntityType<out HunterEntity>, level: Level) : Pat
         
         // If target is significantly higher, build up
         if (targetPos.y > myPos.y + 2) {
-            // Place block below feet while jumping
-            val placePos = myPos.below()
-            if (level().getBlockState(placePos).isAir && onGround()) {
+            // Tower move: jump first, then place beneath feet while airborne.
+            if (onGround()) {
                 jumpFromGround()
-                return tryPlaceBlock(placePos)
+                return false
+            }
+            if (deltaMovement.y > 0.05) {
+                val placePos = blockPosition().below()
+                if (level().getBlockState(placePos).isAir) {
+                    return tryPlaceBlock(placePos)
+                }
             }
         }
         
@@ -421,6 +739,79 @@ class HunterEntity(entityType: EntityType<out HunterEntity>, level: Level) : Pat
     }
     
     // ════════════════════════════════════════════════════════════════════════
+    // ADVANCED MOVEMENT / SURVIVAL
+    // ════════════════════════════════════════════════════════════════════════
+
+    private fun updateBedRespawnAnchor(serverLevel: ServerLevel) {
+        if (bedScanCooldown > 0) return
+        bedScanCooldown = 20
+
+        val origin = blockPosition()
+        for (dx in -3..3) {
+            for (dy in -2..2) {
+                for (dz in -3..3) {
+                    val pos = origin.offset(dx, dy, dz)
+                    val state = serverLevel.getBlockState(pos)
+                    if (state.`is`(BlockTags.BEDS)) {
+                        bedSpawnPos = pos
+                        return
+                    }
+                }
+            }
+        }
+    }
+
+    private fun handleFallSurvival(serverLevel: ServerLevel) {
+        if (onGround()) return
+        if (fallDistance < 3.5f) return
+
+        val water = if (waterSearchCooldown <= 0) {
+            waterSearchCooldown = 8
+            findNearbyWaterLanding(serverLevel, 6, 12)
+        } else null
+
+        // Try to steer into water to negate/mitigate fall damage.
+        if (water != null) {
+            val target = Vec3(water.x + 0.5, y, water.z + 0.5)
+            val dir = target.subtract(position()).normalize()
+            val steer = 0.35 + (difficultyMultiplier * 0.05)
+            deltaMovement = Vec3(dir.x * steer, deltaMovement.y, dir.z * steer)
+            hurtMarked = true
+            return
+        }
+
+        // Emergency clutch: place a block underfoot while falling if possible.
+        if (fallDistance > 5.0f) {
+            val below = blockPosition().below()
+            if (level().getBlockState(below).isAir) {
+                tryPlaceBlock(below)
+            }
+        }
+    }
+
+    private fun findNearbyWaterLanding(serverLevel: ServerLevel, radius: Int, depth: Int): BlockPos? {
+        val origin = blockPosition()
+        var best: BlockPos? = null
+        var bestDist = Double.MAX_VALUE
+
+        for (dx in -radius..radius) {
+            for (dz in -radius..radius) {
+                for (dy in 0..depth) {
+                    val pos = origin.offset(dx, -dy, dz)
+                    val state = serverLevel.getBlockState(pos)
+                    if (!state.fluidState.`is`(Fluids.WATER)) continue
+                    val dist = origin.distSqr(pos).toDouble()
+                    if (dist < bestDist) {
+                        bestDist = dist
+                        best = pos
+                    }
+                }
+            }
+        }
+        return best
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
     // SPECIAL ABILITIES
     // ════════════════════════════════════════════════════════════════════════
     
@@ -429,7 +820,10 @@ class HunterEntity(entityType: EntityType<out HunterEntity>, level: Level) : Pat
         val distanceToTarget = distanceTo(targetEntity)
         
         // Sprint Burst - when target is medium range
-        if (distanceToTarget in 10.0..30.0 && sprintBurstCooldown <= 0 && currentState == HunterState.HUNTING) {
+        if (distanceToTarget in 10.0..30.0 &&
+            sprintBurstCooldown <= 0 &&
+            (currentState == HunterState.HUNTING || currentState == HunterState.GATHERING)
+        ) {
             activateSprintBurst(serverLevel)
         }
         
@@ -522,7 +916,7 @@ class HunterEntity(entityType: EntityType<out HunterEntity>, level: Level) : Pat
     
     private fun exitRageMode() {
         // Reset to normal equipment
-        setItemSlot(EquipmentSlot.MAINHAND, ItemStack(Items.IRON_SWORD))
+        equipCombatWeapon()
         
         if (currentState == HunterState.RAGING) {
             currentState = HunterState.HUNTING
@@ -530,65 +924,6 @@ class HunterEntity(entityType: EntityType<out HunterEntity>, level: Level) : Pat
         
         val serverLevel = level() as? ServerLevel ?: return
         broadcastToNearbyPlayers(serverLevel, "§e⚡ The Hunter's rage subsides...")
-    }
-    
-    // ════════════════════════════════════════════════════════════════════════
-    // RENDER DISTANCE TELEPORTATION
-    // ════════════════════════════════════════════════════════════════════════
-    
-    private fun handleRenderDistanceTeleport(serverLevel: ServerLevel) {
-        val targetEntity = target as? ServerPlayer ?: return
-        val distanceToTarget = distanceTo(targetEntity)
-        
-        // If target is beyond render distance (typically 128+ blocks)
-        if (distanceToTarget > 100.0) {
-            ticksTargetOutOfRange++
-            
-            if (ticksTargetOutOfRange >= teleportThreshold) {
-                // Teleport to chunk near target
-                teleportNearTarget(serverLevel, targetEntity)
-                ticksTargetOutOfRange = 0
-            }
-        } else {
-            ticksTargetOutOfRange = 0
-        }
-    }
-    
-    private fun teleportNearTarget(serverLevel: ServerLevel, targetEntity: Player) {
-        // Calculate position ~50 blocks from target in a random direction
-        val angle = random.nextDouble() * Math.PI * 2
-        val distance = 40.0 + random.nextDouble() * 20.0
-        
-        val newX = targetEntity.x + sin(angle) * distance
-        val newZ = targetEntity.z + cos(angle) * distance
-        val newY = findGroundLevel(serverLevel, BlockPos.containing(newX, targetEntity.y, newZ)).toDouble()
-        
-        if (newY > serverLevel.minY) {
-            // Spawn particles at old location
-            serverLevel.sendParticles(
-                ParticleTypes.PORTAL,
-                x, y + 1.0, z,
-                30, 0.5, 1.0, 0.5, 0.5
-            )
-            
-            // Teleport
-            teleportTo(newX, newY, newZ)
-            
-            // Spawn particles at new location
-            serverLevel.sendParticles(
-                ParticleTypes.REVERSE_PORTAL,
-                newX, newY + 1.0, newZ,
-                30, 0.5, 1.0, 0.5, 0.5
-            )
-            
-            // Dramatic sound
-            serverLevel.playSound(null, blockPosition(), SoundEvents.ENDERMAN_TELEPORT, SoundSource.HOSTILE, 1.0f, 0.5f)
-            
-            // Warn the player
-            (targetEntity as? ServerPlayer)?.sendSystemMessage(
-                Component.literal("§c§l⚠ You feel a dark presence closing in...")
-            )
-        }
     }
     
     // ════════════════════════════════════════════════════════════════════════
@@ -669,6 +1004,9 @@ class HunterEntity(entityType: EntityType<out HunterEntity>, level: Level) : Pat
                     broadcastToNearbyPlayers(serverLevel, "§c§l🎯 The Hunt begins!")
                 }
             }
+            HunterState.GATHERING -> {
+                // Quiet state transition; no broadcast spam.
+            }
             HunterState.FROZEN -> {
                 navigation.stop()
                 broadcastToNearbyPlayers(serverLevel, "§e⏸ The Hunter has been deactivated.")
@@ -695,6 +1033,18 @@ class HunterEntity(entityType: EntityType<out HunterEntity>, level: Level) : Pat
     fun startHunting() {
         initializeBlockInventory()
         setState(HunterState.HUNTING)
+    }
+
+    fun setPrimarySpawn(pos: BlockPos) {
+        homeSpawnPos = pos
+    }
+
+    fun getPreferredRespawnPos(serverLevel: ServerLevel): BlockPos {
+        val bed = bedSpawnPos
+        if (bed != null && serverLevel.getBlockState(bed).`is`(BlockTags.BEDS)) {
+            return bed.above()
+        }
+        return homeSpawnPos ?: blockPosition()
     }
     
     // ════════════════════════════════════════════════════════════════════════
@@ -741,6 +1091,15 @@ class HunterEntity(entityType: EntityType<out HunterEntity>, level: Level) : Pat
     }
     
     override fun isPushable(): Boolean = false
+
+    override fun checkDespawn() {
+        // Hunter is game-critical and should not despawn by distance.
+        setPersistenceRequired()
+    }
+
+    override fun removeWhenFarAway(distanceToClosestPlayer: Double): Boolean = false
+
+    override fun requiresCustomPersistence(): Boolean = true
     
     // ════════════════════════════════════════════════════════════════════════
     // COMPANION OBJECT
@@ -764,6 +1123,8 @@ class HunterEntity(entityType: EntityType<out HunterEntity>, level: Level) : Pat
             hunter.setPos(pos.x + 0.5, pos.y.toDouble(), pos.z + 0.5)
             hunter.gameId = gameId
             hunter.difficultyMultiplier = difficulty
+            hunter.setPrimarySpawn(pos)
+            hunter.setPersistenceRequired()
             
             // Adjust attributes based on difficulty
             hunter.getAttribute(Attributes.MAX_HEALTH)?.baseValue = 60.0 * difficulty

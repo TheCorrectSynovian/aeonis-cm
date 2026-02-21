@@ -84,6 +84,7 @@ object ManhuntManager {
         )
         
         game.spawnPos = creator.blockPosition()
+        game.hunterRespawnPos = game.spawnPos
         
         activeGames[gameId] = game
         logger.info("§a[Manhunt] §7Created new game: $gameId by ${creator.name.string}")
@@ -147,6 +148,14 @@ object ManhuntManager {
         
         val game = activeGames[gameId]
         if (game != null) {
+            // If creator leaves, end the game to avoid orphaned game control/state.
+            if (game.creatorUUID == player.uuid) {
+                endGame(gameId, "Game creator left")
+                playerGameMap.remove(player.uuid)
+                player.sendSystemMessage(Component.literal("§a[Manhunt] §7You left the game."))
+                return true
+            }
+
             val playerData = game.players[player.uuid]
             
             // Restore player state if game was active
@@ -268,6 +277,8 @@ object ManhuntManager {
         if (hunter != null) {
             // Give hunter starting blocks
             hunter.giveBlocks(game.settings.hunterStartBlocks)
+            hunter.setPrimarySpawn(pos)
+            game.hunterRespawnPos = pos
         }
         
         return hunter
@@ -391,6 +402,8 @@ object ManhuntManager {
     
     private fun tickActive(game: ManhuntGame, server: MinecraftServer) {
         game.elapsedTicks++
+
+        ensureHunterPresence(game)
         
         // Update compasses periodically
         if (game.elapsedTicks % game.settings.compassUpdateInterval == 0) {
@@ -404,6 +417,32 @@ object ManhuntManager {
         if (game.elapsedTicks % 1200 == 0) { // Every minute
             game.broadcast("§7[§eTime: ${game.getElapsedTimeFormatted()}§7] §aSpeedrunners alive: ${game.getAliveSpeedrunners().size}")
         }
+    }
+
+    private fun ensureHunterPresence(game: ManhuntGame) {
+        val level = game.level
+        val hunterId = game.hunterEntityId
+        val hunter = hunterId?.let { level.getEntity(it) as? HunterEntity }
+
+        if (hunter != null && hunter.isAlive) {
+            game.hunterRespawnPos = hunter.getPreferredRespawnPos(level)
+            return
+        }
+
+        val spawnPos = game.hunterRespawnPos ?: game.spawnPos ?: BlockPos(
+            0,
+            level.getHeight(net.minecraft.world.level.levelgen.Heightmap.Types.WORLD_SURFACE, 0, 0),
+            0
+        )
+        val newHunter = spawnHunter(level, spawnPos, game) ?: return
+        game.hunterEntityId = newHunter.id
+        hunterGameMap[newHunter.id] = game.id
+        if (hunterId != null) {
+            hunterGameMap.remove(hunterId)
+        }
+
+        newHunter.startHunting()
+        game.broadcast("§c⚔ The Hunter has respawned at its anchor point.")
     }
     
     // ════════════════════════════════════════════════════════════════════════
@@ -538,7 +577,12 @@ object ManhuntManager {
         if (game.settings.respawnEnabled && 
             (game.settings.maxRespawns < 0 || playerData.deathCount <= game.settings.maxRespawns)) {
             // Allow respawn
-            game.broadcast("§c☠ §e${player.name.string} §7was killed! §e(${playerData.deathCount}/${game.settings.maxRespawns} lives used)")
+            val lifeInfo = if (game.settings.maxRespawns < 0) {
+                "${playerData.deathCount}/∞ lives used"
+            } else {
+                "${playerData.deathCount}/${game.settings.maxRespawns} lives used"
+            }
+            game.broadcast("§c☠ §e${player.name.string} §7was killed! §e($lifeInfo)")
         } else {
             // Eliminate player
             game.eliminatePlayer(player.uuid)

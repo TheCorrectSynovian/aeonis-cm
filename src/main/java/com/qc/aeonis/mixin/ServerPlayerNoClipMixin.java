@@ -17,9 +17,9 @@ public abstract class ServerPlayerNoClipMixin {
         Player player = (Player) (Object) this;
         if (player instanceof ServerPlayer) {
             ServerPlayer serverPlayer = (ServerPlayer) player;
-            // Enable noPhysics when in possession mode OR when actively controlling a mob
-            if (AeonisPossession.INSTANCE.isPlayerInPossessionMode(serverPlayer.getUUID()) || 
-                AeonisNetworking.INSTANCE.isPlayerTransformed(serverPlayer.getUUID())) {
+            // Keep noPhysics only for explicit possession-mode paths.
+            // Transformed movement should keep normal physics for natural control.
+            if (AeonisPossession.INSTANCE.isPlayerInPossessionMode(serverPlayer.getUUID())) {
                 player.noPhysics = true;
             }
         }
@@ -30,9 +30,8 @@ public abstract class ServerPlayerNoClipMixin {
         Player player = (Player) (Object) this;
         if (player instanceof ServerPlayer) {
             ServerPlayer serverPlayer = (ServerPlayer) player;
-            // Keep noPhysics enabled when in possession mode or controlling a mob
-            if (AeonisPossession.INSTANCE.isPlayerInPossessionMode(serverPlayer.getUUID()) || 
-                AeonisNetworking.INSTANCE.isPlayerTransformed(serverPlayer.getUUID())) {
+            // Keep noPhysics only in explicit possession mode
+            if (AeonisPossession.INSTANCE.isPlayerInPossessionMode(serverPlayer.getUUID())) {
                 player.noPhysics = true;
                 player.setDeltaMovement(new Vec3(player.getDeltaMovement().x, player.getDeltaMovement().y, player.getDeltaMovement().z));
                 player.fallDistance = 0.0F;

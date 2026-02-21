@@ -1,15 +1,15 @@
 {
   "placement": {
     "type": "minecraft:concentric_rings",
-    "count": 16,
     "distance": 32,
-    "preferred_biomes": "#aeonis:stronghold_biased_to",
-    "salt": 0,
-    "spread": 3
+    "spread": 3,
+    "count": 128,
+    "preferred_biomes": "#minecraft:stronghold_biased_to",
+    "salt": 50128937
   },
   "structures": [
     {
-      "structure": "aeonis:ancard_stronghold",
+      "structure": "minecraft:stronghold",
       "weight": 1
     }
   ]

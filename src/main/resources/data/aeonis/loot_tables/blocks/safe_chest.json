@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:block",
+  "pools": [
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "aeonis:safe_chest",
+          "functions": [
+            { "function": "minecraft:copy_name", "source": "block_entity" }
+          ]
+        }
+      ]
+    }
+  ]
+}
+

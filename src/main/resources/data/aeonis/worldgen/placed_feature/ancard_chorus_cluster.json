@@ -1,0 +1,10 @@
+{
+  "feature": "aeonis:ancard_chorus_cluster",
+  "placement": [
+    { "type": "minecraft:count", "count": 4 },
+    { "type": "minecraft:in_square" },
+    { "type": "minecraft:height_range", "height": { "type": "minecraft:uniform", "min_inclusive": { "absolute": 150 }, "max_inclusive": { "absolute": 220 } } },
+    { "type": "minecraft:block_predicate_filter", "predicate": { "type": "minecraft:matching_blocks", "offset": [0, -1, 0], "blocks": ["minecraft:end_stone"] } },
+    { "type": "minecraft:biome" }
+  ]
+}

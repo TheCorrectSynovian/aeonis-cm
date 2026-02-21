@@ -32,6 +32,7 @@ class AncardPortalBlock(properties: BlockBehaviour.Properties) : NetherPortalBlo
     }
 
     override fun animateTick(state: BlockState, level: Level, pos: BlockPos, random: RandomSource) {
+        // Eerie ambient sound
         if (random.nextInt(80) == 0) {
             level.playLocalSound(
                 pos.x + 0.5,
@@ -44,17 +45,50 @@ class AncardPortalBlock(properties: BlockBehaviour.Properties) : NetherPortalBlo
                 false
             )
         }
-        for (i in 0 until 4) {
+
+        // Brilliant glowing core particles
+        for (i in 0 until 6) {
             val x = pos.x + random.nextDouble()
             val y = pos.y + random.nextDouble()
             val z = pos.z + random.nextDouble()
-            val dx = (random.nextFloat() - 0.5) * 0.15
-            val dy = (random.nextFloat() - 0.5) * 0.15
-            val dz = (random.nextFloat() - 0.5) * 0.15
-            level.addParticle(DustParticleOptions(0x1A1A1A, 1.4f), x, y, z, dx, dy, dz)
+            val dx = (random.nextDouble() - 0.5) * 0.1
+            val dy = (random.nextDouble() - 0.5) * 0.15
+            val dz = (random.nextDouble() - 0.5) * 0.1
+
+            // Bright lavender-white glow
+            level.addParticle(DustParticleOptions(0xE0C0FF, 1.8f), x, y, z, dx, dy, dz)
+
+            // Soul fire flames rising
             if (random.nextInt(3) == 0) {
-                level.addParticle(ParticleTypes.ASH, x, y, z, dx * 0.2, dy * 0.2, dz * 0.2)
+                level.addParticle(ParticleTypes.SOUL_FIRE_FLAME, x, y, z, dx * 0.3, 0.02, dz * 0.3)
             }
+
+            // End rod sparkles
+            if (random.nextInt(5) == 0) {
+                level.addParticle(ParticleTypes.END_ROD, x, y, z, dx * 0.1, dy * 0.2, dz * 0.1)
+            }
+        }
+
+        // Enchantment glyphs floating outward
+        if (random.nextInt(2) == 0) {
+            val x = pos.x + 0.5 + (random.nextDouble() - 0.5) * 3.0
+            val y = pos.y + random.nextDouble() * 2.0
+            val z = pos.z + 0.5 + (random.nextDouble() - 0.5) * 3.0
+            level.addParticle(
+                ParticleTypes.ENCHANT,
+                x, y, z,
+                (random.nextDouble() - 0.5) * 0.5,
+                random.nextDouble() * 0.3,
+                (random.nextDouble() - 0.5) * 0.5
+            )
+        }
+
+        // Ambient purple glow aura (wider radius)
+        if (random.nextInt(3) == 0) {
+            val rx = pos.x + 0.5 + (random.nextDouble() - 0.5) * 4.0
+            val ry = pos.y + random.nextDouble() * 2.5
+            val rz = pos.z + 0.5 + (random.nextDouble() - 0.5) * 4.0
+            level.addParticle(DustParticleOptions(0xAA80DD, 1.0f), rx, ry, rz, 0.0, 0.02, 0.0)
         }
     }
 

@@ -512,14 +512,17 @@ object ManhuntCommands {
         if (game == null) return 0
         
         // Add all specified players
+        var joined = 0
         for (player in players) {
-            ManhuntManager.joinGame(player, game.id)
+            if (ManhuntManager.joinGame(player, game.id)) {
+                joined++
+            }
         }
         
         // Start the game
         ManhuntManager.startGame(game.id)
         
-        source.sendSuccess({ Component.literal("§a[Manhunt] §7Quick started with ${players.size} players!") }, true)
+        source.sendSuccess({ Component.literal("§a[Manhunt] §7Quick started with $joined player(s)!") }, true)
         return 1
     }
     
@@ -577,41 +580,8 @@ object ManhuntCommands {
     
     private fun teleportHunter(ctx: CommandContext<CommandSourceStack>): Int {
         val player = ctx.source.playerOrException as ServerPlayer
-        val game = ManhuntManager.getPlayerGame(player.uuid)
-        
-        if (game == null) {
-            player.sendSystemMessage(Component.literal("§c[Manhunt] §7You're not in any game!"))
-            return 0
-        }
-        
-        val hunterId = game.hunterEntityId
-        if (hunterId == null) {
-            player.sendSystemMessage(Component.literal("§c[Manhunt] §7No hunter spawned yet!"))
-            return 0
-        }
-        
-        val hunter = game.level.getEntity(hunterId) as? com.qc.aeonis.entity.HunterEntity
-        if (hunter == null) {
-            player.sendSystemMessage(Component.literal("§c[Manhunt] §7Hunter not found!"))
-            return 0
-        }
-        
-        // Find nearest alive speedrunner
-        val nearestPlayer = game.getAliveSpeedrunners()
-            .mapNotNull { game.level.server?.playerList?.getPlayer(it) }
-            .minByOrNull { it.distanceToSqr(hunter) }
-        
-        if (nearestPlayer == null) {
-            player.sendSystemMessage(Component.literal("§c[Manhunt] §7No alive speedrunners to teleport to!"))
-            return 0
-        }
-        
-        // Teleport hunter near the player
-        val pos = nearestPlayer.blockPosition()
-        hunter.teleportTo(pos.x + 10.0, pos.y.toDouble(), pos.z + 10.0)
-        
-        game.broadcast("§c⚠ §7Hunter has been teleported by admin!")
-        return 1
+        player.sendSystemMessage(Component.literal("§e[Manhunt] §7Hunter teleport is disabled in advanced AI mode."))
+        return 0
     }
     
     private fun giveHunterBlocks(ctx: CommandContext<CommandSourceStack>): Int {

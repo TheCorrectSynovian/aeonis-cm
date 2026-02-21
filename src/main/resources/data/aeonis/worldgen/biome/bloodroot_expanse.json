@@ -1,0 +1,126 @@
+{
+  "attributes": {
+    "minecraft:audio/ambient_sounds": {
+      "additions": {
+        "sound": "minecraft:ambient.crimson_forest.additions",
+        "tick_chance": 0.012
+      },
+      "loop": "minecraft:ambient.crimson_forest.loop",
+      "mood": {
+        "block_search_extent": 8,
+        "offset": 2.0,
+        "sound": "minecraft:ambient.crimson_forest.mood",
+        "tick_delay": 5000
+      }
+    },
+    "minecraft:audio/background_music": {
+      "default": {
+        "max_delay": 24000,
+        "min_delay": 12000,
+        "sound": "minecraft:music.end"
+      }
+    },
+    "minecraft:visual/ambient_particles": [
+      {
+        "particle": { "type": "minecraft:crimson_spore" },
+        "probability": 0.1
+      }
+    ],
+    "minecraft:visual/fog_color": "#1b0f24",
+    "minecraft:visual/sky_color": "#271a34",
+    "minecraft:visual/water_fog_color": "#140e1e"
+  },
+  "carvers": [
+    "minecraft:cave",
+    "minecraft:cave_extra_underground",
+    "minecraft:canyon"
+  ],
+  "downfall": 0.0,
+  "effects": {
+    "water_color": "#2d2040",
+    "grass_color": "#5c1010",
+    "foliage_color": "#8b1a1a"
+  },
+  "features": [
+    [],
+    [
+      "minecraft:lake_lava_underground",
+      "minecraft:lake_lava_surface"
+    ],
+    [],
+    [],
+    [],
+    [],
+    [
+      "aeonis:ancard_soul_ore",
+      "aeonis:ancard_crimson_ore",
+      "aeonis:ancard_void_ore",
+      "aeonis:dark_obsidian_cluster",
+      "aeonis:ruined_obsidian_bricks_cluster",
+      "aeonis:ancard_sculk_patch",
+      "aeonis:ancard_sculk_trap"
+    ],
+    [
+      "aeonis:ancard_basalt_columns_ceiling",
+      "aeonis:ancard_basalt_columns_floor",
+      "aeonis:ancard_glowstone",
+      "aeonis:obsidian_stalactites",
+      "aeonis:obsidian_stalagmites",
+      "aeonis:ancard_floating_islands",
+      "aeonis:ancard_ruined_obelisk",
+      "aeonis:ancard_chorus_cluster",
+      "aeonis:ancard_end_gateway"
+    ],
+    [
+      "minecraft:spring_lava",
+      "minecraft:spring_water"
+    ],
+    [
+      "aeonis:bloodroot_vegetation"
+    ],
+    []
+  ],
+  "has_precipitation": false,
+  "spawn_costs": {},
+  "spawners": {
+    "ambient": [
+      {
+        "type": "aeonis:echo_wisp",
+        "maxCount": 4,
+        "minCount": 1,
+        "weight": 16
+      }
+    ],
+    "axolotls": [],
+    "creature": [
+      {
+        "type": "aeonis:sporeback",
+        "maxCount": 3,
+        "minCount": 1,
+        "weight": 9
+      }
+    ],
+    "misc": [],
+    "monster": [
+      { "type": "aeonis:veil_mimic", "maxCount": 2, "minCount": 1, "weight": 15 },
+      { "type": "aeonis:copper_stalker", "maxCount": 2, "minCount": 1, "weight": 14 },
+      { "type": "aeonis:ruin_hound", "maxCount": 3, "minCount": 1, "weight": 13 },
+      { "type": "aeonis:crypt_mite", "maxCount": 4, "minCount": 2, "weight": 12 },
+      { "type": "aeonis:shade_lurker", "maxCount": 2, "minCount": 1, "weight": 10 },
+      { "type": "aeonis:boneweaver", "maxCount": 2, "minCount": 1, "weight": 12 },
+      { "type": "aeonis:rift_screecher", "maxCount": 2, "minCount": 1, "weight": 8 },
+      { "type": "aeonis:obelisk_sentinel", "maxCount": 1, "minCount": 1, "weight": 6 },
+      { "type": "aeonis:sculkcreaking", "maxCount": 2, "minCount": 1, "weight": 10 },
+      { "type": "aeonis:sculkcreeperanimation", "maxCount": 2, "minCount": 1, "weight": 8 },
+      { "type": "aeonis:sculkskeleton", "maxCount": 3, "minCount": 1, "weight": 12 },
+      { "type": "aeonis:sculkslime", "maxCount": 3, "minCount": 1, "weight": 10 },
+      { "type": "aeonis:sculkenderman", "maxCount": 2, "minCount": 1, "weight": 8 },
+      { "type": "aeonis:shadowhunter", "maxCount": 2, "minCount": 1, "weight": 7 },
+      { "type": "aeonis:hunter", "maxCount": 1, "minCount": 1, "weight": 3 }
+    ],
+    "underground_water_creature": [],
+    "water_ambient": [],
+    "water_creature": []
+  },
+  "temperature": 1.8
+}

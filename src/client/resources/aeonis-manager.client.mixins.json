@@ -13,7 +13,8 @@
 		"InGameOverlayRendererMixin",
 		"PlayerCameraPosMixin",
 		"WindowTitleMixin",
-		"OptionsScreenMixin"
+		"OptionsScreenMixin",
+		"AncardFogMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

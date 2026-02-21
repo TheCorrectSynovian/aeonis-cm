@@ -35,6 +35,19 @@ repositories {
 			includeGroup "maven.modrinth"
 		}
 	}
+
+	// GeckoLib (animated entities)
+	exclusiveContent {
+		forRepository {
+			maven {
+				name = "GeckoLib"
+				url = "https://dl.cloudsmith.io/public/geckolib3/geckolib/maven/"
+			}
+		}
+		filter {
+			includeGroupAndSubgroups("software.bernie.geckolib")
+		}
+	}
 }
 
 loom {
@@ -64,6 +77,9 @@ dependencies {
 	// Fabric API. This is technically optional, but you probably want it anyway.
 	modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
 	modImplementation "net.fabricmc:fabric-language-kotlin:${project.fabric_kotlin_version}"
+
+	// GeckoLib (animated entities)
+	modImplementation "software.bernie.geckolib:geckolib-fabric-${project.minecraft_version}:${project.geckolibVersion}"
 }
 
 processResources {
@@ -86,6 +102,9 @@ tasks.withType(JavaCompile).configureEach {
 tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).all {
 	kotlinOptions {
 		jvmTarget = 21
+		// Minecraft 1.21+ uses JSpecify @NullMarked; enabling it in Kotlin can cause signature clashes
+		// for Java overrides like Entity.equals(Object). Ignore JSpecify nullability at compile-time.
+		freeCompilerArgs += ["-Xjspecify-annotations=ignore"]
 	}
 }
 

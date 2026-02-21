@@ -224,6 +224,10 @@ public class LlmNetworking {
                     player.sendSystemMessage(Component.literal("§cAeonis is not spawned. Use /ai llm spawn first."));
                     return;
                 }
+                if (!canControlAssistant(player, assistant)) {
+                    player.sendSystemMessage(Component.literal("§cYou don't have permission to control Aeonis."));
+                    return;
+                }
                 
                 switch (payload.taskType()) {
                     case FOLLOW -> {
@@ -263,6 +267,10 @@ public class LlmNetworking {
             context.server().execute(() -> {
                 AeonisAssistant assistant = AeonisAssistant.getInstance(getServerLevel(player));
                 if (assistant != null) {
+                    if (!canControlAssistant(player, assistant)) {
+                        player.sendSystemMessage(Component.literal("§cYou don't have permission to chat with Aeonis."));
+                        return;
+                    }
                     assistant.getAeonisBrain().chat(payload.message(), player);
                 }
             });
@@ -275,6 +283,24 @@ public class LlmNetworking {
      */
     private static boolean hasPermission(ServerPlayer player) {
         return player.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER) || getServerLevel(player).getServer().isSingleplayer();
+    }
+
+    /**
+     * Control permission for task/chat packets.
+     * Allows: OP gamemaster, singleplayer owner, or configured bot owner.
+     */
+    private static boolean canControlAssistant(ServerPlayer player, AeonisAssistant assistant) {
+        if (hasPermission(player)) {
+            return true;
+        }
+        if (assistant.getOwnerUuid() != null && assistant.getOwnerUuid().equals(player.getUUID())) {
+            return true;
+        }
+        LlmConfigStorage storage = LlmConfigStorage.getInstance();
+        return storage != null
+            && storage.getConfig() != null
+            && storage.getConfig().ownerUuid != null
+            && storage.getConfig().ownerUuid.equals(player.getUUID());
     }
     
     /**

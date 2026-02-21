@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="https://media.forgecdn.net/avatars/console-avatars/avatar_15441b09-293b-46b5-9f56-a72f7d35a1b7.png" alt="Aeonis: Command Master Banner"/>
+  <img src="https://media.forgecdn.net/avatars/console-avatars/avatar_15441b09-293b-46b5-9f56-a72f7d35a1b7.png" alt="Aeonis Banner"/>
 </p>
 
-<h1 align="center">⚡ Aeonis: Command Master v2.1.0 — The Horror Update (Phase II) ⚡</h1>
+<h1 align="center">⚡ Aeonis v3.0.0 — Major Evolution ⚡</h1>
 
 <p align="center">
   <b>Take control. Command anything. Master the game.</b>
@@ -17,7 +17,7 @@
   <a href="https://www.curseforge.com/minecraft/mc-mods/aeonis-command-master"><img src="https://img.shields.io/badge/CurseForge-Download-orange?style=for-the-badge&logo=curseforge&logoColor=white" alt="CurseForge"></a>
   <a href="https://modrinth.com/mod/aeonis-command-master"><img src="https://img.shields.io/badge/Modrinth-Download-green?style=for-the-badge&logo=modrinth&logoColor=white" alt="Modrinth"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge" alt="License"></a>
-  <img src="https://img.shields.io/badge/Version-2.1.0-purple?style=for-the-badge" alt="Version">
+  <img src="https://img.shields.io/badge/Version-3.0.0-purple?style=for-the-badge" alt="Version">
 </p>
 
 <p align="center">
@@ -34,7 +34,13 @@
 ---
 
 
-# Aeonis: Command Master - Changelog
+# Aeonis - Changelog
+
+## 3.0.0 - Major Evolution (2026-02-15)
+- Rebranded to Aeonis
+- Expanded system architecture
+- Foundation for dimension and rendering framework
+- Internal refactors
 
 ## 2.1.0 - The Horror Update (Phase II) 🕯️ (2026-02-01)
 - **Ancard Dimension** - A corrupted Deep Dark–style realm (aeonis:ancard) with dark fog, ominous ambience, and a permanent noon‑tinted sky.
@@ -123,9 +129,9 @@ For more info, see `/aeonis help` in-game or the README.
 
 ---
 
-## 🌟 What is Aeonis: Command Master?
+## 🌟 What is Aeonis?
 
-**Aeonis: Command Master** is the ultimate Fabric mod for Minecraft that lets you **become ANY mob** and use their unique abilities! Whether you want to rain terror as the Ender Dragon, shoot explosive skulls as the Wither, or just be a chicken laying eggs — this mod makes it possible!
+**Aeonis** is a multi-system Minecraft framework combining transformation mechanics, AI-assisted command systems, custom dimensions, unique mobs, and advanced rendering enhancements into one unified experience.
 
 ---
 
@@ -589,7 +595,7 @@ Enable with: `/aeonis features extra_mobs true`
 1. Install **Fabric Loader** for Minecraft 1.21.10
 2. Install **Fabric API**
 3. Install **Fabric Language Kotlin**
-4. Download **Aeonis: Command Master** and place in `mods` folder
+4. Download **Aeonis** and place in `mods` folder
 5. Launch and enjoy!
 
 ---
@@ -619,7 +625,7 @@ This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) 
 
 ## 💖 Support the Mod
 
-**If you enjoy Aeonis: Command Master, consider:**
+**If you enjoy Aeonis, consider:**
 
 <p align="center">
   <a href="https://www.youtube.com/@quantumcreeper"><img src="https://img.shields.io/badge/Subscribe-YouTube-red?style=for-the-badge&logo=youtube" alt="YouTube"></a>
@@ -635,7 +641,7 @@ This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) 
 <p align="center">
   <b>NOT TO BE CONFUSED WITH ANY OTHER MOD!</b><br/>
   <i>I've <b>RENAMED</b> the EMBERVEIL modpack (previously "Aeonis") to <b>BLITZ</b> to avoid confusion.</i><br/>
-  <b>AEONIS = This Command Master Mod ONLY!</b>
+  <b>AEONIS = This Mod ONLY!</b>
 </p>
 
 ---
@@ -653,5 +659,5 @@ This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) 
 </p>
 
 <p align="center">
-  <sub>⚡ Aeonis: Command Master — Unleash Your Power ⚡</sub>
+  <sub>⚡ Aeonis — Unleash Your Power ⚡</sub>
 </p>

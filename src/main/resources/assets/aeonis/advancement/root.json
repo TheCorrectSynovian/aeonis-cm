@@ -1,0 +1,45 @@
+{
+  "display": {
+    "icon": {
+      "id": "minecraft:sculk"
+    },
+    "title": {
+    "translate": "advancement.deeper_dark.root.title",
+    "fallback": "Deeper Dark"
+},
+    "description": {
+    "translate": "advancement.deeper_dark.root.desc",
+    "fallback": "Treasure and Danger"
+},
+    "background": "minecraft:block/sculk_catalyst_top",
+    "frame": "task",
+    "show_toast": false,
+    "announce_to_chat": false,
+    "hidden": false
+  },
+  "criteria": {
+    "criteria": {
+      "trigger": "minecraft:location",
+      "conditions": {
+        "player": [
+          {
+            "condition": "minecraft:location_check",
+            "predicate": {
+              "dimension": "deeper_dark:deeper_dark"
+            }
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "criteria"
+    ]
+  ],
+  "rewards": {
+    "recipes": [
+      "deeper_dark:glow_item_frame"
+    ]
+  }
+}

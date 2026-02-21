@@ -1,0 +1,14 @@
+{
+  "placement": {
+    "type": "minecraft:random_spread",
+    "salt": 40012773,
+    "spacing": 64,
+    "separation": 28
+  },
+  "structures": [
+    {
+      "structure": "aeonis:high_spire",
+      "weight": 1
+    }
+  ]
+}

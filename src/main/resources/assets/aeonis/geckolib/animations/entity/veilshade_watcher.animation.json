@@ -1,0 +1,47 @@
+{
+  "format_version": "1.8.0",
+  "animations": {
+    "animation.veilshade_watcher.idle": {
+      "loop": true,
+      "bones": {
+        "main": {
+          "rotation": [0, 0, 0]
+        }
+      }
+    },
+    "animation.veilshade_watcher.walk": {
+      "loop": true,
+      "bones": {
+        "main": {
+          "rotation": [0, 0, 0]
+        }
+      }
+    },
+    "animation.veilshade_watcher.stare": {
+      "loop": true,
+      "bones": {
+        "main": {
+          "rotation": [0, 0, 0]
+        }
+      }
+    },
+    "animation.veilshade_watcher.teleport": {
+      "loop": false,
+      "animation_length": 0.5,
+      "bones": {
+        "main": {
+          "rotation": [0, 0, 0]
+        }
+      }
+    },
+    "animation.veilshade_watcher.attack": {
+      "loop": false,
+      "animation_length": 0.5,
+      "bones": {
+        "main": {
+          "rotation": [0, 0, 0]
+        }
+      }
+    }
+  }
+}

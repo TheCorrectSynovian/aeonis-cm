@@ -1,0 +1,40 @@
+{
+  "display": {
+    "icon": {
+      "id": "minecraft:echo_shard"
+    },
+    "title": {
+    "translate": "advancement.deeper_dark.hint.title",
+    "fallback": "Echos in the Wind"
+},
+    "description": {
+    "translate": "advancement.deeper_dark.hint.desc",
+    "fallback": "Walk Into the Ancient City Portal while Holding an Echo Shard. What Could go Wrong?"
+},
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "parent": "adventure/avoid_vibration",
+  "criteria": {
+    "criteria": {
+      "trigger": "minecraft:location",
+      "conditions": {
+        "player": [
+          {
+            "condition": "minecraft:location_check",
+            "predicate": {
+              "dimension": "deeper_dark:deeper_dark"
+            }
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "criteria"
+    ]
+  ]
+}

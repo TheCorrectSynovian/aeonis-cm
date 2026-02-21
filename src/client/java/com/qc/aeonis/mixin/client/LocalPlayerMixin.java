@@ -62,30 +62,40 @@ public abstract class LocalPlayerMixin {
             
             // Ghast-like mobs: Float in air, SPACE to go up, SHIFT to go down
             if (isGhastLike(mob)) {
-                double yVel = player.getDeltaMovement().y;
-                
+                double currY = player.getDeltaMovement().y;
+                double targetY;
+
                 if (client.options.keyJump.isDown()) {
-                    // Go UP
-                    yVel = 0.4;
+                    targetY = 0.34;
                 } else if (client.options.keyShift.isDown()) {
-                    // Go DOWN
-                    yVel = -0.3;
+                    targetY = -0.26;
                 } else {
-                    // Hover - very slow drift downward
-                    yVel = Math.max(yVel, -0.02);
+                    targetY = -0.01; // slight hover drift
                 }
-                
-                player.setDeltaMovement(player.getDeltaMovement().x, yVel, player.getDeltaMovement().z);
+
+                double smoothedY = currY + (targetY - currY) * 0.32;
+                player.setDeltaMovement(
+                    player.getDeltaMovement().x,
+                    Math.max(-0.5, Math.min(smoothedY, 0.5)),
+                    player.getDeltaMovement().z
+                );
             } else {
-                // Other flying mobs (Blaze, Bee, etc.) - standard flight controls
+                // Other flying mobs (Blaze, Bee, etc.) - smoothed vertical controls
+                double currY = player.getDeltaMovement().y;
+                double targetY;
                 if (client.options.keyJump.isDown()) {
-                    player.setDeltaMovement(player.getDeltaMovement().x, 0.3, player.getDeltaMovement().z);
-                } else if (!player.isShiftKeyDown()) {
-                    // Hover: prevent falling
-                    if (player.getDeltaMovement().y < -0.1) {
-                        player.setDeltaMovement(player.getDeltaMovement().x, Math.max(player.getDeltaMovement().y, -0.1), player.getDeltaMovement().z);
-                    }
+                    targetY = 0.24;
+                } else if (client.options.keyShift.isDown()) {
+                    targetY = -0.22;
+                } else {
+                    targetY = -0.015;
                 }
+                double smoothedY = currY + (targetY - currY) * 0.28;
+                player.setDeltaMovement(
+                    player.getDeltaMovement().x,
+                    Math.max(-0.45, Math.min(smoothedY, 0.45)),
+                    player.getDeltaMovement().z
+                );
             }
         } else {
             // Reset flight for non-flying mobs (unless player is creative/spectator)

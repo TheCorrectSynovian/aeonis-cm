@@ -1,6 +1,8 @@
 package com.qc.aeonis.entity
 
 import com.qc.aeonis.config.AeonisFeatures
+import com.qc.aeonis.entity.ancard.geo.AncardGeoMonster
+import com.qc.aeonis.entity.ancard.geo.AncardGeoUtil
 import net.minecraft.core.BlockPos
 import net.minecraft.core.registries.Registries
 import net.minecraft.server.level.ServerLevel
@@ -25,7 +27,6 @@ import net.minecraft.world.entity.ai.goal.RandomLookAroundGoal
 import net.minecraft.world.entity.ai.goal.WaterAvoidingRandomStrollGoal
 import net.minecraft.world.entity.ai.goal.target.HurtByTargetGoal
 import net.minecraft.world.entity.ai.goal.target.NearestAttackableTargetGoal
-import net.minecraft.world.entity.monster.Monster
 import net.minecraft.world.entity.npc.villager.Villager
 import net.minecraft.world.entity.player.Player
 import net.minecraft.world.item.Item
@@ -35,9 +36,14 @@ import net.minecraft.world.item.enchantment.Enchantments
 import net.minecraft.world.level.Level
 import net.minecraft.world.level.LightLayer
 import net.minecraft.world.level.ServerLevelAccessor
+import software.bernie.geckolib.animatable.manager.AnimatableManager
+import software.bernie.geckolib.animation.AnimationController
+import software.bernie.geckolib.animation.`object`.PlayState
+import software.bernie.geckolib.animation.state.AnimationTest
 import java.util.EnumSet
 
-class CopperStalkerEntity(entityType: EntityType<out CopperStalkerEntity>, level: Level) : Monster(entityType, level) {
+class CopperStalkerEntity(entityType: EntityType<out CopperStalkerEntity>, level: Level) :
+    AncardGeoMonster(entityType, level, "copper_stalker") {
     // Invisibility triggers at health <= 5, lasts 3 seconds (60 ticks)
     private val lowHealthThreshold = 5f
     private val invisDurationTicks = 60 // 3 seconds
@@ -49,6 +55,9 @@ class CopperStalkerEntity(entityType: EntityType<out CopperStalkerEntity>, level
     
     // Sunburn damage tracking
     private var sunburnTicks = 0
+    
+    // Animation tracking
+    private var attackAnimTicks = 0
 
     override fun registerGoals() {
         goalSelector.addGoal(0, FloatGoal(this))
@@ -81,6 +90,9 @@ class CopperStalkerEntity(entityType: EntityType<out CopperStalkerEntity>, level
                 // Clear current target so it runs away
                 target = null
             }
+            
+            // Animation cooldowns
+            if (attackAnimTicks > 0) attackAnimTicks--
             
             // Track flee duration
             if (isFleeing) {
@@ -150,6 +162,31 @@ class CopperStalkerEntity(entityType: EntityType<out CopperStalkerEntity>, level
     }
     
     fun isFleeing(): Boolean = isFleeing
+
+    override fun doHurtTarget(level: ServerLevel, target: net.minecraft.world.entity.Entity): Boolean {
+        attackAnimTicks = 10
+        return super.doHurtTarget(level, target)
+    }
+
+    override fun registerControllers(controllers: AnimatableManager.ControllerRegistrar) {
+        controllers.add(
+            AnimationController<CopperStalkerEntity>("move", 3) { test: AnimationTest<CopperStalkerEntity> ->
+                if (isFleeing) {
+                    return@AnimationController test.setAndContinue(AncardGeoUtil.loop(animId, "flee"))
+                }
+                if (test.isMoving()) test.setAndContinue(AncardGeoUtil.loop(animId, "walk"))
+                else test.setAndContinue(AncardGeoUtil.loop(animId, "idle"))
+            }
+        )
+        controllers.add(
+            AnimationController<CopperStalkerEntity>("attack", 0) { test: AnimationTest<CopperStalkerEntity> ->
+                if (attackAnimTicks > 0) {
+                    return@AnimationController test.setAndContinue(AncardGeoUtil.once(animId, "attack"))
+                }
+                PlayState.STOP
+            }
+        )
+    }
 
     override fun finalizeSpawn(
         accessor: ServerLevelAccessor,

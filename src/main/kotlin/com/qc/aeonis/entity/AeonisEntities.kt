@@ -1,7 +1,5 @@
 package com.qc.aeonis.entity
 
-import net.fabricmc.fabric.api.biome.v1.BiomeModifications
-import net.fabricmc.fabric.api.biome.v1.BiomeSelectors
 import net.fabricmc.fabric.api.`object`.builder.v1.entity.FabricDefaultAttributeRegistry
 import net.minecraft.core.Registry
 import net.minecraft.core.registries.BuiltInRegistries
@@ -10,9 +8,6 @@ import net.minecraft.resources.ResourceKey
 import net.minecraft.resources.Identifier
 import net.minecraft.world.entity.EntityType
 import net.minecraft.world.entity.MobCategory
-import net.minecraft.world.entity.SpawnPlacementTypes
-import net.minecraft.world.entity.SpawnPlacements
-import net.minecraft.world.level.levelgen.Heightmap
 
 object AeonisEntities {
     private val COPPER_STALKER_KEY: ResourceKey<EntityType<*>> = ResourceKey.create(
@@ -56,6 +51,20 @@ object AeonisEntities {
             .clientTrackingRange(200) // Large tracking range for manhunt
             .build(HUNTER_KEY)
     )
+
+    private val COMPANION_BOT_KEY: ResourceKey<EntityType<*>> = ResourceKey.create(
+        Registries.ENTITY_TYPE,
+        Identifier.fromNamespaceAndPath("aeonis", "companion_bot")
+    )
+
+    val COMPANION_BOT: EntityType<CompanionBotEntity> = Registry.register(
+        BuiltInRegistries.ENTITY_TYPE,
+        COMPANION_BOT_KEY,
+        EntityType.Builder.of(::CompanionBotEntity, MobCategory.MONSTER)
+            .sized(0.6f, 1.95f)
+            .clientTrackingRange(128)
+            .build(COMPANION_BOT_KEY)
+    )
     
     lateinit var BODY: EntityType<BodyEntity>
 
@@ -63,22 +72,7 @@ object AeonisEntities {
         FabricDefaultAttributeRegistry.register(COPPER_STALKER, CopperStalkerEntity.createAttributes())
         FabricDefaultAttributeRegistry.register(HEROBRINE, HerobrineEntity.createAttributes())
         FabricDefaultAttributeRegistry.register(HUNTER, HunterEntity.createAttributes())
-
-        SpawnPlacements.register(
-            COPPER_STALKER,
-            SpawnPlacementTypes.ON_GROUND,
-            Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,
-            CopperStalkerEntity::canSpawn
-        )
-
-        BiomeModifications.addSpawn(
-            BiomeSelectors.foundInOverworld(),
-            MobCategory.MONSTER,
-            COPPER_STALKER,
-            60,
-            1,
-            2
-        )
+        FabricDefaultAttributeRegistry.register(COMPANION_BOT, CompanionBotEntity.createAttributes())
         // Register Body entity used by the possession system
         val BODY_KEY = ResourceKey.create(Registries.ENTITY_TYPE, Identifier.fromNamespaceAndPath("aeonis", "body"))
         BODY = Registry.register(

@@ -25,9 +25,9 @@ public class ChatTask implements AeonisTask {
     private final String userMessage;
     private final ServerPlayer sender;
     
-    private boolean started = false;
-    private boolean waiting = false;
-    private boolean complete = false;
+    private volatile boolean started = false;
+    private volatile boolean waiting = false;
+    private volatile boolean complete = false;
     private CompletableFuture<LlmProvider.LlmResponse> pendingResponse;
     
     // System prompt for the Aeonis assistant - comprehensive manual

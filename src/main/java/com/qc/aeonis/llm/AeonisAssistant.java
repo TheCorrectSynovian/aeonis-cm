@@ -646,20 +646,21 @@ public class AeonisAssistant extends ServerPlayer {
      */
     public void executeCommand(String command) {
         if (command == null || command.isEmpty()) return;
+        if (command.length() > 1024) {
+            sendChatMessage("Command rejected: too long.");
+            return;
+        }
         
         // Remove leading / if present
         if (command.startsWith("/")) {
             command = command.substring(1);
         }
+        command = command.trim();
+        if (command.isEmpty()) return;
         
         // Safety check - block dangerous commands
-        String lowerCmd = command.toLowerCase();
-        if (lowerCmd.startsWith("stop") || 
-            lowerCmd.startsWith("ban") || 
-            lowerCmd.startsWith("kick") ||
-            lowerCmd.startsWith("op ") ||
-            lowerCmd.startsWith("deop") ||
-            lowerCmd.startsWith("whitelist")) {
+        String root = extractCommandRoot(command);
+        if (isDangerousCommandRoot(root)) {
             LOGGER.warn("Aeonis blocked dangerous command: /{}", command);
             sendChatMessage("I can't execute that command for safety reasons.");
             return;
@@ -683,6 +684,31 @@ public class AeonisAssistant extends ServerPlayer {
             LOGGER.error("Failed to execute command '{}': {}", command, e.getMessage());
             sendChatMessage("Command failed: " + e.getMessage());
         }
+    }
+
+    private static String extractCommandRoot(String command) {
+        String trimmed = command.trim().toLowerCase(Locale.ROOT);
+        if (trimmed.isEmpty()) return "";
+        int firstSpace = trimmed.indexOf(' ');
+        String firstToken = firstSpace >= 0 ? trimmed.substring(0, firstSpace) : trimmed;
+        int namespaceSep = firstToken.indexOf(':');
+        if (namespaceSep >= 0 && namespaceSep < firstToken.length() - 1) {
+            return firstToken.substring(namespaceSep + 1);
+        }
+        return firstToken;
+    }
+
+    private static boolean isDangerousCommandRoot(String root) {
+        return root.equals("stop")
+            || root.equals("reload")
+            || root.equals("ban")
+            || root.equals("ban-ip")
+            || root.equals("kick")
+            || root.equals("op")
+            || root.equals("deop")
+            || root.equals("whitelist")
+            || root.equals("save-off")
+            || root.equals("save-all");
     }
     
     /**

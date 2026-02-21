@@ -63,6 +63,9 @@ data class ManhuntGame(
     
     /** Spawn position for the game */
     var spawnPos: BlockPos? = null
+
+    /** Hunter respawn anchor (spawn or discovered bed) */
+    var hunterRespawnPos: BlockPos? = null
     
     /**
      * Adds a player to the game as a speedrunner.

@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:ore",
+  "config": {
+    "discard_chance_on_air_exposure": 0.2,
+    "size": 5,
+    "targets": [
+      {
+        "state": { "Name": "aeonis:ancard_void_ore" },
+        "target": {
+          "predicate_type": "minecraft:tag_match",
+          "tag": "aeonis:ancard_ore_replaceables"
+        }
+      }
+    ]
+  }
+}

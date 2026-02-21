@@ -51,6 +51,7 @@ import net.minecraft.network.chat.Component
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.Items
 import com.qc.aeonis.AeonisPossession
+import com.qc.aeonis.command.AeonisCommands
 
 /**
  * Packet sent from client to server with movement input
@@ -204,6 +205,8 @@ object AeonisNetworking {
     
     // Server-side storage of controlled entities
     private val controlledEntities = mutableMapOf<java.util.UUID, Int>()
+    // Latest movement input per controlling player (used for smoother server-side mob sync/animation)
+    private val latestControlInputs = mutableMapOf<java.util.UUID, MobControlPayload>()
     
     // Track attack cooldown to prevent spam
     private val attackCooldowns = mutableMapOf<java.util.UUID, Long>()
@@ -395,7 +398,12 @@ object AeonisNetworking {
         ServerPlayNetworking.registerGlobalReceiver(ReleasePayload.ID) { payload, context ->
             val player = context.player()
             context.server().execute {
-                AeonisPossession.handleRelease(player, payload.bodyX, payload.bodyY, payload.bodyZ)
+                if (AeonisPossession.isActivelyPossessing(player.uuid)) {
+                    AeonisPossession.handleRelease(player, payload.bodyX, payload.bodyY, payload.bodyZ)
+                } else if (AeonisNetworking.isPlayerTransformed(player.uuid)) {
+                    AeonisCommands.autoUntransform(player, showMessage = true)
+                }
+                broadcastControllingPlayers(context.server())
             }
         }
 
@@ -468,6 +476,7 @@ object AeonisNetworking {
     
     fun removeControlledEntity(player: ServerPlayer) {
         controlledEntities.remove(player.uuid)
+        latestControlInputs.remove(player.uuid)
         attackCooldowns.remove(player.uuid)
         try { player.isInvisible = false } catch (_: Exception) {}
         // Tell client to stop controlling
@@ -481,6 +490,8 @@ object AeonisNetworking {
     fun getControlledEntitiesMap(): Map<java.util.UUID, Int> {
         return controlledEntities.toMap()
     }
+
+    fun getLatestControlInput(playerUuid: java.util.UUID): MobControlPayload? = latestControlInputs[playerUuid]
 
     fun broadcastControllingPlayers(server: net.minecraft.server.MinecraftServer) {
         val uuids = controlledEntities.keys.toList()
@@ -508,6 +519,7 @@ object AeonisNetworking {
         val entityId = controlledEntities[player.uuid] ?: return
         val level = player.level() as? net.minecraft.server.level.ServerLevel ?: return
         val entity = level.getEntity(entityId) ?: return
+        latestControlInputs[player.uuid] = payload
         
         // Apply rotation to entity (synced from player's camera)
         entity.yRot = payload.yaw

@@ -59,6 +59,9 @@ object AeonisClientNetworking {
             val mc = Minecraft.getInstance()
             isControlling = payload.enabled && payload.mobId > 0
             controlledMobId = if (payload.mobId > 0) payload.mobId else -1
+            if (!isControlling) {
+                resetInputState()
+            }
             // If server told us which slot to select, apply it with a small delay to avoid race conditions
             if (payload.selectedSlot >= 0 && mc.player != null) {
                 val slot = payload.selectedSlot
@@ -110,7 +113,7 @@ object AeonisClientNetworking {
             }
 
             // Possess key: try to resolve the targeted mob under crosshair and send its id
-            if (client.player != null && POSSESS_KEY.isDown) {
+            if (client.player != null && !isControlling && POSSESS_KEY.consumeClick()) {
                 val selectedSlot = client.player!!.inventory.selectedSlot
                 try {
                     val hit = client.hitResult
@@ -132,7 +135,7 @@ object AeonisClientNetworking {
                 }
             }
 
-            if (client.player != null && RELEASE_KEY.isDown) {
+            if (client.player != null && isControlling && RELEASE_KEY.consumeClick()) {
                 val selectedSlot = client.player!!.inventory.selectedSlot
                 val payload = ReleasePayload(selectedSlot, client.player!!.x, client.player!!.y, client.player!!.z)
                 ClientPlayNetworking.send(payload)
@@ -142,7 +145,7 @@ object AeonisClientNetworking {
                 trackedBodyZ = 0.0
             }
 
-            if (client.player != null && ABILITY_KEY.isDown) {
+            if (client.player != null && isControlling && ABILITY_KEY.consumeClick()) {
                 ClientPlayNetworking.send(AbilityPayload())
             }
             
@@ -240,8 +243,8 @@ object AeonisClientNetworking {
         
         if (options.keyUp.isDown) forward += 1f
         if (options.keyDown.isDown) forward -= 1f
-        if (options.keyLeft.isDown) strafe += 1f
-        if (options.keyRight.isDown) strafe -= 1f
+        if (options.keyLeft.isDown) strafe -= 1f
+        if (options.keyRight.isDown) strafe += 1f
         
         val jump = options.keyJump.isDown
         val sneak = options.keyShift.isDown
@@ -289,5 +292,13 @@ object AeonisClientNetworking {
         // Send packet to server
         val payload = MobControlPayload(forward, strafe, jump, sneak, yaw, pitch, attack, teleport)
         ClientPlayNetworking.send(payload)
+    }
+
+    private fun resetInputState() {
+        wasAttacking = false
+        wasTeleporting = false
+        attackStartTime = 0L
+        attackTriggered = false
+        isBreakingBlock = false
     }
 }

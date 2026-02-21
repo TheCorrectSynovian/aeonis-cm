@@ -1,0 +1,37 @@
+{
+  "display": {
+    "icon": {
+      "id": "aeonis:ancard_crimson_ore"
+    },
+    "title": {
+      "text": "Crimson Discovery",
+      "color": "#DC143C"
+    },
+    "description": {
+      "text": "Mine Ancard Crimson Ore — a material more powerful than netherite",
+      "color": "#c0c0c0"
+    },
+    "frame": "goal",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "parent": "aeonis:enter_ancard",
+  "criteria": {
+    "got_raw_crimson": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "aeonis:raw_crimson"
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "got_raw_crimson"
+    ]
+  ]
+}

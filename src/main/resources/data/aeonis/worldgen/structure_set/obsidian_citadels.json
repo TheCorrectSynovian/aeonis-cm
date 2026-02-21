@@ -1,0 +1,14 @@
+{
+  "placement": {
+    "type": "minecraft:random_spread",
+    "salt": 20083232,
+    "spacing": 48,
+    "separation": 20
+  },
+  "structures": [
+    {
+      "structure": "aeonis:obsidian_citadel",
+      "weight": 1
+    }
+  ]
+}

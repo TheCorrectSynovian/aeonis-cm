@@ -1,0 +1,164 @@
+{
+  "format_version": "1.12.0",
+  "minecraft:geometry": [
+    {
+      "description": {
+        "identifier": "geometry.obelisk_sentinel",
+        "texture_width": 64,
+        "texture_height": 64,
+        "visible_bounds_width": 3,
+        "visible_bounds_height": 3,
+        "visible_bounds_offset": [
+          0,
+          1,
+          0
+        ]
+      },
+      "bones": [
+        {
+          "name": "root",
+          "pivot": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "core",
+          "parent": "root",
+          "pivot": [
+            0,
+            13,
+            0
+          ],
+          "cubes": [
+            {
+              "origin": [
+                -3,
+                8,
+                -3
+              ],
+              "size": [
+                6,
+                10,
+                6
+              ],
+              "uv": [
+                0,
+                0
+              ]
+            }
+          ]
+        },
+        {
+          "name": "shard1",
+          "parent": "core",
+          "pivot": [
+            0,
+            13,
+            0
+          ],
+          "cubes": [
+            {
+              "origin": [
+                5,
+                12,
+                -1
+              ],
+              "size": [
+                2,
+                6,
+                2
+              ],
+              "uv": [
+                24,
+                0
+              ]
+            }
+          ]
+        },
+        {
+          "name": "shard2",
+          "parent": "core",
+          "pivot": [
+            0,
+            13,
+            0
+          ],
+          "cubes": [
+            {
+              "origin": [
+                -7,
+                12,
+                -1
+              ],
+              "size": [
+                2,
+                6,
+                2
+              ],
+              "uv": [
+                24,
+                0
+              ]
+            }
+          ]
+        },
+        {
+          "name": "shard3",
+          "parent": "core",
+          "pivot": [
+            0,
+            13,
+            0
+          ],
+          "cubes": [
+            {
+              "origin": [
+                -1,
+                12,
+                5
+              ],
+              "size": [
+                2,
+                6,
+                2
+              ],
+              "uv": [
+                24,
+                0
+              ]
+            }
+          ]
+        },
+        {
+          "name": "shard4",
+          "parent": "core",
+          "pivot": [
+            0,
+            13,
+            0
+          ],
+          "cubes": [
+            {
+              "origin": [
+                -1,
+                12,
+                -7
+              ],
+              "size": [
+                2,
+                6,
+                2
+              ],
+              "uv": [
+                24,
+                0
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

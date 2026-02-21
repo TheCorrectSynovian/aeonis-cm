@@ -1,0 +1,33 @@
+{
+  "display": {
+    "icon": {
+      "id": "aeonis:ancard_lighter"
+    },
+    "title": {
+      "text": "Ancard",
+      "color": "#8B0000"
+    },
+    "description": {
+      "text": "A forsaken realm of ash, shadow, and ancient ruin",
+      "color": "#6a3a6a"
+    },
+    "background": "aeonis:textures/ancard_daysky.png",
+    "frame": "task",
+    "show_toast": false,
+    "announce_to_chat": false,
+    "hidden": false
+  },
+  "criteria": {
+    "in_ancard": {
+      "trigger": "minecraft:changed_dimension",
+      "conditions": {
+        "to": "aeonis:ancard"
+      }
+    }
+  },
+  "requirements": [
+    [
+      "in_ancard"
+    ]
+  ]
+}

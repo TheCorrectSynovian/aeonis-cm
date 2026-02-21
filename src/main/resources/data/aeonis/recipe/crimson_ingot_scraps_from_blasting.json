@@ -1,0 +1,11 @@
+{
+  "type": "minecraft:blasting",
+  "category": "misc",
+  "cookingtime": 100,
+  "experience": 2.0,
+  "ingredient": "aeonis:raw_crimson",
+  "result": {
+    "count": 1,
+    "id": "aeonis:crimson_ingot_scraps"
+  }
+}

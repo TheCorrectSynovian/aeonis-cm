@@ -1,0 +1,25 @@
+{
+  "display": {
+    "icon": {
+      "id": "minecraft:enchanted_book"
+    },
+    "title": {
+    "translate": "advancement.deeper_dark.light.title",
+    "fallback": "Enchanting, But Better!"
+},
+    "description": {
+    "translate": "advancement.deeper_dark.light.desc",
+    "fallback": "Enchant an Already Enchanted Item using a Sculk Coverter"
+},
+    "frame": "goal",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "parent": "deeper_dark:converter",
+  "criteria": {
+    "criteria": {
+      "trigger": "minecraft:impossible"
+    }
+  }
+}

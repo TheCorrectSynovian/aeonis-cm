@@ -1,4 +1,10 @@
-# Aeonis: Command Master - Changelog
+# Aeonis - Changelog
+
+## 3.0.0 - Major Evolution (2026-02-15)
+- Rebranded to Aeonis
+- Expanded system architecture
+- Foundation for dimension and rendering framework
+- Internal refactors
 
 ## 2.1.0 - The Horror Update (Phase II) 🕯️ (2026-02-01)
 

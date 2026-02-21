@@ -31,19 +31,32 @@ public class PlayerMovementSpeedMixin {
                     if (entity instanceof Mob mob) {
                         float mobSpeed = (float) mob.getAttributeValue(Attributes.MOVEMENT_SPEED);
                         float speedMultiplier = mobSpeed / PLAYER_BASE_SPEED;
+                        speedMultiplier = Math.max(0.75f, Math.min(speedMultiplier, 1.55f));
+
+                        // Per-mob movement profile tuning for more natural control feel
+                        if (mob.getType() == EntityType.ZOMBIE || mob.getType() == EntityType.HUSK || mob.getType() == EntityType.DROWNED) {
+                            speedMultiplier *= 0.92f;
+                        } else if (mob.getType() == EntityType.CREEPER) {
+                            speedMultiplier *= 0.90f;
+                        } else if (mob.getType() == EntityType.SPIDER || mob.getType() == EntityType.CAVE_SPIDER) {
+                            speedMultiplier *= 1.10f;
+                        } else if (mob.getType() == EntityType.IRON_GOLEM || mob.getType() == EntityType.RAVAGER || mob.getType() == EntityType.WARDEN) {
+                            speedMultiplier *= 0.82f;
+                        }
+
                         float newSpeed = cir.getReturnValue() * speedMultiplier;
                         
-                        // Small mobs (under 1 block tall) get speed boost
+                        // Small mobs get only a light boost (old value was too aggressive).
                         if (mob.getBbHeight() <= 1.0f) {
-                            newSpeed *= 3.3f;
+                            newSpeed *= 1.08f;
                         }
                         
-                        // Frogs get special modifier (slower)
+                        // Frogs are jumpy and should feel slightly slower horizontally.
                         if (mob.getType() == EntityType.FROG) {
-                            newSpeed *= 0.6f;
+                            newSpeed *= 0.88f;
                         }
-                        
-                        cir.setReturnValue(newSpeed);
+
+                        cir.setReturnValue(Math.max(0.03f, Math.min(newSpeed, 0.23f)));
                     }
                 }
             }

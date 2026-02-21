@@ -1,0 +1,38 @@
+{
+  "format_version": "1.8.0",
+  "animations": {
+    "animation.copper_stalker.idle": {
+      "loop": true,
+      "bones": {
+        "main": {
+          "rotation": [0, 0, 0]
+        }
+      }
+    },
+    "animation.copper_stalker.walk": {
+      "loop": true,
+      "bones": {
+        "main": {
+          "rotation": [0, 0, 0]
+        }
+      }
+    },
+    "animation.copper_stalker.flee": {
+      "loop": true,
+      "bones": {
+        "main": {
+          "rotation": [0, 0, 0]
+        }
+      }
+    },
+    "animation.copper_stalker.attack": {
+      "loop": false,
+      "animation_length": 0.5,
+      "bones": {
+        "main": {
+          "rotation": [0, 0, 0]
+        }
+      }
+    }
+  }
+}
