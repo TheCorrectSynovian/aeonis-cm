@@ -31,6 +31,8 @@ bin/
 # fabric
 
 run/
+temp-sources/
+loom-cache/
 
 # java
 
