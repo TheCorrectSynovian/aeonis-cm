@@ -1,0 +1,8 @@
+{
+  "sources": [
+    {
+      "type": "single",
+      "resource": "aeonis:block/ancard_portal"
+    }
+  ]
+}

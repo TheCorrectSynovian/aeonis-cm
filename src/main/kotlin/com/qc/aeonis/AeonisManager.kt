@@ -29,6 +29,7 @@ object AeonisManager : ModInitializer {
     private val logger = LoggerFactory.getLogger("aeonis-manager")
 
 	override fun onInitialize() {
+		com.qc.aeonis.block.AeonisBlocks.register()
 		AeonisEntities.register()
 		com.qc.aeonis.item.AeonisItems.register()
 		com.qc.aeonis.data.AeonisLootModifiers.register()
@@ -107,18 +108,29 @@ object AeonisManager : ModInitializer {
 						AeonisCommands.autoUntransform(player)
 						continue
 					}
+
+					// Cache original movement speed once and apply mob-like movement speed to the player
+					AeonisCommands.cacheOriginalMoveSpeed(player)
+					if (mob is net.minecraft.world.entity.LivingEntity) {
+						val mobSpeedAttr = mob.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.MOVEMENT_SPEED)
+						if (mobSpeedAttr != null) {
+							val targetSpeed = mobSpeedAttr.baseValue.coerceIn(0.05, 0.7)
+							player.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.MOVEMENT_SPEED)?.baseValue = targetSpeed
+						}
+					}
 					
 					// SYNC MOB TO PLAYER POSITION (player moves via normal minecraft movement, mob follows)
 					// This is the QCmod approach - player is the "driver" and mob is the "visual"
 					// The camera positioning is handled client-side in CameraMixin
-					mob.teleportTo(player.x, player.y, player.z)
-					mob.yRot = player.yRot
-					mob.xRot = player.xRot
+					mob.setPos(player.x, player.y, player.z)
+					mob.setYRot(player.yRot)
+					mob.setXRot(player.xRot)
 					mob.setYHeadRot(player.yRot)
 					if (mob is net.minecraft.world.entity.LivingEntity) {
 						mob.yBodyRot = player.yRot
 					}
 					mob.setDeltaMovement(player.deltaMovement)
+					mob.setOnGround(player.onGround())
 					mob.hurtMarked = true
 					
 					// Sync mob equipment with player's held items

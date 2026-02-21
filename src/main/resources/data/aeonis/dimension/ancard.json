@@ -1,0 +1,11 @@
+{
+  "type": "aeonis:ancard",
+  "generator": {
+    "type": "minecraft:noise",
+    "settings": "aeonis:ancard",
+    "biome_source": {
+      "type": "minecraft:fixed",
+      "biome": "aeonis:ancard"
+    }
+  }
+}

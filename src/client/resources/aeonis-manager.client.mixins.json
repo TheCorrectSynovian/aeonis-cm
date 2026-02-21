@@ -12,7 +12,8 @@
 		"MobRenderMixin",
 		"InGameOverlayRendererMixin",
 		"PlayerCameraPosMixin",
-		"WindowTitleMixin"
+		"WindowTitleMixin",
+		"OptionsScreenMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

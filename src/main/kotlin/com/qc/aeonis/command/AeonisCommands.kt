@@ -103,6 +103,17 @@ object AeonisCommands {
         // Accessor for original game modes used by AeonisManager tick handler
         fun getOriginalGameMode(uuid: java.util.UUID): GameType? = originalGameModes[uuid]
 
+        fun cacheOriginalMoveSpeed(player: ServerPlayer) {
+            if (originalMoveSpeeds.containsKey(player.uuid)) return
+            val attr = player.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.MOVEMENT_SPEED) ?: return
+            originalMoveSpeeds[player.uuid] = attr.baseValue
+        }
+
+        fun restoreOriginalMoveSpeed(player: ServerPlayer) {
+            val original = originalMoveSpeeds.remove(player.uuid) ?: return
+            player.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.MOVEMENT_SPEED)?.baseValue = original
+        }
+
         private fun reloadMod(ctx: CommandContext<CommandSourceStack>): Int {
             // Reset all mod features and states
             chaoticEntities.clear()
@@ -119,6 +130,8 @@ object AeonisCommands {
     
     // Track original gamemode for untransform
     private val originalGameModes = mutableMapOf<java.util.UUID, GameType>()
+    // Track original movement speed for untransform
+    private val originalMoveSpeeds = mutableMapOf<java.util.UUID, Double>()
     private val transformedEntities = mutableMapOf<java.util.UUID, Entity>()
     
     // Track players in soul mode (spectator mode where they can possess existing mobs)
@@ -811,6 +824,7 @@ object AeonisCommands {
         
         // Store original gamemode and entity reference
         originalGameModes[player.uuid] = player.gameMode.gameModeForPlayer
+        cacheOriginalMoveSpeed(player)
         transformedEntities[player.uuid] = entity
         
         // Disable the mob's AI so it doesn't interfere with player control
@@ -1191,6 +1205,7 @@ object AeonisCommands {
         // Restore original gamemode
         val originalMode = originalGameModes.remove(player.uuid) ?: GameType.SURVIVAL
         player.setGameMode(originalMode)
+        restoreOriginalMoveSpeed(player)
         
         // IMPORTANT: Reset player health to default (20.0 / 10 hearts)
         player.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.MAX_HEALTH)?.baseValue = 20.0
@@ -1298,6 +1313,7 @@ object AeonisCommands {
         if (!originalGameModes.containsKey(player.uuid)) {
             originalGameModes[player.uuid] = GameType.SURVIVAL
         }
+        cacheOriginalMoveSpeed(player)
         
         // Track the entity
         transformedEntities[player.uuid] = mob
@@ -1968,7 +1984,7 @@ object AeonisCommands {
         
         source.sendSuccess({ Component.literal("§6§l═══════ AEONIS SYSTEM ═══════") }, false)
         source.sendSuccess({ Component.literal("§e§lMOD INFO") }, false)
-        source.sendSuccess({ Component.literal("  §7ID: §bAeonis §7| §7Ver: §b2.0.0") }, false)
+        source.sendSuccess({ Component.literal("  §7ID: §bAeonis §7| §7Ver: §b2.1.0") }, false)
         source.sendSuccess({ Component.literal("  §7Extra Mobs: " + if (AeonisFeatures.isExtraMobsEnabled(server)) "§aON" else "§cOFF") }, false)
         
         source.sendSuccess({ Component.literal("§c§l⚡ PERFORMANCE") }, false)

@@ -13,9 +13,13 @@ object AeonisItems {
     lateinit var SOUL: Item
     lateinit var HEROBRINE_SPAWN_EGG: Item
     lateinit var COPPER_STALKER_SPAWN_EGG: Item
+    lateinit var ANCARD_LIGHTER: Item
 
     fun register() {
         SOUL = register("soul") { Item(it) }
+        ANCARD_LIGHTER = register("ancard_lighter") { props ->
+            AncardLighterItem(props.durability(64))
+        }
         
         // Herobrine spawn egg - uses custom texture for colors
         HEROBRINE_SPAWN_EGG = register("herobrine_spawn_egg") { props ->
@@ -30,6 +34,7 @@ object AeonisItems {
         // Add items to a creative tab
         net.fabricmc.fabric.api.itemgroup.v1.ItemGroupEvents.modifyEntriesEvent(net.minecraft.world.item.CreativeModeTabs.TOOLS_AND_UTILITIES).register { entries ->
             entries.accept(SOUL)
+            entries.accept(ANCARD_LIGHTER)
         }
         
         // Add spawn egg to spawn eggs tab

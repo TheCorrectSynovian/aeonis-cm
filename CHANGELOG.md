@@ -1,5 +1,17 @@
 # Aeonis: Command Master - Changelog
 
+## 2.1.0 - The Horror Update (Phase II) 🕯️ (2026-02-01)
+
+### 🌌 **Ancard Dimension**
+- **New Dimension:** Added the corrupted Deep Dark–inspired dimension **Ancard** (aeonis:ancard) with dark fog, eerie ambience, and permanent noon-tinted sky.
+- **Worldgen Overhaul:** Deepslate-only terrain, shortened vertical depth, higher water/lava activity, and aggressive cavern carving for a hostile, ancient feel.
+- **Structure Surge:** Ancient Cities and End Cities can now generate on the surface in Ancard, with strongholds, pillager outposts, and abandoned villages seeded into the biome.
+
+### 🌀 **Ancard Portal & Lighter**
+- **Ancient City Portal:** Reinforced deepslate frame now opens a custom Ancard portal with dark swirling visuals and Warden-like ambience.
+- **Portal Fixes:** Correct block models/atlas wiring to eliminate the missing-texture placeholder on the portal surface.
+- **Ancard Lighter:** Works like flint and steel, but uses **soul fire** and activates Ancard portals.
+
 ## 2.0.0 - Minecraft 1.21.11 Migration 🚀 (2026-01-07)
 
 ### 🎮 **Version Update**

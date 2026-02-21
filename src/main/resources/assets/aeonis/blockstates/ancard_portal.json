@@ -1,0 +1,10 @@
+{
+  "variants": {
+    "axis=x": {
+      "model": "aeonis:block/ancard_portal_ew"
+    },
+    "axis=z": {
+      "model": "aeonis:block/ancard_portal_ns"
+    }
+  }
+}

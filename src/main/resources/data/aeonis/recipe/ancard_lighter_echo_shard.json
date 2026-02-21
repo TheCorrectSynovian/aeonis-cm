@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "equipment",
+  "key": {
+    "F": "minecraft:flint_and_steel",
+    "E": "minecraft:echo_shard"
+  },
+  "pattern": [
+    "F ",
+    " E"
+  ],
+  "result": {
+    "count": 1,
+    "id": "aeonis:ancard_lighter"
+  }
+}

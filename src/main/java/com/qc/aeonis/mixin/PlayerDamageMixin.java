@@ -30,6 +30,12 @@ public class PlayerDamageMixin {
         if (!AeonisNetworking.INSTANCE.isPlayerTransformed(player.getUUID())) {
             return;
         }
+
+        String msgId = source.getMsgId();
+        if (msgId != null && (msgId.equals("inWall") || msgId.equals("cramming"))) {
+            cir.setReturnValue(false);
+            return;
+        }
         
         Integer controlledId = AeonisNetworking.INSTANCE.getControlledEntityId(player.getUUID());
         if (controlledId == null) return;
@@ -37,15 +43,7 @@ public class PlayerDamageMixin {
         Entity entity = player.level().getEntity(controlledId);
         if (!(entity instanceof Mob mob)) return;
         
-        // === SUFFOCATION/IN_WALL damage: Block for small mobs ===
-        if (source.is(DamageTypeTags.BYPASSES_ARMOR) && mob.getBbHeight() <= 1.0f) {
-            // Check if it's suffocation damage by checking the message ID
-            String msgId = source.getMsgId();
-            if (msgId != null && (msgId.equals("inWall") || msgId.equals("cramming"))) {
-                cir.setReturnValue(false);
-                return;
-            }
-        }
+        // === SUFFOCATION/IN_WALL damage: handled above for all transformed players ===
         
         // === FALL damage: Block for flying mobs ===
         if (source.is(DamageTypeTags.IS_FALL)) {

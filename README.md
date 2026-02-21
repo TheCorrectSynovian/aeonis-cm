@@ -2,7 +2,7 @@
   <img src="https://media.forgecdn.net/avatars/console-avatars/avatar_15441b09-293b-46b5-9f56-a72f7d35a1b7.png" alt="Aeonis: Command Master Banner"/>
 </p>
 
-<h1 align="center">⚡ Aeonis: Command Master v2.0.0 ⚡</h1>
+<h1 align="center">⚡ Aeonis: Command Master v2.1.0 — The Horror Update (Phase II) ⚡</h1>
 
 <p align="center">
   <b>Take control. Command anything. Master the game.</b>
@@ -17,7 +17,7 @@
   <a href="https://www.curseforge.com/minecraft/mc-mods/aeonis-command-master"><img src="https://img.shields.io/badge/CurseForge-Download-orange?style=for-the-badge&logo=curseforge&logoColor=white" alt="CurseForge"></a>
   <a href="https://modrinth.com/mod/aeonis-command-master"><img src="https://img.shields.io/badge/Modrinth-Download-green?style=for-the-badge&logo=modrinth&logoColor=white" alt="Modrinth"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge" alt="License"></a>
-  <img src="https://img.shields.io/badge/Version-2.0.0-purple?style=for-the-badge" alt="Version">
+  <img src="https://img.shields.io/badge/Version-2.1.0-purple?style=for-the-badge" alt="Version">
 </p>
 
 <p align="center">
@@ -35,6 +35,12 @@
 
 
 # Aeonis: Command Master - Changelog
+
+## 2.1.0 - The Horror Update (Phase II) 🕯️ (2026-02-01)
+- **Ancard Dimension** - A corrupted Deep Dark–style realm (aeonis:ancard) with dark fog, ominous ambience, and a permanent noon‑tinted sky.
+- **Portal & Lighter** - Reinforced deepslate portal frame with custom visuals + Ancard Lighter that places soul fire and activates the portal.
+- **Worldgen Overhaul** - Deepslate-only terrain, reduced vertical depth, and higher water/lava activity for a more hostile atmosphere.
+- **Surface Structures** - Ancient Cities and End Cities can generate above ground, plus strongholds, pillager outposts, and abandoned villages.
 
 ## 2.0.0 - Minecraft 1.21.11 Migration 🚀 (2026-01-07)
 - **Minecraft 1.21.11 Support** - Full migration to latest Minecraft version
