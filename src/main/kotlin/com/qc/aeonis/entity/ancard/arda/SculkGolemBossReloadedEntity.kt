@@ -13,6 +13,7 @@ import net.minecraft.world.entity.ai.goal.FloatGoal
 import net.minecraft.world.entity.ai.goal.Goal
 import net.minecraft.world.entity.ai.goal.LookAtPlayerGoal
 import net.minecraft.world.entity.ai.goal.MeleeAttackGoal
+import net.minecraft.world.entity.ai.goal.MoveTowardsTargetGoal
 import net.minecraft.world.entity.ai.goal.RandomLookAroundGoal
 import net.minecraft.world.entity.ai.goal.WaterAvoidingRandomStrollGoal
 import net.minecraft.world.entity.ai.goal.target.HurtByTargetGoal
@@ -50,11 +51,12 @@ class SculkGolemBossReloadedEntity(type: EntityType<out SculkGolemBossReloadedEn
         goalSelector.addGoal(0, FloatGoal(this))
         goalSelector.addGoal(1, SculkGolemStompGoal(this))
         goalSelector.addGoal(2, MeleeAttackGoal(this, 0.95, true))
+        goalSelector.addGoal(3, MoveTowardsTargetGoal(this, 0.8, 24.0f))
         goalSelector.addGoal(5, WaterAvoidingRandomStrollGoal(this, 0.5))
         goalSelector.addGoal(6, LookAtPlayerGoal(this, Player::class.java, 18.0f))
         goalSelector.addGoal(7, RandomLookAroundGoal(this))
 
-        targetSelector.addGoal(1, HurtByTargetGoal(this))
+        targetSelector.addGoal(1, HurtByTargetGoal(this).setAlertOthers())
         targetSelector.addGoal(2, NearestAttackableTargetGoal(this, Player::class.java, true))
     }
 
@@ -69,21 +71,24 @@ class SculkGolemBossReloadedEntity(type: EntityType<out SculkGolemBossReloadedEn
         if (!level().isClientSide) {
             if (attackAnimTicks > 0) attackAnimTicks--
             if (stompCooldown > 0) stompCooldown--
+            if (tickCount % 40 == 0) {
+                SculkAiTuning.retargetNearestPlayer(this, getAttributeValue(Attributes.FOLLOW_RANGE))
+            }
         }
     }
 
     fun canStomp(): Boolean {
         val t = target ?: return false
-        return stompCooldown <= 0 && distanceToSqr(t) <= 6.0 * 6.0
+        return stompCooldown <= 0 && SculkAiTuning.isHostileTarget(this, t) && distanceToSqr(t) <= 6.0 * 6.0
     }
 
     fun stomp() {
-        stompCooldown = 110
+        val t = target ?: return
+        if (!SculkAiTuning.isHostileTarget(this, t)) return
+        stompCooldown = SculkAiTuning.scaledAbilityCooldown(this, 110)
         attackAnimTicks = 16
 
-        val victims = level().getEntitiesOfClass(LivingEntity::class.java, boundingBox.inflate(4.5))
-        for (victim in victims) {
-            if (victim === this) continue
+        SculkAiTuning.forEachHostileVictim(this, 4.5) { victim ->
             val dir = Vec3(victim.x - x, 0.0, victim.z - z).normalize().scale(0.85)
             victim.push(dir.x, 0.28, dir.z)
             victim.hurt(damageSources().mobAttack(this), 7.0f)

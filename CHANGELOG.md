@@ -1,5 +1,69 @@
 # Aeonis - Changelog
 
+## 3.1.0 - The HotFix Snapshot (2026-02-22)
+
+### Prop Hunt Hotfix Remaster
+- Prop Hunt remaster focused on accuracy, reliability, and bug fixes.
+- Fixed player leave/disconnect cleanup so disguises, scoreboard state, and player restore logic are consistent.
+- Added safer round lifecycle handling (countdown cancellation, team/start guards, and duplicate round-end protection).
+- Added active-round arena border enforcement and online-aware win-condition checks.
+- Added dynamic hint pacing in the final minute to improve late-round flow.
+- End-of-round flow now applies rewards and achievement checks consistently.
+- First blood and final kill hunter bonuses are now awarded during prop captures.
+- `/prophunt arena create <id> <preset>` now uses real preset creation with validation and available-preset feedback.
+- Added `/prophunt settings hintinterval <seconds>` and fixed hunter min/max validation in settings commands.
+
+### Companion Bot AI Remaster
+- **Complete rewrite** of the Companion Bot AI from scratch with an advanced state-machine system.
+- New behavioral states: IDLE, FOLLOW, COMBAT, FLEE, LOOT, RETURN — with smooth priority-driven transitions.
+- Advanced combat AI: target prioritization based on threat level, distance, and health; smart weapon switching between melee and ranged; strafing and dodge-rolling during fights; critical hit timing.
+- Improved follow behavior: adaptive follow distance, sprint-to-catch-up logic, teleport-if-too-far fallback.
+- Flee AI: intelligent escape pathing when low on health, retreating behind owner, re-engaging when healed.
+- Loot collection: automatically picks up valuable dropped items after combat.
+- Threat memory system: tracks entities that damaged the bot or its owner for retaliatory targeting.
+- **Bug fix:** Companion no longer attacks passive mobs (cows, pigs, etc.) — now only targets `Monster` instances or entities that attacked the owner/bot.
+
+### Hunter Bot AI Remaster
+- **Complete rewrite** of the Hunter Bot (Manhunt) AI with advanced pursuit and combat intelligence.
+- Improved target tracking with prediction-based pathfinding and intercept routing.
+- Smarter combat: combo attacks, sprint-hits, strafing, shield-break tactics, bow sniping at range.
+- Terrain-aware navigation: bridge building over gaps, pillar-up for height advantage, water/lava avoidance.
+- Multi-phase hunting: SEARCH → CHASE → ENGAGE → EXECUTE with dynamic state transitions.
+
+### New Item: Rhistel (Companion Whistle)
+- Added **Rhistel**, a whistle item that lets players manually cycle their companion's behavior mode.
+- Modes cycle: **ATTACK → FOLLOW → RUN AWAY → AUTO** on each right-click use.
+- Each forced mode lasts **2 minutes**, after which the companion resumes autonomous AI.
+- Bell sound effect and chat feedback on each mode switch.
+- Automatically given to players when they spawn a companion via `/comp spawn`.
+- Custom 16×16 pixel art texture and item model.
+
+### Mass Item Registration
+- Registered **100+ new items** from existing texture assets into the game with proper creative tab entries.
+- Generated matching item definition files (`items/*.json`) and model files (`models/item/*.json`) for all new items.
+- Fixed missing textures caused by the 1.21.2+ two-layer item model system (item definition → model → texture).
+
+### Copper Stalker AI Remaster
+- Added more advanced fearful behavior and smarter flee triggers.
+- Added temporary taming from vegetable food (carrot/potato/beetroot family).
+- Tamed stalkers now follow the feeder, stop attacking, and depart at morning with a goodbye message.
+- Added feeding-window behavior: stalkers watch nearby food-holding players and pause attacks to allow feeding.
+- Added advancement: `Taming liternally everything!`.
+- **Bug fix:** Fixed `addAdditionalSaveData`/`readAdditionalSaveData` for 1.21.11 `ValueOutput`/`ValueInput` API.
+- **Bug fix:** Fixed `SoundEvent` holder references (`.value()` where needed).
+
+### Fun Command Remaster
+- Added timed prank morph command using existing transform flow:
+  - `/prank morph <players> <chicken|pig|goat|frog|parrot|random_funny>`
+  - Auto-untransform after 2 minutes.
+- Added new prank commands: `/prank boing`, `/prank confetti`, `/prank swap`.
+
+### Other Fixes & Improvements
+- Fixed `AeonisCommands` permission system for 1.21.11 (`LevelBasedPermissionSet.GAMEMASTER`).
+- Fixed server access pattern (`ServerLevel.server` instead of private `ServerPlayer.server`).
+- Fixed `Item.appendHoverText` signature for 1.21.11 (`TooltipDisplay` + `Consumer<Component>`).
+- Fixed `Item.addCooldown` API change (now takes `ItemStack` instead of `Item`).
+
 ## 3.0.0 - Major Evolution (2026-02-15)
 - Rebranded to Aeonis
 - Expanded system architecture

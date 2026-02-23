@@ -10,6 +10,7 @@ import net.minecraft.server.level.ServerPlayer
 import net.minecraft.world.scores.PlayerTeam
 import net.minecraft.world.scores.Scoreboard
 import org.slf4j.LoggerFactory
+import kotlin.math.max
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 
@@ -165,14 +166,17 @@ object PropHuntManager {
         
         val game = activeGames[arenaId]
         if (game != null) {
+            val playerData = game.players[player.uuid]
+
+            // Clean player state before removing game data.
+            PropDisguiseManager.undisguise(player)
+            HunterAbilityManager.resetHunter(player)
+            clearPlayerScoreboard(player, game)
+            playerData?.restoreState(player)
+
             game.removePlayer(player)
             game.broadcast("§c- §e${player.name.string} §7left the game. (${game.players.size}/${game.settings.maxPlayers})")
-            
-            // Clear scoreboard
-            clearPlayerScoreboard(player, game)
-            
-            // Check if game should end
-            checkGameEndConditions(game)
+            checkGameIntegrity(game)
         }
         
         playerGameMap.remove(player.uuid)
@@ -215,6 +219,7 @@ object PropHuntManager {
      * Starts the pre-game countdown.
      */
     private fun startCountdown(game: PropHuntGame) {
+        if (game.state == GameState.STARTING) return
         game.state = GameState.STARTING
         game.countdownTicks = game.settings.startCountdownSeconds * 20
         game.broadcast("§e§l⏱ §6Game starting in §e${game.settings.startCountdownSeconds}§6 seconds!")
@@ -224,6 +229,12 @@ object PropHuntManager {
      * Begins a new round with team assignment and hiding phase.
      */
     fun startRound(game: PropHuntGame) {
+        if (game.players.size < 2) {
+            game.state = GameState.WAITING
+            game.broadcast("§c[PropHunt] §7Not enough players to start the round.")
+            return
+        }
+
         game.currentRound++
         game.state = GameState.HIDING
         game.roundTicks = 0
@@ -231,6 +242,12 @@ object PropHuntManager {
         
         // Balance and assign teams
         TeamBalancer.balanceTeams(game)
+        if (game.getHunters().isEmpty() || game.getProps().isEmpty()) {
+            game.currentRound--
+            game.state = GameState.WAITING
+            game.broadcast("§c[PropHunt] §7Team balancing failed (need at least 1 hunter and 1 prop).")
+            return
+        }
         
         // Setup props
         for (propData in game.getProps()) {
@@ -286,6 +303,8 @@ object PropHuntManager {
      * Ends the current round and determines winner.
      */
     fun endRound(game: PropHuntGame, winner: PropHuntTeam, reason: String) {
+        if (game.state == GameState.ROUND_END || game.state == GameState.ENDED) return
+
         game.state = GameState.ROUND_END
         game.roundEndTicks = game.settings.roundEndDelaySeconds * 20
         
@@ -314,6 +333,11 @@ object PropHuntManager {
         
         // Show round summary
         showRoundSummary(game)
+        PropHuntRewards.awardRoundRewards(game, winner)
+        for (playerData in game.players.values) {
+            val player = game.level.server?.playerList?.getPlayer(playerData.uuid) ?: continue
+            PropHuntAchievements.checkRoundEndAchievements(player, playerData, game)
+        }
         
         // Check if game should end
         if (game.currentRound >= game.settings.maxRounds) {
@@ -387,6 +411,14 @@ object PropHuntManager {
             }
             
             GameState.STARTING -> {
+                val onlinePlayers = game.players.values.count { game.level.server?.playerList?.getPlayer(it.uuid) != null }
+                if (onlinePlayers < game.settings.minPlayers) {
+                    game.state = GameState.WAITING
+                    game.countdownTicks = 0
+                    game.broadcast("§c[PropHunt] §7Countdown cancelled - waiting for more players.")
+                    return
+                }
+
                 game.countdownTicks--
                 
                 // Countdown announcements
@@ -424,6 +456,9 @@ object PropHuntManager {
                 for (propData in game.getProps()) {
                     val player = game.level.server?.playerList?.getPlayer(propData.uuid) ?: continue
                     PropDisguiseManager.tickProp(player, game)
+                    if (propData.isAlive) {
+                        ArenaManager.enforceBorders(player, game.arena)
+                    }
                 }
                 
                 if (game.hideTimeTicks <= 0) {
@@ -445,16 +480,27 @@ object PropHuntManager {
                 for (propData in game.getProps()) {
                     val player = game.level.server?.playerList?.getPlayer(propData.uuid) ?: continue
                     PropDisguiseManager.tickProp(player, game)
+                    if (propData.isAlive) {
+                        ArenaManager.enforceBorders(player, game.arena)
+                    }
                 }
                 
                 // Tick hunters
                 for (hunterData in game.getHunters()) {
                     val player = game.level.server?.playerList?.getPlayer(hunterData.uuid) ?: continue
                     HunterAbilityManager.tickHunter(player, game)
+                    if (hunterData.isAlive) {
+                        ArenaManager.enforceBorders(player, game.arena)
+                    }
                 }
                 
                 // Periodic hunter hints
-                if (game.settings.hunterHintsEnabled && game.seekTimeTicks % (game.settings.hintIntervalSeconds * 20) == 0) {
+                val hintIntervalTicks = max(10, if (game.seekTimeTicks <= 60 * 20) {
+                    (game.settings.hintIntervalSeconds * 10)
+                } else {
+                    (game.settings.hintIntervalSeconds * 20)
+                })
+                if (game.settings.hunterHintsEnabled && game.seekTimeTicks % hintIntervalTicks == 0) {
                     HunterAbilityManager.giveHint(game)
                 }
                 
@@ -498,8 +544,8 @@ object PropHuntManager {
     private fun checkGameEndConditions(game: PropHuntGame) {
         if (game.state != GameState.SEEKING) return
         
-        val aliveProps = game.getProps().count { it.isAlive }
-        val aliveHunters = game.getHunters().count { it.isAlive }
+        val aliveProps = game.getProps().count { it.isAlive && game.level.server?.playerList?.getPlayer(it.uuid) != null }
+        val aliveHunters = game.getHunters().count { it.isAlive && game.level.server?.playerList?.getPlayer(it.uuid) != null }
         
         // All props eliminated
         if (aliveProps == 0) {
@@ -517,6 +563,17 @@ object PropHuntManager {
         if (game.players.size < 2) {
             endGame(game.arenaId, "Not enough players!")
             return
+        }
+    }
+
+    private fun checkGameIntegrity(game: PropHuntGame) {
+        if (game.players.isEmpty()) {
+            endGame(game.arenaId, "All players left.")
+            return
+        }
+
+        if (game.state == GameState.SEEKING) {
+            checkGameEndConditions(game)
         }
     }
     
@@ -548,6 +605,14 @@ object PropHuntManager {
      */
     fun updatePlayerTeam(player: ServerPlayer, team: PropHuntTeam) {
         val scoreboard = (player.level() as ServerLevel).server.scoreboard
+
+        // Remove from previous PropHunt teams first to avoid stale team state.
+        for (teamName in listOf("ph_props", "ph_hunters", "ph_spectators")) {
+            val existing = scoreboard.getPlayerTeam(teamName) ?: continue
+            if (existing.players.contains(player.scoreboardName)) {
+                scoreboard.removePlayerFromTeam(player.scoreboardName, existing)
+            }
+        }
         
         val teamName = when (team) {
             PropHuntTeam.PROP -> "ph_props"
@@ -701,10 +766,14 @@ object PropHuntManager {
                 game.broadcast("§c✖ §e${player.name.string} §7disconnected and has been eliminated!")
             }
         }
+
+        PropDisguiseManager.removeDisguise(player)
+        HunterAbilityManager.resetHunter(player)
+        clearPlayerScoreboard(player, game)
         
         game.removePlayer(player)
         playerGameMap.remove(player.uuid)
         
-        checkGameEndConditions(game)
+        checkGameIntegrity(game)
     }
 }

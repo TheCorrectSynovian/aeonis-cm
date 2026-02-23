@@ -13,6 +13,7 @@ import net.minecraft.world.entity.ai.goal.FloatGoal
 import net.minecraft.world.entity.ai.goal.Goal
 import net.minecraft.world.entity.ai.goal.LookAtPlayerGoal
 import net.minecraft.world.entity.ai.goal.MeleeAttackGoal
+import net.minecraft.world.entity.ai.goal.MoveTowardsTargetGoal
 import net.minecraft.world.entity.ai.goal.RandomLookAroundGoal
 import net.minecraft.world.entity.ai.goal.WaterAvoidingRandomStrollGoal
 import net.minecraft.world.entity.ai.goal.target.HurtByTargetGoal
@@ -51,11 +52,12 @@ class SculkCreakingEntity(type: EntityType<out SculkCreakingEntity>, level: Leve
         goalSelector.addGoal(0, FloatGoal(this))
         goalSelector.addGoal(1, SculkCreakingScreechGoal(this))
         goalSelector.addGoal(2, MeleeAttackGoal(this, 1.15, true))
+        goalSelector.addGoal(3, MoveTowardsTargetGoal(this, 1.0, 24.0f))
         goalSelector.addGoal(5, WaterAvoidingRandomStrollGoal(this, 0.8))
         goalSelector.addGoal(6, LookAtPlayerGoal(this, Player::class.java, 14.0f))
         goalSelector.addGoal(7, RandomLookAroundGoal(this))
 
-        targetSelector.addGoal(1, HurtByTargetGoal(this))
+        targetSelector.addGoal(1, HurtByTargetGoal(this).setAlertOthers())
         targetSelector.addGoal(2, NearestAttackableTargetGoal(this, Player::class.java, true))
     }
 
@@ -70,20 +72,23 @@ class SculkCreakingEntity(type: EntityType<out SculkCreakingEntity>, level: Leve
         if (!level().isClientSide) {
             if (attackAnimTicks > 0) attackAnimTicks--
             if (screechCooldown > 0) screechCooldown--
+            if (tickCount % 40 == 0) {
+                SculkAiTuning.retargetNearestPlayer(this, getAttributeValue(Attributes.FOLLOW_RANGE))
+            }
         }
     }
 
     fun canScreech(): Boolean {
         val t = target ?: return false
-        return screechCooldown <= 0 && distanceToSqr(t) <= 8.0 * 8.0
+        return screechCooldown <= 0 && SculkAiTuning.isHostileTarget(this, t) && distanceToSqr(t) <= 8.0 * 8.0
     }
 
     fun doScreech() {
-        screechCooldown = 120
+        val t = target ?: return
+        if (!SculkAiTuning.isHostileTarget(this, t)) return
+        screechCooldown = SculkAiTuning.scaledAbilityCooldown(this, 120)
         attackAnimTicks = 14
-        val victims = level().getEntitiesOfClass(LivingEntity::class.java, boundingBox.inflate(5.5))
-        for (victim in victims) {
-            if (victim === this) continue
+        SculkAiTuning.forEachHostileVictim(this, 5.5) { victim ->
             victim.addEffect(MobEffectInstance(MobEffects.SLOWNESS, 70, 1))
             victim.addEffect(MobEffectInstance(MobEffects.WEAKNESS, 70, 0))
         }

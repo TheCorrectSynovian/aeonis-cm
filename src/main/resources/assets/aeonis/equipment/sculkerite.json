@@ -1,0 +1,14 @@
+{
+  "layers": {
+    "humanoid": [
+      {
+        "texture": "aeonis:sculkerite"
+      }
+    ],
+    "humanoid_leggings": [
+      {
+        "texture": "aeonis:sculkerite"
+      }
+    ]
+  }
+}

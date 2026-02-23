@@ -12,6 +12,7 @@ import net.minecraft.world.entity.ai.goal.FloatGoal
 import net.minecraft.world.entity.ai.goal.Goal
 import net.minecraft.world.entity.ai.goal.LookAtPlayerGoal
 import net.minecraft.world.entity.ai.goal.MeleeAttackGoal
+import net.minecraft.world.entity.ai.goal.MoveTowardsTargetGoal
 import net.minecraft.world.entity.ai.goal.RandomLookAroundGoal
 import net.minecraft.world.entity.ai.goal.WaterAvoidingRandomStrollGoal
 import net.minecraft.world.entity.ai.goal.target.HurtByTargetGoal
@@ -49,11 +50,12 @@ class SculkEndermanEntity(type: EntityType<out SculkEndermanEntity>, level: Leve
         goalSelector.addGoal(0, FloatGoal(this))
         goalSelector.addGoal(1, SculkEndermanBlinkGoal(this))
         goalSelector.addGoal(2, MeleeAttackGoal(this, 1.2, true))
+        goalSelector.addGoal(3, MoveTowardsTargetGoal(this, 1.05, 24.0f))
         goalSelector.addGoal(5, WaterAvoidingRandomStrollGoal(this, 0.8))
         goalSelector.addGoal(6, LookAtPlayerGoal(this, Player::class.java, 16.0f))
         goalSelector.addGoal(7, RandomLookAroundGoal(this))
 
-        targetSelector.addGoal(1, HurtByTargetGoal(this))
+        targetSelector.addGoal(1, HurtByTargetGoal(this).setAlertOthers())
         targetSelector.addGoal(2, NearestAttackableTargetGoal(this, Player::class.java, true))
     }
 
@@ -74,11 +76,15 @@ class SculkEndermanEntity(type: EntityType<out SculkEndermanEntity>, level: Leve
             if (attackAnimTicks > 0) attackAnimTicks--
             if (blinkCooldown > 0) blinkCooldown--
             if (blinkAnimTicks > 0) blinkAnimTicks--
+            if (tickCount % 30 == 0) {
+                SculkAiTuning.retargetNearestPlayer(this, getAttributeValue(Attributes.FOLLOW_RANGE))
+            }
         }
     }
 
     fun canBlinkStrike(): Boolean {
         val t = target ?: return false
+        if (!SculkAiTuning.isHostileTarget(this, t)) return false
         if (blinkCooldown > 0 || !onGround()) return false
         val d = distanceTo(t)
         return d in 4.0..14.0 && hasLineOfSight(t)
@@ -86,11 +92,12 @@ class SculkEndermanEntity(type: EntityType<out SculkEndermanEntity>, level: Leve
 
     fun blinkStrike() {
         val t = target ?: return
+        if (!SculkAiTuning.isHostileTarget(this, t)) return
         val look = t.lookAngle.normalize()
         val behind = t.position().subtract(look.scale(2.5))
         teleportTo(behind.x, t.y, behind.z)
         playSound(SoundEvents.ENDERMAN_TELEPORT, 1.0f, 0.65f)
-        blinkCooldown = 90
+        blinkCooldown = SculkAiTuning.scaledAbilityCooldown(this, 90)
         blinkAnimTicks = 8
         attackAnimTicks = 10
     }

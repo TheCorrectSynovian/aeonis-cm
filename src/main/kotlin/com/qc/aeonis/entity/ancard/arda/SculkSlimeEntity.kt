@@ -12,6 +12,7 @@ import net.minecraft.world.entity.ai.goal.FloatGoal
 import net.minecraft.world.entity.ai.goal.LeapAtTargetGoal
 import net.minecraft.world.entity.ai.goal.LookAtPlayerGoal
 import net.minecraft.world.entity.ai.goal.MeleeAttackGoal
+import net.minecraft.world.entity.ai.goal.MoveTowardsTargetGoal
 import net.minecraft.world.entity.ai.goal.RandomLookAroundGoal
 import net.minecraft.world.entity.ai.goal.WaterAvoidingRandomStrollGoal
 import net.minecraft.world.entity.ai.goal.target.HurtByTargetGoal
@@ -47,11 +48,12 @@ class SculkSlimeEntity(type: EntityType<out SculkSlimeEntity>, level: Level) :
         goalSelector.addGoal(0, FloatGoal(this))
         goalSelector.addGoal(1, LeapAtTargetGoal(this, 0.5f))
         goalSelector.addGoal(2, MeleeAttackGoal(this, 1.0, true))
+        goalSelector.addGoal(3, MoveTowardsTargetGoal(this, 0.95, 18.0f))
         goalSelector.addGoal(5, WaterAvoidingRandomStrollGoal(this, 0.6))
         goalSelector.addGoal(6, LookAtPlayerGoal(this, Player::class.java, 12.0f))
         goalSelector.addGoal(7, RandomLookAroundGoal(this))
 
-        targetSelector.addGoal(1, HurtByTargetGoal(this))
+        targetSelector.addGoal(1, HurtByTargetGoal(this).setAlertOthers())
         targetSelector.addGoal(2, NearestAttackableTargetGoal(this, Player::class.java, true))
     }
 
@@ -69,7 +71,12 @@ class SculkSlimeEntity(type: EntityType<out SculkSlimeEntity>, level: Level) :
 
     override fun aiStep() {
         super.aiStep()
-        if (!level().isClientSide && attackAnimTicks > 0) attackAnimTicks--
+        if (!level().isClientSide) {
+            if (attackAnimTicks > 0) attackAnimTicks--
+            if (tickCount % 30 == 0) {
+                SculkAiTuning.retargetNearestPlayer(this, getAttributeValue(Attributes.FOLLOW_RANGE))
+            }
+        }
     }
 
     override fun getAmbientSound(): SoundEvent = SoundEvents.SLIME_SQUISH

@@ -16,7 +16,6 @@ import net.minecraft.world.entity.projectile.throwableitemprojectile.Snowball
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.Items
 import net.minecraft.world.level.GameType
-import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.Vec3
 import org.slf4j.LoggerFactory
 import java.util.*
@@ -183,6 +182,7 @@ object HunterAbilityManager {
     fun useScanner(player: ServerPlayer, game: PropHuntGame): Boolean {
         val playerData = game.players[player.uuid] ?: return false
         val settings = game.settings
+        if (!canUseAbility(player, game, playerData, "scanner")) return false
         
         // Check cooldown
         if (playerData.scannerCooldown > 0) {
@@ -197,7 +197,6 @@ object HunterAbilityManager {
         // Perform scan
         val level = player.level() as? ServerLevel ?: return false
         val scanRadius = 15.0
-        val scanBox = AABB.ofSize(player.position(), scanRadius * 2, scanRadius, scanRadius * 2)
         
         // Visual pulse effect
         spawnScanPulse(player, level, scanRadius)
@@ -275,6 +274,7 @@ object HunterAbilityManager {
     fun useTracker(player: ServerPlayer, game: PropHuntGame): Boolean {
         val playerData = game.players[player.uuid] ?: return false
         val settings = game.settings
+        if (!canUseAbility(player, game, playerData, "tracker")) return false
         
         // Check cooldown
         if (playerData.trackerCooldown > 0) {
@@ -611,6 +611,11 @@ object HunterAbilityManager {
      * Returns true if it was a valid prop hit.
      */
     fun processHunterAttack(hunter: ServerPlayer, target: Entity, game: PropHuntGame): Boolean {
+        val hunterData = game.players[hunter.uuid] ?: return false
+        if (game.state != GameState.SEEKING || hunterData.team != PropHuntTeam.HUNTER || !hunterData.isAlive || hunterData.isFrozen) {
+            return false
+        }
+
         // Check if target is a disguise entity
         val propUuid = PropDisguiseManager.isPropDisguise(target)
         
@@ -630,5 +635,21 @@ object HunterAbilityManager {
         }
         
         return false
+    }
+
+    private fun canUseAbility(player: ServerPlayer, game: PropHuntGame, data: PropHuntPlayerData, abilityName: String): Boolean {
+        if (game.state != GameState.SEEKING) {
+            player.sendSystemMessage(Component.literal("§c[PropHunt] §7You can only use $abilityName during the seeking phase."))
+            return false
+        }
+        if (data.isFrozen) {
+            player.sendSystemMessage(Component.literal("§c[PropHunt] §7You are frozen and cannot use abilities yet."))
+            return false
+        }
+        if (!data.isAlive) {
+            player.sendSystemMessage(Component.literal("§c[PropHunt] §7Eliminated hunters cannot use abilities."))
+            return false
+        }
+        return true
     }
 }

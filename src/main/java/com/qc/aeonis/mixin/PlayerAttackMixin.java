@@ -168,7 +168,7 @@ public abstract class PlayerAttackMixin {
         if (isIronGolem) {
             IronGolem golem = (IronGolem) controlledMob;
             damage = 15.0f;
-            ((IronGolemEntityAccessor) golem).setAttackTicksLeft(10);
+            ((IronGolemEntityAccessor) golem).setAttackAnimationTick(10);
             world.broadcastEntityEvent(controlledMob, (byte) 4);
         }
         

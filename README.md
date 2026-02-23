@@ -2,7 +2,7 @@
   <img src="https://media.forgecdn.net/avatars/console-avatars/avatar_15441b09-293b-46b5-9f56-a72f7d35a1b7.png" alt="Aeonis Banner"/>
 </p>
 
-<h1 align="center">⚡ Aeonis v3.0.0 — The Revolution ⚡</h1>
+<h1 align="center">⚡ Aeonis v3.1.0 — The HotFix Snapshot ⚡</h1>
 
 <p align="center">
   <b>Take control. Command anything. Master the game.</b>
@@ -18,7 +18,7 @@
   <a href="https://www.curseforge.com/minecraft/mc-mods/aeonis-command-master"><img src="https://img.shields.io/badge/CurseForge-Download-orange?style=for-the-badge&logo=curseforge&logoColor=white" alt="CurseForge"></a>
   <a href="https://modrinth.com/mod/aeonis-command-master"><img src="https://img.shields.io/badge/Modrinth-Download-green?style=for-the-badge&logo=modrinth&logoColor=white" alt="Modrinth"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge" alt="License"></a>
-  <img src="https://img.shields.io/badge/Version-3.0.0-purple?style=for-the-badge" alt="Version">
+  <img src="https://img.shields.io/badge/Version-3.1.0-purple?style=for-the-badge" alt="Version">
 </p>
 
 <p align="center">
@@ -35,13 +35,42 @@
 ---
 
 
-# Aeonis — The Revolution (v3.0.0)
+# Aeonis — The HotFix Snapshot (v3.1.0)
 
 **Aeonis** is a multi-system Minecraft framework combining **mob possession**, **AI-assisted command systems**, **custom dimensions**, **unique mobs**, and **advanced rendering** into one unified experience.
 
 ---
 
-## 🆕 What’s New in 3.0.0 — The Revolution
+## 🆕 What’s New in 3.1.0 — The HotFix Snapshot
+
+### 🎯 Prop Hunt Hotfix Remaster
+- Fixed player leave/disconnect state restoration to prevent stuck disguise/inventory/gamemode issues
+- Added stronger round-state validation (countdown cancellation when player count drops, start guards, duplicate round-end guards)
+- Improved match accuracy with live arena border enforcement and online-player-aware win checks
+- Added dynamic hint pacing in final minute for more consistent round pressure
+- Added end-of-round rewards + achievement checks directly in round resolution
+- Added first-blood and last-kill bonus hooks for hunter eliminations
+- Fixed arena preset command flow (`/prophunt arena create <id> <preset>`) to actually create from preset
+- Added `/prophunt settings hintinterval <seconds>` and hunter min/max validation
+
+### 🧟 Copper Stalker AI Remaster
+- Remastered Copper Stalker into a more advanced but fearful hunter species
+- Added food-based temporary taming using vegetable foods (carrot/potato/beetroot family)
+- Tamed stalkers stop attacking, follow their tamer, and automatically depart at morning with a goodbye message
+- Added feeding-window behavior: both hostile and tamed stalkers pause aggression and watch nearby food-holding players
+- Added advancement: `Taming liternally everything!`
+
+### 🎭 Fun Command Remaster
+- Added timed prank morph command powered by existing transform command flow:
+  - `/prank morph <players> <chicken|pig|goat|frog|parrot|random_funny>`
+  - Duration: 2 minutes, then auto-untransform
+- Added new prank commands:
+  - `/prank boing <players>`
+  - `/prank confetti <players>`
+  - `/prank swap <player_a> <player_b>`
+
+### 🛠️ Development Note
+- Companion Bot AI and Hunter Bot AI upgrades are currently being worked on in parallel background development and are not bundled in this snapshot.
 
 ### 🌌 New Dimension: **Deeper Dark**
 A full-scale underworld built from the ground up.
@@ -60,12 +89,15 @@ A huge roster of new mobs and bosses:
 - **Ancard creatures**: Ancard Sovereign, Ancient Colossus, Ash Stalker, Bloodroot Fiend, Boneweaver, Crypt Mite, Echo Wisp, Obelisk Sentinel, Rift Screecher, Ruin Hound, Shade Lurker, Sporeback, Veil Mimic, Veilshade Watcher, and more
 - **Arda/ported mobs**: Radioactive Warden, Sculk Boss 1, Sculk Golem Boss Reloaded, Shadow Hunter, Sculk Enderman, Sculk Skeleton, Sculk Slime, Sculk Creeper, Sculk Creaking, and more
 
-### 🤝 Companion Bot System
-Summon your own helper bot with new commands:
-- `/comp spawn` — Spawn or replace your companion
-- `/comp comehere` — Recall it to you
-- `/comp stats` — View its status and strength
-- `/comp dismiss` — Remove it
+### 🤝 Companion Bot System (AI Remastered)
+Summon your own AI-powered combat companion:
+- `/comp spawn` — Spawn or replace your companion (also gives you the **Rhistel** whistle)
+- `/comp comehere` — Recall it to your location
+- `/comp stats` — View its status, gear, and strength
+- `/comp dismiss` — Remove your companion
+- **Rhistel Whistle** — Right-click to cycle modes: ATTACK → FOLLOW → RUN AWAY → AUTO (2-min duration each)
+- **Advanced AI States:** IDLE, FOLLOW, COMBAT, FLEE, LOOT, RETURN — with threat memory and smart targeting
+- **Only attacks hostile mobs** or entities that attacked you/your companion
 
 ### 🧱 New Blocks & Mechanics
 - **Safe Chest** — high‑resistance storage that can connect as single, double, or triple units
@@ -76,6 +108,16 @@ Summon your own helper bot with new commands:
 ---
 
 # Aeonis - Changelog
+
+## 3.1.0 - The HotFix Snapshot (2026-02-22)
+- **Companion Bot AI Remaster:** Complete rewrite with advanced state-machine (IDLE/FOLLOW/COMBAT/FLEE/LOOT/RETURN), smart combat targeting, threat memory, and adaptive follow. No longer attacks passive mobs.
+- **Hunter Bot AI Remaster:** Complete rewrite with multi-phase hunting (SEARCH/CHASE/ENGAGE/EXECUTE), prediction pathfinding, and terrain-aware navigation.
+- **New Item: Rhistel Whistle** — Cycles companion mode (ATTACK → FOLLOW → RUN AWAY → AUTO) with 2-minute forced duration per mode. Given on `/comp spawn`.
+- **Mass Item Registration:** 100+ new items registered with creative tab entries, item definitions, and model files. Fixed 1.21.2+ two-layer texture system.
+- Prop Hunt remaster: round flow fixes, state restoration, arena border enforcement, dynamic hint pacing, reward/achievement payout.
+- Copper Stalker AI remaster: fearful behavior, temporary vegetable-food taming, morning departure, feeding-window pacification. Fixed save/load for 1.21.11.
+- Fun commands remaster: `/prank morph` (2-minute timed), `/prank boing`, `/prank confetti`, `/prank swap`.
+- Bug fixes: permission API, server access, tooltip API, cooldown API, SoundEvent holders for 1.21.11 compatibility.
 
 ## 3.0.0 - The Revolution (2026-02-15)
 - Rebranded to Aeonis
@@ -298,6 +340,10 @@ The revolutionary **Mob Possession System** lets you:
 | `/prank freeze <players>` | Freeze solid ❄️ | `/prank freeze Steve` |
 | `/prank burn <players>` | Set on fire 🔥 | `/prank burn Alex` |
 | `/prank drunk <players>` | Nausea + blindness 🍺 | `/prank drunk @a` |
+| `/prank boing <players>` | Super bounce prank 🟢 | `/prank boing Steve` |
+| `/prank confetti <players>` | Firework confetti burst 🎉 | `/prank confetti @a` |
+| `/prank swap <player_a> <player_b>` | Swap two players instantly 🌀 | `/prank swap Alex Steve` |
+| `/prank morph <players> <type>` | Transform prank for 2 minutes 🎭 | `/prank morph Alex chicken` |
 
 **Examples:**
 ```
@@ -312,6 +358,10 @@ The revolutionary **Mob Possession System** lets you:
 /prank freeze Steve
 /prank burn Alex
 /prank drunk @a
+/prank boing Steve
+/prank confetti @a
+/prank swap Alex Steve
+/prank morph Alex random_funny
 ```
 
 ---
@@ -650,7 +700,7 @@ Enable with: `/aeonis features extra_mobs true`
 
 - **Developer:** QuantumCreeper / TheCorrectSynovian
 - **Mod ID:** `aeonis-manager`
-- **Version:** 3.0.0
+- **Version:** 3.1.0
 
 ---
 

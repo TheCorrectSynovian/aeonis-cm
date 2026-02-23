@@ -164,6 +164,9 @@ object PropHuntCommands {
                     .then(Commands.literal("hints")
                         .then(Commands.literal("on").executes { setHints(it, true) })
                         .then(Commands.literal("off").executes { setHints(it, false) }))
+                    .then(Commands.literal("hintinterval")
+                        .then(Commands.argument("seconds", IntegerArgumentType.integer(5, 120))
+                            .executes { setHintInterval(it) }))
                     .then(Commands.literal("show")
                         .executes { showSettings(it) }))
                 
@@ -491,9 +494,16 @@ object PropHuntCommands {
         val player = ctx.source.playerOrException
         val arenaId = StringArgumentType.getString(ctx, "id")
         val presetName = StringArgumentType.getString(ctx, "preset")
-        
-        ctx.source.sendSuccess({ 
-            Component.literal("§a[PropHunt] §7Arena '$arenaId' created with preset '$presetName'!") 
+
+        val arena = ArenaManager.createArenaFromPreset(arenaId, ctx.source.level, player.blockPosition(), presetName)
+        if (arena == null) {
+            val presets = ArenaManager.listPresetNames().joinToString(", ")
+            ctx.source.sendFailure(Component.literal("§cUnknown preset '$presetName'. Available: $presets"))
+            return 0
+        }
+
+        ctx.source.sendSuccess({
+            Component.literal("§a[PropHunt] §7Arena '$arenaId' created with preset '$presetName'!")
         }, true)
         return 1
     }
@@ -581,6 +591,10 @@ object PropHuntCommands {
     private fun setHunterCount(ctx: CommandContext<CommandSourceStack>): Int {
         val min = IntegerArgumentType.getInteger(ctx, "min")
         val max = IntegerArgumentType.getInteger(ctx, "max")
+        if (min > max) {
+            ctx.source.sendFailure(Component.literal("§cMin hunters cannot be greater than max hunters."))
+            return 0
+        }
         PropHuntManager.config.defaultSettings.minHunters = min
         PropHuntManager.config.defaultSettings.maxHunters = max
         ctx.source.sendSuccess({ Component.literal("§a[PropHunt] §7Hunter count set to §e$min-$max") }, true)
@@ -593,6 +607,13 @@ object PropHuntCommands {
         ctx.source.sendSuccess({ Component.literal("§a[PropHunt] §7Hunter hints $status") }, true)
         return 1
     }
+
+    private fun setHintInterval(ctx: CommandContext<CommandSourceStack>): Int {
+        val seconds = IntegerArgumentType.getInteger(ctx, "seconds")
+        PropHuntManager.config.defaultSettings.hintIntervalSeconds = seconds
+        ctx.source.sendSuccess({ Component.literal("§a[PropHunt] §7Hint interval set to §e${seconds}s") }, true)
+        return 1
+    }
     
     private fun showSettings(ctx: CommandContext<CommandSourceStack>): Int {
         val settings = PropHuntManager.config.defaultSettings
@@ -603,6 +624,7 @@ object PropHuntCommands {
             §7Round Time: §e${settings.roundTimeSeconds}s
             §7Hunters: §e${settings.minHunters}-${settings.maxHunters}
             §7Hunter Hints: ${if (settings.hunterHintsEnabled) "§aOn" else "§cOff"}
+            §7Hint Interval: §e${settings.hintIntervalSeconds}s
             §7Taunt Cooldown: §e${settings.tauntCooldownSeconds}s
             §7Scanner Cooldown: §e${settings.scannerCooldownSeconds}s
             §7Tracker Cooldown: §e${settings.trackerCooldownSeconds}s
@@ -661,7 +683,10 @@ object PropHuntCommands {
                 val playerData = game.players[player.uuid]
                 if (playerData?.team == PropHuntTeam.HUNTER) {
                     // Process hunter attack
-                    HunterAbilityManager.processHunterAttack(player, entity, game)
+                    val handled = HunterAbilityManager.processHunterAttack(player, entity, game)
+                    if (handled) {
+                        return@register net.minecraft.world.InteractionResult.SUCCESS
+                    }
                 }
             }
             
@@ -683,15 +708,15 @@ object PropHuntCommands {
                     when (item.item) {
                         Items.COMPASS -> {
                             PropDisguiseManager.toggleRotationLock(player, game)
-                            return@register InteractionResult.SUCCESS
+                            return@register InteractionResult.CONSUME
                         }
                         Items.BLUE_ICE -> {
                             PropDisguiseManager.toggleFreeze(player, game)
-                            return@register InteractionResult.SUCCESS
+                            return@register InteractionResult.CONSUME
                         }
                         Items.GOAT_HORN -> {
                             PropDisguiseManager.performTaunt(player, game)
-                            return@register InteractionResult.SUCCESS
+                            return@register InteractionResult.CONSUME
                         }
                     }
                 }
@@ -700,12 +725,14 @@ object PropHuntCommands {
                 if (playerData?.team == PropHuntTeam.HUNTER) {
                     when (item.item) {
                         Items.ECHO_SHARD -> {
-                            HunterAbilityManager.useScanner(player, game)
-                            return@register InteractionResult.SUCCESS
+                            if (HunterAbilityManager.useScanner(player, game)) {
+                                return@register InteractionResult.CONSUME
+                            }
                         }
                         Items.SPECTRAL_ARROW -> {
-                            HunterAbilityManager.useTracker(player, game)
-                            return@register InteractionResult.SUCCESS
+                            if (HunterAbilityManager.useTracker(player, game)) {
+                                return@register InteractionResult.CONSUME
+                            }
                         }
                     }
                 }

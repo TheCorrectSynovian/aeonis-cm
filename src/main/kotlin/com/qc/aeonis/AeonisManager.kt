@@ -110,6 +110,8 @@ object AeonisManager : ModInitializer {
 		ServerTickEvents.END_SERVER_TICK.register { server ->
 			// Handle pet vex AI redirection
 			AeonisCommands.tickPetVexes(server)
+            // Handle temporary prank morph timers
+            AeonisCommands.tickPrankMorphs(server)
             // Handle Director Mode orders
             AeonisCommands.tickActors(server)
             // Handle Thunder Dome waves

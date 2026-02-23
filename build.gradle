@@ -36,6 +36,15 @@ repositories {
 		}
 	}
 
+	// TerraformersMC Maven - Mod Menu
+	maven {
+		name = "TerraformersMC"
+		url = "https://maven.terraformersmc.com/releases/"
+		content {
+			includeGroup "com.terraformersmc"
+		}
+	}
+
 	// GeckoLib (animated entities)
 	exclusiveContent {
 		forRepository {
@@ -80,6 +89,9 @@ dependencies {
 
 	// GeckoLib (animated entities)
 	modImplementation "software.bernie.geckolib:geckolib-fabric-${project.minecraft_version}:${project.geckolibVersion}"
+
+	// Mod Menu API (compile-time only, optional at runtime)
+	modCompileOnly "com.terraformersmc:modmenu:${project.modmenu_version}"
 }
 
 processResources {

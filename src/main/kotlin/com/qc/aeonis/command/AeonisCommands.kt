@@ -29,6 +29,7 @@ import net.minecraft.world.effect.MobEffectInstance
 import net.minecraft.world.effect.MobEffects
 import net.minecraft.commands.arguments.ResourceArgument
 import net.minecraft.core.registries.Registries
+import net.minecraft.core.registries.BuiltInRegistries
 import com.mojang.brigadier.arguments.StringArgumentType
 import net.minecraft.world.entity.Entity
 import net.minecraft.world.entity.EntitySpawnReason
@@ -68,8 +69,10 @@ import kotlin.math.cos
 import kotlin.math.sin
 
 object AeonisCommands {
+        private const val PRANK_MORPH_DURATION_TICKS = 20 * 120 // 2 minutes
         // Track all entities made chaotic for easy disabling
         private val chaoticEntities = mutableSetOf<Int>()
+        private val prankMorphTimers = mutableMapOf<java.util.UUID, Int>()
 
         private fun stopChaotic(ctx: CommandContext<CommandSourceStack>): Int {
             var count = 0
@@ -119,6 +122,7 @@ object AeonisCommands {
             chaoticEntities.clear()
             originalGameModes.clear()
             transformedEntities.clear()
+            prankMorphTimers.clear()
             petVexOwners.clear()
             actorWalkTargets.clear()
             actorLookTargets.clear()
@@ -268,6 +272,34 @@ object AeonisCommands {
         
         // Clean up dead vexes
         toRemove.forEach { petVexOwners.remove(it) }
+    }
+
+    fun tickPrankMorphs(server: net.minecraft.server.MinecraftServer) {
+        val iterator = prankMorphTimers.entries.iterator()
+        while (iterator.hasNext()) {
+            val entry = iterator.next()
+            val playerUuid = entry.key
+            val ticks = entry.value
+            val player = server.playerList.getPlayer(playerUuid)
+            if (player == null) {
+                iterator.remove()
+                continue
+            }
+
+            if (!AeonisNetworking.isPlayerTransformed(playerUuid) || !transformedEntities.containsKey(playerUuid)) {
+                iterator.remove()
+                continue
+            }
+
+            val nextTicks = ticks - 1
+            if (nextTicks <= 0) {
+                autoUntransform(player, showMessage = true)
+                player.sendSystemMessage(Component.literal("§e🎭 Prank morph expired. Back to normal!"))
+                iterator.remove()
+            } else {
+                entry.setValue(nextTicks)
+            }
+        }
     }
     
     fun register() {
@@ -552,6 +584,24 @@ object AeonisCommands {
                 .then(Commands.literal("drunk")
                     .then(Commands.argument("targets", EntityArgument.players())
                         .executes { drunkVision(it) }))
+                .then(Commands.literal("boing")
+                    .then(Commands.argument("targets", EntityArgument.players())
+                        .executes { boingPlayers(it) }))
+                .then(Commands.literal("confetti")
+                    .then(Commands.argument("targets", EntityArgument.players())
+                        .executes { confettiPlayers(it) }))
+                .then(Commands.literal("swap")
+                    .then(Commands.argument("player_a", EntityArgument.player())
+                        .then(Commands.argument("player_b", EntityArgument.player())
+                            .executes { swapPlayers(it) })))
+                .then(Commands.literal("morph")
+                    .then(Commands.argument("targets", EntityArgument.players())
+                        .then(Commands.literal("chicken").executes { prankMorphPlayers(it, EntityType.CHICKEN) })
+                        .then(Commands.literal("pig").executes { prankMorphPlayers(it, EntityType.PIG) })
+                        .then(Commands.literal("goat").executes { prankMorphPlayers(it, EntityType.GOAT) })
+                        .then(Commands.literal("frog").executes { prankMorphPlayers(it, EntityType.FROG) })
+                        .then(Commands.literal("parrot").executes { prankMorphPlayers(it, EntityType.PARROT) })
+                        .then(Commands.literal("random_funny").executes { prankMorphPlayersRandom(it) })))
         )
     }
 
@@ -646,6 +696,10 @@ object AeonisCommands {
         source.sendSuccess({ Component.literal("§e/prank freeze <players>§7 - Freeze in place") }, false)
         source.sendSuccess({ Component.literal("§e/prank burn <players>§7 - Set on fire") }, false)
         source.sendSuccess({ Component.literal("§e/prank drunk <players>§7 - Drunk vision") }, false)
+        source.sendSuccess({ Component.literal("§e/prank boing <players>§7 - Super bounce prank") }, false)
+        source.sendSuccess({ Component.literal("§e/prank confetti <players>§7 - Firework confetti burst") }, false)
+        source.sendSuccess({ Component.literal("§e/prank swap <player_a> <player_b>§7 - Swap two players instantly") }, false)
+        source.sendSuccess({ Component.literal("§e/prank morph <players> <chicken|pig|goat|frog|parrot|random_funny>§7 - Transform for 2 minutes") }, false)
 
         // Abilities
         source.sendSuccess({ Component.literal("§b=== Abilities (/ability) ===") }, false)
@@ -1571,6 +1625,109 @@ object AeonisCommands {
         
         ctx.source.sendSuccess({ Component.literal("§c🔥 Set $count player(s) on FIRE!") }, true)
         return count
+    }
+
+    private fun boingPlayers(ctx: CommandContext<CommandSourceStack>): Int {
+        val targets = EntityArgument.getPlayers(ctx, "targets")
+        var count = 0
+
+        for (target in targets) {
+            val level = target.level() as? net.minecraft.server.level.ServerLevel ?: continue
+            target.setDeltaMovement(target.deltaMovement.x, 1.15, target.deltaMovement.z)
+            target.addEffect(MobEffectInstance(MobEffects.JUMP_BOOST, 200, 3))
+            target.addEffect(MobEffectInstance(MobEffects.SLOW_FALLING, 120, 0))
+            level.playSound(null, target.x, target.y, target.z, SoundEvents.SLIME_SQUISH, SoundSource.PLAYERS, 1.0f, 0.8f)
+            level.sendParticles(ParticleTypes.ITEM_SLIME, target.x, target.y + 0.5, target.z, 20, 0.35, 0.25, 0.35, 0.02)
+            count++
+        }
+
+        ctx.source.sendSuccess({ Component.literal("§a🟢 BOING on $count player(s)!") }, true)
+        return count
+    }
+
+    private fun confettiPlayers(ctx: CommandContext<CommandSourceStack>): Int {
+        val targets = EntityArgument.getPlayers(ctx, "targets")
+        var count = 0
+
+        for (target in targets) {
+            val level = target.level() as? net.minecraft.server.level.ServerLevel ?: continue
+            level.sendParticles(ParticleTypes.FIREWORK, target.x, target.y + 1.0, target.z, 80, 0.8, 0.8, 0.8, 0.05)
+            level.sendParticles(ParticleTypes.HAPPY_VILLAGER, target.x, target.y + 1.0, target.z, 20, 0.5, 0.5, 0.5, 0.03)
+            level.playSound(null, target.x, target.y, target.z, SoundEvents.FIREWORK_ROCKET_BLAST, SoundSource.PLAYERS, 1.0f, 1.1f)
+            count++
+        }
+
+        ctx.source.sendSuccess({ Component.literal("§d🎉 Confetti blast on $count player(s)!") }, true)
+        return count
+    }
+
+    private fun swapPlayers(ctx: CommandContext<CommandSourceStack>): Int {
+        val playerA = EntityArgument.getPlayer(ctx, "player_a")
+        val playerB = EntityArgument.getPlayer(ctx, "player_b")
+        if (playerA == playerB) {
+            ctx.source.sendFailure(Component.literal("§cPick two different players for swap."))
+            return 0
+        }
+
+        val aPos = playerA.position()
+        val bPos = playerB.position()
+        val aYaw = playerA.yRot
+        val aPitch = playerA.xRot
+        val bYaw = playerB.yRot
+        val bPitch = playerB.xRot
+
+        playerA.teleportTo(bPos.x, bPos.y, bPos.z)
+        playerB.teleportTo(aPos.x, aPos.y, aPos.z)
+        playerA.setYRot(bYaw)
+        playerA.setXRot(bPitch)
+        playerB.setYRot(aYaw)
+        playerB.setXRot(aPitch)
+
+        val level = playerA.level() as? net.minecraft.server.level.ServerLevel
+        level?.playSound(null, playerA.x, playerA.y, playerA.z, SoundEvents.ENDERMAN_TELEPORT, SoundSource.PLAYERS, 1.0f, 1.15f)
+        level?.playSound(null, playerB.x, playerB.y, playerB.z, SoundEvents.ENDERMAN_TELEPORT, SoundSource.PLAYERS, 1.0f, 1.15f)
+
+        ctx.source.sendSuccess({ Component.literal("§b🌀 Swapped ${playerA.name.string} and ${playerB.name.string}!") }, true)
+        return 1
+    }
+
+    private fun prankMorphPlayersRandom(ctx: CommandContext<CommandSourceStack>): Int {
+        val funnyTypes = listOf(EntityType.CHICKEN, EntityType.PIG, EntityType.GOAT, EntityType.FROG, EntityType.PARROT)
+        return prankMorphPlayers(ctx, funnyTypes.random())
+    }
+
+    private fun prankMorphPlayers(ctx: CommandContext<CommandSourceStack>, targetType: EntityType<*>): Int {
+        val targets = EntityArgument.getPlayers(ctx, "targets")
+        var count = 0
+
+        for (target in targets) {
+            if (forcePlayerTransform(target, targetType)) {
+                prankMorphTimers[target.uuid] = PRANK_MORPH_DURATION_TICKS
+                target.sendSystemMessage(Component.literal("§e🎭 You were prank-morphed into ${targetType.description.string} for 2 minutes!"))
+                count++
+            }
+        }
+
+        if (count == 0) {
+            ctx.source.sendFailure(Component.literal("§cNo players could be morph-pranked."))
+            return 0
+        }
+
+        ctx.source.sendSuccess({
+            Component.literal("§6🎭 Morph-pranked $count player(s) into ${targetType.description.string} for 2 minutes!")
+        }, true)
+        return count
+    }
+
+    private fun forcePlayerTransform(target: ServerPlayer, entityType: EntityType<*>): Boolean {
+        if (AeonisNetworking.isPlayerTransformed(target.uuid)) {
+            autoUntransform(target, showMessage = false)
+        }
+
+        val entityId = BuiltInRegistries.ENTITY_TYPE.getKey(entityType).toString()
+        val source = target.createCommandSourceStack().withPermission(net.minecraft.server.permissions.LevelBasedPermissionSet.GAMEMASTER)
+        (target.level() as net.minecraft.server.level.ServerLevel).server.commands.performPrefixedCommand(source, "transform $entityId")
+        return transformedEntities.containsKey(target.uuid)
     }
     
     // ========== TRANSFORM ABILITIES ==========

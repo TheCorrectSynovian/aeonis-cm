@@ -384,6 +384,7 @@ object PropDisguiseManager {
      */
     fun toggleRotationLock(player: ServerPlayer, game: PropHuntGame) {
         val playerData = game.players[player.uuid] ?: return
+        if (!canUsePropAbility(player, game, playerData, "rotation lock")) return
         
         playerData.rotationLocked = !playerData.rotationLocked
         
@@ -404,6 +405,7 @@ object PropDisguiseManager {
      */
     fun toggleFreeze(player: ServerPlayer, game: PropHuntGame) {
         val playerData = game.players[player.uuid] ?: return
+        if (!canUsePropAbility(player, game, playerData, "freeze")) return
         
         playerData.movementFrozen = !playerData.movementFrozen
         
@@ -442,6 +444,7 @@ object PropDisguiseManager {
     fun performTaunt(player: ServerPlayer, game: PropHuntGame) {
         val playerData = game.players[player.uuid] ?: return
         val settings = game.settings
+        if (!canUsePropAbility(player, game, playerData, "taunt")) return
         
         // Check cooldown
         if (playerData.tauntCooldown > 0) {
@@ -652,6 +655,7 @@ object PropDisguiseManager {
         val hunterData = game.players[hunter.uuid] ?: return
         
         if (!propData.isAlive) return
+        val totalFindsBefore = game.getHunters().sumOf { it.propsFound }
         
         // Mark prop as eliminated
         propData.isAlive = false
@@ -691,9 +695,16 @@ object PropDisguiseManager {
         // Count remaining props
         val remainingProps = game.getProps().count { it.isAlive }
         game.broadcast("§7Remaining props: §e$remainingProps")
+
+        if (totalFindsBefore == 0) {
+            PropHuntRewards.awardFirstBlood(hunter, game)
+        }
+        if (remainingProps == 0) {
+            PropHuntRewards.awardLastKill(hunter, game)
+        }
         
         // Tips for spectating
-        prop.sendSystemMessage(Component.literal("§7You are now spectating. You can fly around and watch!"))
+        PropHuntSpectator.enterSpectatorMode(prop, game)
     }
     
     /**
@@ -794,6 +805,23 @@ object PropDisguiseManager {
         player.sendSystemMessage(Component.literal("§7• §eSneak + Don't move§7 → Blend in perfectly"))
         player.sendSystemMessage(Component.literal("§a§l══════════════════════════════"))
         player.sendSystemMessage(Component.literal(""))
+    }
+
+    private fun canUsePropAbility(
+        player: ServerPlayer,
+        game: PropHuntGame,
+        data: PropHuntPlayerData,
+        abilityName: String
+    ): Boolean {
+        if (data.team != PropHuntTeam.PROP || !data.isAlive) {
+            player.sendSystemMessage(Component.literal("§c[PropHunt] §7Only living props can use $abilityName."))
+            return false
+        }
+        if (game.state != GameState.HIDING && game.state != GameState.SEEKING) {
+            player.sendSystemMessage(Component.literal("§c[PropHunt] §7You can only use $abilityName during active rounds."))
+            return false
+        }
+        return true
     }
 }
 

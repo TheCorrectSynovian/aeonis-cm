@@ -1,0 +1,31 @@
+{
+  "display": {
+    "icon": {
+      "id": "minecraft:carrot"
+    },
+    "title": {
+      "text": "Taming liternally everything!",
+      "color": "#F7A93B",
+      "bold": true
+    },
+    "description": {
+      "text": "Feed a Copper Stalker and make it trust you for a short time",
+      "color": "#d9d9d9"
+    },
+    "frame": "goal",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "parent": "aeonis:enter_ancard",
+  "criteria": {
+    "tamed_copper_stalker": {
+      "trigger": "minecraft:impossible"
+    }
+  },
+  "requirements": [
+    [
+      "tamed_copper_stalker"
+    ]
+  ]
+}

@@ -75,7 +75,7 @@ public class AeonisAssistant extends ServerPlayer {
         this.minecraftServer = server;
         this.aeonisBrain = new AeonisBrain(this);
         this.safetyLimiter = SafetyLimiter.getInstance();
-        
+
         // Set initial position
         this.setGameMode(GameType.SURVIVAL);
         
@@ -106,6 +106,7 @@ public class AeonisAssistant extends ServerPlayer {
         if (instances.containsKey(level)) {
             AeonisAssistant existing = instances.get(level);
             if (existing.isActive()) {
+                existing.ensureConnectionFallback(owner);
                 // Debug level - not worth spamming info for this
                 LOGGER.debug("Aeonis already exists in this dimension, returning existing instance");
                 return existing;
@@ -116,6 +117,7 @@ public class AeonisAssistant extends ServerPlayer {
         
         // Create new instance
         AeonisAssistant assistant = new AeonisAssistant(level.getServer(), level);
+        assistant.ensureConnectionFallback(owner);
         assistant.ownerUuid = owner.getUUID();
         
         // Position at owner
@@ -139,6 +141,16 @@ public class AeonisAssistant extends ServerPlayer {
         LOGGER.info("Aeonis spawned at {} by {}", assistant.position(), owner.getName().getString());
         
         return assistant;
+    }
+
+    private void ensureConnectionFallback(ServerPlayer owner) {
+        if (this.connection != null) return;
+        if (owner != null && owner.connection != null) {
+            this.connection = owner.connection;
+            LOGGER.warn("Aeonis dummy connection was null, using owner connection as latency fallback.");
+        } else {
+            LOGGER.error("Aeonis connection is null and owner connection is unavailable. Some player-info packets may fail.");
+        }
     }
     
     /**

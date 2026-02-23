@@ -3,14 +3,14 @@
 	"id": "aeonis",
 	"version": "${version}",
 	"name": "Aeonis",
-	"description": "Aeonis is a multi-system Minecraft framework combining transformation mechanics, AI-assisted command systems, custom dimensions, unique mobs, and advanced rendering enhancements into one unified experience.",
+	"description": "Aeonis is an advanced Fabric framework mod focused on gameplay systems, AI features, and cinematic world content.\n\nCore Systems:\n• Player and mob transformations\n• AI-assisted command/control systems\n• Custom dimensions and progression hooks\n• Unique mobs with custom animations\n• Enhanced rendering and visual effects\n• Utility, combat, and framework tooling\n\nProject Links: Website, GitHub, Releases, Issues.",
 	"authors": [
 		"Quantum_Creeper"
 	],
 	"contact": {
-		"homepage": "https://www.youtube.com/@quantumcreeper",
-		"sources": "https://github.com/TheCorrectSynovian/Aeonis-mod",
-		"issues": "https://github.com/TheCorrectSynovian/Aeonis-mod/issues"
+		"homepage": "https://aeonis.prenxy.app",
+		"sources": "https://github.com/TheCorrectSynovian/aeonis-cm",
+		"issues": "https://github.com/TheCorrectSynovian/aeonis-cm/issues"
 	},
 	"license": "MIT",
 	"icon": "assets/aeonis-manager/icon.png",
@@ -19,6 +19,11 @@
 		"modmenu": {
 			"badges": ["library"],
 			"links": {
+				"modmenu.homepage": "https://aeonis.prenxy.app",
+				"modmenu.github": "https://github.com/TheCorrectSynovian/aeonis-cm",
+				"modmenu.sources": "https://github.com/TheCorrectSynovian/aeonis-cm",
+				"modmenu.issues": "https://github.com/TheCorrectSynovian/aeonis-cm/issues",
+				"modmenu.releases": "https://github.com/TheCorrectSynovian/aeonis-cm/releases",
 				"modmenu.youtube": "https://www.youtube.com/@quantumcreeper"
 			}
 		}
@@ -41,6 +46,12 @@
 				"value": "com.qc.aeonis.AeonisManagerDataGenerator",
 				"adapter": "kotlin"
 			}
+		],
+		"modmenu": [
+			{
+				"value": "com.qc.aeonis.integration.modmenu.AeonisModMenuIntegration",
+				"adapter": "kotlin"
+			}
 		]
 	},
 	"mixins": [
@@ -57,5 +68,8 @@
 		"fabric-api": "*",
 		"fabric-language-kotlin": "*",
 		"geckolib": "*"
+	},
+	"suggests": {
+		"modmenu": "*"
 	}
 }

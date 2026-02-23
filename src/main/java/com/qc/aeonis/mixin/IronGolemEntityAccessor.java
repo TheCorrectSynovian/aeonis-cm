@@ -6,9 +6,9 @@ import org.spongepowered.asm.mixin.gen.Accessor;
 
 @Mixin(IronGolem.class)
 public interface IronGolemEntityAccessor {
-    @Accessor("attackTicksLeft")
-    void setAttackTicksLeft(int ticks);
+    @Accessor("attackAnimationTick")
+    void setAttackAnimationTick(int ticks);
 
-    @Accessor("attackTicksLeft")
-    int getAttackTicksLeft();
+    @Accessor("attackAnimationTick")
+    int getAttackAnimationTick();
 }

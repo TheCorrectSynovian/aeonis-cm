@@ -208,7 +208,7 @@ public class LlmNetworking {
                         }
                     }
                 } catch (Exception e) {
-                    LOGGER.error("Spawn/despawn error: {}", e.getMessage());
+                    LOGGER.error("Spawn/despawn error", e);
                     sendStatus(player, LlmStatusUpdatePayload.error("Error: " + e.getMessage()));
                 }
             });

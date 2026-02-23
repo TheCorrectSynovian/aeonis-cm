@@ -104,6 +104,22 @@ object ArenaManager {
             preset = preset
         )
     }
+
+    /**
+     * Creates a new arena using a named preset.
+     */
+    fun createArenaFromPreset(id: String, level: ServerLevel, center: BlockPos, presetName: String): PropHuntArena? {
+        val preset = arenaPresets[presetName.lowercase()] ?: return null
+        val arena = createArena(id, level, center, preset)
+        arenas[id] = arena
+        logger.info("§a[PropHunt] §7Created arena '$id' with preset '$presetName'")
+        return arena
+    }
+
+    /**
+     * Lists available arena preset names.
+     */
+    fun listPresetNames(): List<String> = arenaPresets.keys.sorted()
     
     /**
      * Generates random spawn points within the arena.

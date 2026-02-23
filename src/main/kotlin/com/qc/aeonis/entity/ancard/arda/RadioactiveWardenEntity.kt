@@ -13,6 +13,7 @@ import net.minecraft.world.entity.ai.goal.FloatGoal
 import net.minecraft.world.entity.ai.goal.Goal
 import net.minecraft.world.entity.ai.goal.LookAtPlayerGoal
 import net.minecraft.world.entity.ai.goal.MeleeAttackGoal
+import net.minecraft.world.entity.ai.goal.MoveTowardsTargetGoal
 import net.minecraft.world.entity.ai.goal.RandomLookAroundGoal
 import net.minecraft.world.entity.ai.goal.WaterAvoidingRandomStrollGoal
 import net.minecraft.world.entity.ai.goal.target.HurtByTargetGoal
@@ -51,11 +52,12 @@ class RadioactiveWardenEntity(type: EntityType<out RadioactiveWardenEntity>, lev
         goalSelector.addGoal(0, FloatGoal(this))
         goalSelector.addGoal(1, RadiationPulseGoal(this))
         goalSelector.addGoal(2, MeleeAttackGoal(this, 1.0, true))
+        goalSelector.addGoal(3, MoveTowardsTargetGoal(this, 0.95, 26.0f))
         goalSelector.addGoal(5, WaterAvoidingRandomStrollGoal(this, 0.7))
         goalSelector.addGoal(6, LookAtPlayerGoal(this, Player::class.java, 16.0f))
         goalSelector.addGoal(7, RandomLookAroundGoal(this))
 
-        targetSelector.addGoal(1, HurtByTargetGoal(this))
+        targetSelector.addGoal(1, HurtByTargetGoal(this).setAlertOthers())
         targetSelector.addGoal(2, NearestAttackableTargetGoal(this, Player::class.java, true))
     }
 
@@ -70,21 +72,24 @@ class RadioactiveWardenEntity(type: EntityType<out RadioactiveWardenEntity>, lev
         if (!level().isClientSide) {
             if (attackAnimTicks > 0) attackAnimTicks--
             if (pulseCooldown > 0) pulseCooldown--
+            if (tickCount % 40 == 0) {
+                SculkAiTuning.retargetNearestPlayer(this, getAttributeValue(Attributes.FOLLOW_RANGE))
+            }
         }
     }
 
     fun canPulse(): Boolean {
         val t = target ?: return false
-        return pulseCooldown <= 0 && distanceToSqr(t) <= 9.0 * 9.0
+        return pulseCooldown <= 0 && SculkAiTuning.isHostileTarget(this, t) && distanceToSqr(t) <= 9.0 * 9.0
     }
 
     fun pulseRadiation() {
-        pulseCooldown = 120
+        val t = target ?: return
+        if (!SculkAiTuning.isHostileTarget(this, t)) return
+        pulseCooldown = SculkAiTuning.scaledAbilityCooldown(this, 120)
         attackAnimTicks = 18
 
-        val victims = level().getEntitiesOfClass(LivingEntity::class.java, boundingBox.inflate(6.0))
-        for (victim in victims) {
-            if (victim === this) continue
+        SculkAiTuning.forEachHostileVictim(this, 6.0) { victim ->
             victim.addEffect(MobEffectInstance(MobEffects.POISON, 80, 1))
             victim.addEffect(MobEffectInstance(MobEffects.WEAKNESS, 80, 0))
             victim.addEffect(MobEffectInstance(MobEffects.GLOWING, 60, 0))

@@ -12,6 +12,7 @@ import net.minecraft.world.entity.ai.attributes.Attributes
 import net.minecraft.world.entity.ai.goal.FloatGoal
 import net.minecraft.world.entity.ai.goal.LookAtPlayerGoal
 import net.minecraft.world.entity.ai.goal.MeleeAttackGoal
+import net.minecraft.world.entity.ai.goal.MoveTowardsTargetGoal
 import net.minecraft.world.entity.ai.goal.RandomLookAroundGoal
 import net.minecraft.world.entity.ai.goal.RangedBowAttackGoal
 import net.minecraft.world.entity.ai.goal.WaterAvoidingRandomStrollGoal
@@ -54,11 +55,12 @@ class SculkSkeletonEntity(type: EntityType<out SculkSkeletonEntity>, level: Leve
         goalSelector.addGoal(0, FloatGoal(this))
         goalSelector.addGoal(2, RangedBowAttackGoal(this, 1.05, 25, 16.0f))
         goalSelector.addGoal(3, MeleeAttackGoal(this, 1.15, true))
+        goalSelector.addGoal(4, MoveTowardsTargetGoal(this, 0.95, 22.0f))
         goalSelector.addGoal(5, WaterAvoidingRandomStrollGoal(this, 0.75))
         goalSelector.addGoal(6, LookAtPlayerGoal(this, Player::class.java, 14.0f))
         goalSelector.addGoal(7, RandomLookAroundGoal(this))
 
-        targetSelector.addGoal(1, HurtByTargetGoal(this))
+        targetSelector.addGoal(1, HurtByTargetGoal(this).setAlertOthers())
         targetSelector.addGoal(2, NearestAttackableTargetGoal(this, Player::class.java, true))
     }
 
@@ -69,6 +71,7 @@ class SculkSkeletonEntity(type: EntityType<out SculkSkeletonEntity>, level: Leve
     }
 
     override fun performRangedAttack(target: LivingEntity, distanceFactor: Float) {
+        if (!SculkAiTuning.isHostileTarget(this, target)) return
         if (mainHandItem.item !is BowItem) {
             setItemInHand(InteractionHand.MAIN_HAND, Items.BOW.defaultInstance)
         }
@@ -85,7 +88,12 @@ class SculkSkeletonEntity(type: EntityType<out SculkSkeletonEntity>, level: Leve
 
     override fun aiStep() {
         super.aiStep()
-        if (!level().isClientSide && attackAnimTicks > 0) attackAnimTicks--
+        if (!level().isClientSide) {
+            if (attackAnimTicks > 0) attackAnimTicks--
+            if (tickCount % 30 == 0) {
+                SculkAiTuning.retargetNearestPlayer(this, getAttributeValue(Attributes.FOLLOW_RANGE))
+            }
+        }
     }
 
     override fun getAmbientSound(): SoundEvent = SoundEvents.SKELETON_AMBIENT

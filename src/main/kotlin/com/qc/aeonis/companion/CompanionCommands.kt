@@ -7,6 +7,8 @@ import net.minecraft.commands.CommandSourceStack
 import net.minecraft.commands.Commands
 import net.minecraft.network.chat.Component
 import net.minecraft.server.level.ServerPlayer
+import com.qc.aeonis.item.AeonisItems
+import net.minecraft.world.item.ItemStack
 
 object CompanionCommands {
     fun register() {
@@ -32,6 +34,11 @@ object CompanionCommands {
         val bot = CompanionBotManager.spawnOrReplace(player)
         return if (bot != null) {
             player.sendSystemMessage(Component.literal("§a[Companion] §7Helper bot spawned and bound to you."))
+            // Give the player a Rhistel whistle to control companion modes
+            if (!player.inventory.contains(ItemStack(AeonisItems.RHISTEL))) {
+                player.inventory.add(ItemStack(AeonisItems.RHISTEL))
+                player.sendSystemMessage(Component.literal("§6[Rhistel] §7You received a companion whistle. Right-click to cycle modes."))
+            }
             1
         } else {
             player.sendSystemMessage(Component.literal("§c[Companion] §7Failed to spawn helper bot."))
