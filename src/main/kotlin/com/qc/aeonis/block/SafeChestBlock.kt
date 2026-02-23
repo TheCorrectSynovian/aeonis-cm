@@ -2,20 +2,22 @@ package com.qc.aeonis.block
 
 import com.mojang.serialization.MapCodec
 import com.qc.aeonis.block.entity.SafeChestBlockEntity
+import com.qc.aeonis.config.AeonisFeatures
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Direction
 import net.minecraft.server.level.ServerLevel
 import net.minecraft.stats.Stats
+import net.minecraft.util.RandomSource
 import net.minecraft.world.InteractionResult
 import net.minecraft.world.entity.LivingEntity
 import net.minecraft.world.entity.monster.piglin.PiglinAi
 import net.minecraft.world.entity.player.Player
 import net.minecraft.world.inventory.AbstractContainerMenu
-import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.context.BlockPlaceContext
 import net.minecraft.world.level.Level
 import net.minecraft.world.level.block.BaseEntityBlock
 import net.minecraft.world.level.block.Block
+import net.minecraft.world.level.block.FallingBlock
 import net.minecraft.world.level.block.Mirror
 import net.minecraft.world.level.block.Rotation
 import net.minecraft.world.level.block.state.BlockBehaviour
@@ -26,8 +28,13 @@ import net.minecraft.world.level.block.state.properties.EnumProperty
 import net.minecraft.world.level.block.entity.BlockEntity
 import net.minecraft.world.level.block.entity.BlockEntityTicker
 import net.minecraft.world.level.block.entity.BlockEntityType
+import net.minecraft.world.entity.item.FallingBlockEntity
+import net.minecraft.world.level.LevelReader
+import net.minecraft.world.level.ScheduledTickAccess
 import net.minecraft.world.phys.BlockHitResult
 import com.qc.aeonis.block.entity.AeonisBlockEntities
+import net.minecraft.core.NonNullList
+import net.minecraft.world.item.ItemStack
 
 /**
  * A tough container block (Safe Chest) with very high blast resistance.
@@ -54,6 +61,167 @@ class SafeChestBlock(properties: BlockBehaviour.Properties) : BaseEntityBlock(pr
 
     override fun newBlockEntity(pos: BlockPos, state: BlockState): BlockEntity =
         SafeChestBlockEntity(pos, state)
+
+    override fun onPlace(state: BlockState, level: Level, pos: BlockPos, oldState: BlockState, movedByPiston: Boolean) {
+        super.onPlace(state, level, pos, oldState, movedByPiston)
+        if (level is ServerLevel) {
+            if (AeonisFeatures.isSafeChestPhysicsEnabled(level)) {
+                level.scheduleTick(pos, this, getDelayAfterPlace())
+            }
+            tryMergeWithNeighbors(level, pos, state.getValue(FACING))
+        }
+    }
+
+    override fun updateShape(
+        state: BlockState,
+        level: LevelReader,
+        scheduledTickAccess: ScheduledTickAccess,
+        pos: BlockPos,
+        direction: Direction,
+        neighborPos: BlockPos,
+        neighborState: BlockState,
+        random: RandomSource
+    ): BlockState {
+        val server = level as? ServerLevel
+        if (server != null && AeonisFeatures.isSafeChestPhysicsEnabled(server)) {
+            scheduledTickAccess.scheduleTick(pos, this, getDelayAfterPlace())
+        }
+        return super.updateShape(state, level, scheduledTickAccess, pos, direction, neighborPos, neighborState, random)
+    }
+
+    override fun tick(state: BlockState, level: ServerLevel, pos: BlockPos, random: RandomSource) {
+        if (!AeonisFeatures.isSafeChestPhysicsEnabled(level)) return
+        if (FallingBlock.isFree(level.getBlockState(pos.below())) && pos.y >= level.minY) {
+            val chestType = state.getValue(CHEST_TYPE)
+            val fallingState = state.setValue(CHEST_TYPE, SafeChestType.SINGLE)
+            val fallingData = createFallingBlockData(level, pos, state)
+            val falling = FallingBlockEntity.fall(level, pos, fallingState)
+            if (fallingData != null) {
+                falling.blockData = fallingData
+            }
+            if (AeonisFeatures.doesSafeChestFallHurtEntities(level)) {
+                falling.setHurtsEntities(2.0f, 40)
+            }
+        }
+    }
+
+    private fun getDelayAfterPlace(): Int = 2
+
+    private fun createFallingBlockData(level: ServerLevel, pos: BlockPos, state: BlockState): net.minecraft.nbt.CompoundTag? {
+        val chestType = state.getValue(CHEST_TYPE)
+        return if (chestType == SafeChestType.SINGLE) {
+            val be = level.getBlockEntity(pos) as? SafeChestBlockEntity
+            be?.saveWithoutMetadata(level.registryAccess())
+        } else {
+            splitMultiChestForFall(level, pos, state)
+        }
+    }
+
+    private fun splitMultiChestForFall(level: ServerLevel, pos: BlockPos, state: BlockState): net.minecraft.nbt.CompoundTag? {
+        val facing = state.getValue(FACING)
+        val rightDir = getConnectDirection(facing)
+        val type = state.getValue(CHEST_TYPE)
+
+        val (leftPos, middlePos, rightPos) = when (type) {
+            SafeChestType.LEFT -> Triple(pos, null, pos.relative(rightDir))
+            SafeChestType.RIGHT -> Triple(pos.relative(rightDir.opposite), null, pos)
+            SafeChestType.TRIPLE_LEFT -> Triple(pos, pos.relative(rightDir), pos.relative(rightDir, 2))
+            SafeChestType.TRIPLE_MIDDLE -> Triple(pos.relative(rightDir.opposite), pos, pos.relative(rightDir))
+            SafeChestType.TRIPLE_RIGHT -> Triple(pos.relative(rightDir.opposite, 2), pos.relative(rightDir.opposite), pos)
+            SafeChestType.SINGLE -> Triple(pos, null, null)
+        }
+
+        val controllerPos = leftPos
+        val controllerBe = level.getBlockEntity(controllerPos) as? SafeChestBlockEntity ?: return null
+        val controllerItems = controllerBe.copyItems()
+
+        return when (type) {
+            SafeChestType.LEFT -> {
+                // Controller falls: move right half to right chest, falling gets left half
+                val rightBe = rightPos?.let { level.getBlockEntity(it) as? SafeChestBlockEntity }
+                val rightHalf = sliceItems(controllerItems, 27, 27)
+                rightBe?.applyItems(makeListForSingle(rightHalf))
+                clearRange(controllerItems, 27, 27)
+                controllerBe.applyItems(controllerItems)
+                buildFallingTag(level, leftHalf = sliceItems(controllerItems, 0, 27))
+            }
+            SafeChestType.RIGHT -> {
+                // Non-controller falls: take right half, keep left half in controller
+                val fallingItems = sliceItems(controllerItems, 27, 27)
+                clearRange(controllerItems, 27, 27)
+                controllerBe.applyItems(controllerItems)
+                buildFallingTag(level, leftHalf = fallingItems)
+            }
+            SafeChestType.TRIPLE_LEFT -> {
+                // Controller falls: move mid+right to middle controller for new double
+                val middleBe = middlePos?.let { level.getBlockEntity(it) as? SafeChestBlockEntity }
+                val midThird = sliceItems(controllerItems, 18, 18)
+                val rightThird = sliceItems(controllerItems, 36, 18)
+                middleBe?.applyItems(makeListForDouble(midThird, rightThird))
+                clearRange(controllerItems, 18, 36)
+                controllerBe.applyItems(controllerItems)
+                buildFallingTag(level, leftHalf = sliceItems(controllerItems, 0, 18))
+            }
+            SafeChestType.TRIPLE_MIDDLE -> {
+                // Non-controller falls: keep left third in controller, move right third to right single
+                val rightBe = rightPos?.let { level.getBlockEntity(it) as? SafeChestBlockEntity }
+                val rightThird = sliceItems(controllerItems, 36, 18)
+                val fallingItems = sliceItems(controllerItems, 18, 18)
+                rightBe?.applyItems(makeListForSingle(rightThird))
+                clearRange(controllerItems, 18, 36)
+                controllerBe.applyItems(controllerItems)
+                buildFallingTag(level, leftHalf = fallingItems)
+            }
+            SafeChestType.TRIPLE_RIGHT -> {
+                // Non-controller falls: keep left+middle in controller for new double
+                val middleThird = sliceItems(controllerItems, 18, 18)
+                val rightThird = sliceItems(controllerItems, 36, 18)
+                controllerBe.applyItems(makeListForDouble(sliceItems(controllerItems, 0, 18), middleThird))
+                buildFallingTag(level, leftHalf = rightThird)
+            }
+            SafeChestType.SINGLE -> null
+        }
+    }
+
+    private fun buildFallingTag(level: ServerLevel, leftHalf: NonNullList<ItemStack>): net.minecraft.nbt.CompoundTag {
+        val tempBe = SafeChestBlockEntity(BlockPos.ZERO, defaultBlockState().setValue(CHEST_TYPE, SafeChestType.SINGLE))
+        tempBe.applyItems(makeListForSingle(leftHalf))
+        return tempBe.saveWithoutMetadata(level.registryAccess())
+    }
+
+    private fun sliceItems(items: NonNullList<ItemStack>, start: Int, len: Int): NonNullList<ItemStack> {
+        val out = NonNullList.withSize(len, ItemStack.EMPTY)
+        val max = minOf(len, items.size - start)
+        if (max <= 0) return out
+        for (i in 0 until max) {
+            out[i] = items[start + i].copy()
+        }
+        return out
+    }
+
+    private fun clearRange(items: NonNullList<ItemStack>, start: Int, len: Int) {
+        val max = minOf(len, items.size - start)
+        if (max <= 0) return
+        for (i in 0 until max) {
+            items[start + i] = ItemStack.EMPTY
+        }
+    }
+
+    private fun makeListForSingle(items: NonNullList<ItemStack>): NonNullList<ItemStack> {
+        val out = NonNullList.withSize(SafeChestBlockEntity.SINGLE_SIZE, ItemStack.EMPTY)
+        val count = minOf(items.size, out.size)
+        for (i in 0 until count) out[i] = items[i]
+        return out
+    }
+
+    private fun makeListForDouble(left: NonNullList<ItemStack>, right: NonNullList<ItemStack>): NonNullList<ItemStack> {
+        val out = NonNullList.withSize(SafeChestBlockEntity.DOUBLE_SIZE, ItemStack.EMPTY)
+        val leftCount = minOf(left.size, 27)
+        val rightCount = minOf(right.size, 27)
+        for (i in 0 until leftCount) out[i] = left[i]
+        for (i in 0 until rightCount) out[27 + i] = right[i]
+        return out
+    }
 
     override fun <T : BlockEntity> getTicker(
         level: Level,

@@ -83,6 +83,19 @@ class SafeChestBlockEntity(pos: BlockPos, state: BlockState) :
         items = list
     }
 
+    fun applyItems(list: NonNullList<ItemStack>) {
+        setItems(list)
+        setChanged()
+    }
+
+    fun copyItems(): NonNullList<ItemStack> {
+        val copy = NonNullList.withSize(items.size, ItemStack.EMPTY)
+        for (i in items.indices) {
+            copy[i] = items[i].copy()
+        }
+        return copy
+    }
+
     override fun createMenu(syncId: Int, inventory: Inventory): AbstractContainerMenu {
         // Max chest GUI size is 6 rows (54 slots)
         return when {

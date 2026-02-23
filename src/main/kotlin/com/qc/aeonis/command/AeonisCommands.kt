@@ -519,7 +519,17 @@ object AeonisCommands {
                         .requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
                         .executes { showExtraMobsStatus(it) }
                         .then(Commands.argument("enabled", BoolArgumentType.bool())
-                            .executes { setExtraMobs(it) })))
+                            .executes { setExtraMobs(it) }))
+                    .then(Commands.literal("safe_chest_physics")
+                        .requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
+                        .executes { showSafeChestPhysicsStatus(it) }
+                        .then(Commands.argument("enabled", BoolArgumentType.bool())
+                            .executes { setSafeChestPhysics(it) }))
+                    .then(Commands.literal("safe_chest_fall_hurt")
+                        .requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
+                        .executes { showSafeChestFallHurtStatus(it) }
+                        .then(Commands.argument("enabled", BoolArgumentType.bool())
+                            .executes { setSafeChestFallHurt(it) })))
                 .then(Commands.literal("summon_herobrine")
                     .requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
                     .executes { summonHerobrine(it, "behind") }
@@ -669,6 +679,8 @@ object AeonisCommands {
         // Main Features
         source.sendSuccess({ Component.literal("§2=== Main Features ===") }, false)
         source.sendSuccess({ Component.literal("§a/aeonis features extra_mobs <true/false>§7 - Toggle Aeonis mobs (Stalker & Herobrine)") }, false)
+        source.sendSuccess({ Component.literal("§a/aeonis features safe_chest_physics <true/false>§7 - Toggle Safe Chest falling behavior") }, false)
+        source.sendSuccess({ Component.literal("§a/aeonis features safe_chest_fall_hurt <true/false>§7 - Toggle Safe Chest fall damage") }, false)
         source.sendSuccess({ Component.literal("§a/aeonis summon_herobrine [behind|roaming|staring|hunting]§7 - Summon Herobrine") }, false)
         source.sendSuccess({ Component.literal("§a/transform <entity> [variant...]§7 - Become any mob! Optionally specify variants.") }, false)
         source.sendSuccess({ Component.literal("§a/untransform§7 - Return to normal") }, false)
@@ -759,6 +771,56 @@ object AeonisCommands {
             source.sendSuccess({ Component.literal("§7Herobrine will no longer appear.") }, false)
         }
         
+        return 1
+    }
+
+    private fun showSafeChestPhysicsStatus(ctx: CommandContext<CommandSourceStack>): Int {
+        val source = ctx.source
+        val server = source.server
+        val enabled = AeonisFeatures.isSafeChestPhysicsEnabled(server)
+        val status = if (enabled) "§aENABLED" else "§cDISABLED"
+        source.sendSuccess({ Component.literal("§6Safe Chest Physics: $status") }, false)
+        return 1
+    }
+
+    private fun setSafeChestPhysics(ctx: CommandContext<CommandSourceStack>): Int {
+        val source = ctx.source
+        val server = source.server
+        val enabled = BoolArgumentType.getBool(ctx, "enabled")
+
+        AeonisFeatures.setSafeChestPhysicsEnabled(server, enabled)
+
+        if (enabled) {
+            source.sendSuccess({ Component.literal("§a§lSafe Chest physics ENABLED!") }, true)
+        } else {
+            source.sendSuccess({ Component.literal("§c§lSafe Chest physics DISABLED!") }, true)
+        }
+
+        return 1
+    }
+
+    private fun showSafeChestFallHurtStatus(ctx: CommandContext<CommandSourceStack>): Int {
+        val source = ctx.source
+        val server = source.server
+        val enabled = AeonisFeatures.doesSafeChestFallHurtEntities(server)
+        val status = if (enabled) "§aENABLED" else "§cDISABLED"
+        source.sendSuccess({ Component.literal("§6Safe Chest Fall Damage: $status") }, false)
+        return 1
+    }
+
+    private fun setSafeChestFallHurt(ctx: CommandContext<CommandSourceStack>): Int {
+        val source = ctx.source
+        val server = source.server
+        val enabled = BoolArgumentType.getBool(ctx, "enabled")
+
+        AeonisFeatures.setSafeChestFallHurtsEntities(server, enabled)
+
+        if (enabled) {
+            source.sendSuccess({ Component.literal("§a§lSafe Chest fall damage ENABLED!") }, true)
+        } else {
+            source.sendSuccess({ Component.literal("§c§lSafe Chest fall damage DISABLED!") }, true)
+        }
+
         return 1
     }
     

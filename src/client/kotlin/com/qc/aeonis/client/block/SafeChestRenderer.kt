@@ -3,6 +3,7 @@ package com.qc.aeonis.client.block
 import com.mojang.blaze3d.vertex.PoseStack
 import com.mojang.blaze3d.vertex.VertexConsumer
 import com.qc.aeonis.block.SafeChestBlock
+import com.qc.aeonis.block.SafeChestType
 import com.qc.aeonis.block.entity.SafeChestBlockEntity
 import net.minecraft.client.renderer.SubmitNodeCollector
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderer
@@ -25,6 +26,9 @@ class SafeChestRenderer(ctx: BlockEntityRendererProvider.Context) :
     companion object {
         private val DRAWER_TEXTURE = Identifier.fromNamespaceAndPath("aeonis", "textures/block/safe_chest_side.png")
         private val DRAWER_FRONT_TEXTURE = Identifier.fromNamespaceAndPath("aeonis", "textures/block/safe_chest_front.png")
+        private val DRAWER_FRONT_LEFT_TEXTURE = Identifier.fromNamespaceAndPath("aeonis", "textures/block/safe_chest_front_left.png")
+        private val DRAWER_FRONT_MIDDLE_TEXTURE = Identifier.fromNamespaceAndPath("aeonis", "textures/block/safe_chest_front_middle.png")
+        private val DRAWER_FRONT_RIGHT_TEXTURE = Identifier.fromNamespaceAndPath("aeonis", "textures/block/safe_chest_front_right.png")
         private const val DRAWER_HEIGHT = 0.375f   // 6 pixels / 16
         private const val DRAWER_DEPTH = 0.75f     // 12 pixels / 16
         private const val DRAWER_INSET = 0.0625f   // 1 pixel / 16
@@ -46,6 +50,11 @@ class SafeChestRenderer(ctx: BlockEntityRendererProvider.Context) :
         val blockState = entity.blockState
         if (blockState.hasProperty(SafeChestBlock.FACING)) {
             state.facing = blockState.getValue(SafeChestBlock.FACING)
+        }
+        if (blockState.hasProperty(SafeChestBlock.CHEST_TYPE)) {
+            state.chestType = blockState.getValue(SafeChestBlock.CHEST_TYPE)
+        } else {
+            state.chestType = SafeChestType.SINGLE
         }
         state.drawerProgress = entity.drawerProgress
         state.prevDrawerProgress = entity.prevDrawerProgress
@@ -119,9 +128,10 @@ class SafeChestRenderer(ctx: BlockEntityRendererProvider.Context) :
         }
 
         // Draw front face with front texture
+        val frontTexture = frontTextureFor(state.chestType)
         submitNodeCollector.submitCustomGeometry(
             poseStack,
-            RenderTypes.entitySolid(DRAWER_FRONT_TEXTURE)
+            RenderTypes.entitySolid(frontTexture)
         ) { pose, consumer ->
             val light = state.lightCoords
 
@@ -133,6 +143,15 @@ class SafeChestRenderer(ctx: BlockEntityRendererProvider.Context) :
         }
 
         poseStack.popPose()
+    }
+
+    private fun frontTextureFor(type: SafeChestType): Identifier {
+        return when (type) {
+            SafeChestType.LEFT, SafeChestType.TRIPLE_LEFT -> DRAWER_FRONT_LEFT_TEXTURE
+            SafeChestType.RIGHT, SafeChestType.TRIPLE_RIGHT -> DRAWER_FRONT_RIGHT_TEXTURE
+            SafeChestType.TRIPLE_MIDDLE -> DRAWER_FRONT_MIDDLE_TEXTURE
+            SafeChestType.SINGLE -> DRAWER_FRONT_TEXTURE
+        }
     }
 
     private fun addVertex(
