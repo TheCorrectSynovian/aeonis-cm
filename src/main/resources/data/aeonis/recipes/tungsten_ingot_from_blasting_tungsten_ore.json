@@ -1,0 +1,11 @@
+{
+  "type": "minecraft:blasting",
+  "category": "misc",
+  "cookingtime": 100,
+  "experience": 0.8,
+  "ingredient": "aeonis:tungsten_ore",
+  "result": {
+    "count": 1,
+    "id": "aeonis:tungsten_ingot"
+  }
+}

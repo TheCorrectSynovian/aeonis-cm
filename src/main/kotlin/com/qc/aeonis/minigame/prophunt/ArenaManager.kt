@@ -342,7 +342,7 @@ object ArenaManager {
      * Preloads chunks around a position to prevent lag during teleportation.
      */
     fun preloadChunksAround(level: ServerLevel, pos: BlockPos, radius: Int) {
-        val centerChunk = ChunkPos(pos)
+        val centerChunk = ChunkPos(pos.x, pos.z)
         
         for (dx in -radius..radius) {
             for (dz in -radius..radius) {
@@ -356,8 +356,8 @@ object ArenaManager {
      * Preloads all chunks within an arena.
      */
     fun preloadArena(level: ServerLevel, arena: PropHuntArena) {
-        val minChunk = ChunkPos(arena.minBounds)
-        val maxChunk = ChunkPos(arena.maxBounds)
+        val minChunk = ChunkPos(arena.minBounds.x, arena.minBounds.z)
+        val maxChunk = ChunkPos(arena.maxBounds.x, arena.maxBounds.z)
         
         var loaded = 0
         for (cx in minChunk.x..maxChunk.x) {

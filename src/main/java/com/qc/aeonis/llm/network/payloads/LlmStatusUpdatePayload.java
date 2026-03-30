@@ -1,6 +1,6 @@
 package com.qc.aeonis.llm.network.payloads;
 
-import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.Identifier;
@@ -27,7 +27,7 @@ public record LlmStatusUpdatePayload(
         Identifier.fromNamespaceAndPath("aeonis-manager", "llm_status_update")
     );
     
-    public static final StreamCodec<FriendlyByteBuf, LlmStatusUpdatePayload> CODEC = StreamCodec.of(
+    public static final StreamCodec<RegistryFriendlyByteBuf, LlmStatusUpdatePayload> CODEC = StreamCodec.of(
         (buf, payload) -> {
             buf.writeEnum(payload.statusType);
             buf.writeBoolean(payload.success);

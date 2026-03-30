@@ -232,13 +232,8 @@ class CompanionBotEntity(
         val nav = super.createNavigation(level)
         // Penalise / forbid hazardous nodes so the bot never walks into danger
         setPathfindingMalus(PathType.LAVA, -1.0f)
-        setPathfindingMalus(PathType.DAMAGE_FIRE, -1.0f)
-        setPathfindingMalus(PathType.DANGER_FIRE, 16.0f)
-        setPathfindingMalus(PathType.DAMAGE_OTHER, -1.0f)
-        setPathfindingMalus(PathType.DANGER_OTHER, 12.0f)
         setPathfindingMalus(PathType.WATER, 4.0f)
         setPathfindingMalus(PathType.POWDER_SNOW, -1.0f)
-        setPathfindingMalus(PathType.DANGER_POWDER_SNOW, 8.0f)
         setPathfindingMalus(PathType.STICKY_HONEY, 12.0f)
         return nav
     }

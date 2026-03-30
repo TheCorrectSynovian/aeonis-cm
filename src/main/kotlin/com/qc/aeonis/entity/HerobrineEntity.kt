@@ -118,7 +118,7 @@ class HerobrineEntity(entityType: EntityType<out HerobrineEntity>, level: Level)
             // Occasionally set random fires in forests at night
             if (random.nextInt(1200) == 0 && targetPlayerId != null) { // ~1/minute
                 val player = serverLevel.getEntity(targetPlayerId!!) as? Player
-                if (player != null && serverLevel.dayTime in 13000..23000) { // Night time
+                if (player != null && (serverLevel.gameTime % 24000L) in 13000L..23000L) { // Night time
                     trySetRandomFire(serverLevel, player)
                 }
             }

@@ -482,7 +482,7 @@ object PropDisguiseManager {
                     SoundEvents.SKELETON_AMBIENT,
                     SoundEvents.CREEPER_PRIMED,
                     SoundEvents.SHEEP_AMBIENT,
-                    SoundEvents.COW_AMBIENT
+                    SoundEvents.ZOMBIE_AMBIENT
                 )
                 
                 level.playSound(null, soundPos.x, soundPos.y, soundPos.z, 
@@ -640,7 +640,7 @@ object PropDisguiseManager {
         }
         
         val message = statusParts.joinToString(" §8| ")
-        player.displayClientMessage(Component.literal(message), true)
+        player.sendSystemMessage(Component.literal(message))
     }
     
     // ════════════════════════════════════════════════════════════════════════

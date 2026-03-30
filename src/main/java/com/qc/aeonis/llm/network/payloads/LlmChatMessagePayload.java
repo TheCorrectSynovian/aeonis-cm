@@ -1,6 +1,6 @@
 package com.qc.aeonis.llm.network.payloads;
 
-import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.Identifier;
@@ -17,7 +17,7 @@ public record LlmChatMessagePayload(
         Identifier.fromNamespaceAndPath("aeonis-manager", "llm_chat_message")
     );
     
-    public static final StreamCodec<FriendlyByteBuf, LlmChatMessagePayload> CODEC = StreamCodec.of(
+    public static final StreamCodec<RegistryFriendlyByteBuf, LlmChatMessagePayload> CODEC = StreamCodec.of(
         (buf, payload) -> buf.writeUtf(payload.message, 1024),
         buf -> new LlmChatMessagePayload(buf.readUtf(1024))
     );

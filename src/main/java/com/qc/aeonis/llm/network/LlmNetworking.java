@@ -39,14 +39,14 @@ public class LlmNetworking {
      */
     public static void registerServer() {
         // Register payload types
-        PayloadTypeRegistry.playS2C().register(LlmOpenGuiPayload.ID, LlmOpenGuiPayload.CODEC);
-        PayloadTypeRegistry.playS2C().register(LlmStatusUpdatePayload.ID, LlmStatusUpdatePayload.CODEC);
+        PayloadTypeRegistry.clientboundPlay().register(LlmOpenGuiPayload.ID, LlmOpenGuiPayload.CODEC);
+        PayloadTypeRegistry.clientboundPlay().register(LlmStatusUpdatePayload.ID, LlmStatusUpdatePayload.CODEC);
         
-        PayloadTypeRegistry.playC2S().register(LlmConfigSubmitPayload.ID, LlmConfigSubmitPayload.CODEC);
-        PayloadTypeRegistry.playC2S().register(LlmTestConnectionPayload.ID, LlmTestConnectionPayload.CODEC);
-        PayloadTypeRegistry.playC2S().register(LlmSpawnBotPayload.ID, LlmSpawnBotPayload.CODEC);
-        PayloadTypeRegistry.playC2S().register(LlmTaskPayload.ID, LlmTaskPayload.CODEC);
-        PayloadTypeRegistry.playC2S().register(LlmChatMessagePayload.ID, LlmChatMessagePayload.CODEC);
+        PayloadTypeRegistry.serverboundPlay().register(LlmConfigSubmitPayload.ID, LlmConfigSubmitPayload.CODEC);
+        PayloadTypeRegistry.serverboundPlay().register(LlmTestConnectionPayload.ID, LlmTestConnectionPayload.CODEC);
+        PayloadTypeRegistry.serverboundPlay().register(LlmSpawnBotPayload.ID, LlmSpawnBotPayload.CODEC);
+        PayloadTypeRegistry.serverboundPlay().register(LlmTaskPayload.ID, LlmTaskPayload.CODEC);
+        PayloadTypeRegistry.serverboundPlay().register(LlmChatMessagePayload.ID, LlmChatMessagePayload.CODEC);
         
         // Register handlers
         registerHandlers();

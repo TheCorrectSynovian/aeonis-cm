@@ -44,15 +44,11 @@
 			},
 			{
 				"id": "minecraft",
-				"versions": ">=1.21.11"
+				"versions": ">=26.1"
 			},
 			{
 				"id": "java",
-				"versions": ">=21"
-			},
-			{
-				"id": "geckolib",
-				"versions": "*"
+				"versions": ">=25"
 			}
 		],
 		"provides": [

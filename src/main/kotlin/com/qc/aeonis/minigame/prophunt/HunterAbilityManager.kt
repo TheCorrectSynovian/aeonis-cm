@@ -546,7 +546,7 @@ object HunterAbilityManager {
         }
         
         val message = statusParts.joinToString(" §8| ")
-        player.displayClientMessage(Component.literal(message), true)
+        player.sendSystemMessage(Component.literal(message))
     }
     
     /**

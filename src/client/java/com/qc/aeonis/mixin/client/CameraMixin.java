@@ -1,5 +1,6 @@
 package com.qc.aeonis.mixin.client;
 
+import com.qc.aeonis.client.AeonisFreecam;
 import com.qc.aeonis.network.AeonisClientNetworking;
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
@@ -31,6 +32,12 @@ public abstract class CameraMixin {
     
     @Inject(method = "setup", at = @At("TAIL"))
     private void aeonis$adjustCameraForMob(Level area, Entity focusedEntity, boolean thirdPerson, boolean inverseView, float partialTicks, CallbackInfo ci) {
+        if (AeonisFreecam.INSTANCE.isEnabled()) {
+            Vec3 freecamPos = AeonisFreecam.INSTANCE.getCameraPos(partialTicks);
+            this.setPosition(freecamPos.x, freecamPos.y, freecamPos.z);
+            return;
+        }
+
         if (!AeonisClientNetworking.INSTANCE.isControlling() || AeonisClientNetworking.INSTANCE.getControlledMobId() <= 0) {
             return;
         }

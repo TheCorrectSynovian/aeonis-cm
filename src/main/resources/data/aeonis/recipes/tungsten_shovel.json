@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "equipment",
+  "pattern": [
+    " I ",
+    " S ",
+    " S "
+  ],
+  "key": {
+    "I": "aeonis:tungsten_ingot",
+    "S": "minecraft:stick"
+  },
+  "result": {
+    "count": 1,
+    "id": "aeonis:tungsten_shovel"
+  }
+}

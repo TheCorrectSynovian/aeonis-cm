@@ -102,7 +102,7 @@ object AeonisClientNetworking {
         ClientPlayNetworking.registerGlobalReceiver(AeonisNetworking.OpenManhuntGuiPayload.ID) { _, _ ->
             val mc = Minecraft.getInstance()
             mc.execute {
-                mc.setScreen(com.qc.aeonis.screen.ManhuntSetupScreen())
+                mc.player?.sendSystemMessage(Component.literal("[AEONIS] Manhunt setup UI is currently unavailable in this build."))
             }
         }
 
@@ -123,10 +123,10 @@ object AeonisClientNetworking {
                             val payload = PossessPayload(ent.id, selectedSlot)
                             ClientPlayNetworking.send(payload)
                         } else {
-                            client.player!!.displayClientMessage(Component.literal("§c[AEONIS] Can only control living mobs!"), false)
+                            client.player!!.sendSystemMessage(Component.literal("§c[AEONIS] Can only control living mobs!"))
                         }
                     } else {
-                        client.player!!.displayClientMessage(Component.literal("§c[AEONIS] Look at a mob to control it!"), false)
+                        client.player!!.sendSystemMessage(Component.literal("§c[AEONIS] Look at a mob to control it!"))
                     }
                 } catch (_: Exception) {
                     // fallback: send with -1 (server will ignore)
@@ -159,13 +159,13 @@ object AeonisClientNetworking {
                             // Send soul possess packet to server
                             ClientPlayNetworking.send(AeonisNetworking.SoulPossessPayload(ent.id))
                         } else {
-                            client.player!!.displayClientMessage(Component.literal("§c[AEONIS] Can only possess mobs!"), false)
+                            client.player!!.sendSystemMessage(Component.literal("§c[AEONIS] Can only possess mobs!"))
                         }
                     } else {
-                        client.player!!.displayClientMessage(Component.literal("§c[AEONIS] Look at a mob to possess it!"), false)
+                        client.player!!.sendSystemMessage(Component.literal("§c[AEONIS] Look at a mob to possess it!"))
                     }
                 } catch (_: Exception) {
-                    client.player!!.displayClientMessage(Component.literal("§c[AEONIS] Error possessing mob!"), false)
+                    client.player!!.sendSystemMessage(Component.literal("§c[AEONIS] Error possessing mob!"))
                 }
             }
 
@@ -189,8 +189,8 @@ object AeonisClientNetworking {
                 if (controlledMobId > 0) {
                     val mobEntity = client.level!!.getEntity(controlledMobId)
                     if (mobEntity is net.minecraft.world.entity.Mob) {
-                        // Only sync rotation for smooth visual feedback
-                        // Position comes from server via handleMobControl
+                        // Keep local visual state in lockstep with player input to reduce perceived control latency.
+                        mobEntity.setPos(client.player!!.x, client.player!!.y, client.player!!.z)
                         mobEntity.yRot = client.player!!.yRot
                         mobEntity.xRot = client.player!!.xRot
                         mobEntity.yBodyRot = client.player!!.yRot

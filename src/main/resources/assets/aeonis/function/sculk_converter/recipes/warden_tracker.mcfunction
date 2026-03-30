@@ -1,1 +1,0 @@
-function deeper_dark:sculk_converter_recipe_types/replace_item_with_loot {replace:"minecraft:compass",with:"deeper_dark:items/warden_tracker",flames:1,xp:30,conversion_time:80}

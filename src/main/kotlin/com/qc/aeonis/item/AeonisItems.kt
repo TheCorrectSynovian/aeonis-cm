@@ -1,14 +1,14 @@
 package com.qc.aeonis.item
 
 import com.qc.aeonis.entity.AeonisEntities
-import com.qc.aeonis.entity.ancard.AncardEntities
-import com.qc.aeonis.entity.ancard.arda.AncardArdaEntities
 import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.core.registries.Registries
 import net.minecraft.resources.Identifier
 import net.minecraft.resources.ResourceKey
+import net.minecraft.tags.TagKey
 import net.minecraft.world.entity.EquipmentSlot
 import net.minecraft.world.food.FoodProperties
+import net.minecraft.tags.BlockTags
 import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.item.AxeItem
@@ -27,6 +27,20 @@ import net.minecraft.sounds.SoundEvents
 import net.minecraft.core.Registry
 
 object AeonisItems {
+    private val TUNGSTEN_TOOL_MATERIAL_TAG = TagKey.create(
+        Registries.ITEM,
+        Identifier.fromNamespaceAndPath("aeonis", "tungsten_tool_materials")
+    )
+
+    private val TUNGSTEN_TOOL_MATERIAL = ToolMaterial(
+        BlockTags.INCORRECT_FOR_DIAMOND_TOOL,
+        900,
+        7.0f,
+        2.5f,
+        16,
+        TUNGSTEN_TOOL_MATERIAL_TAG
+    )
+
     private val SCULKERITE_ARMOR_MATERIAL = ArmorMaterial(
         37,
         mapOf(
@@ -86,6 +100,13 @@ object AeonisItems {
     // Crimson materials
     lateinit var RAW_CRIMSON: Item
     lateinit var CRIMSON_INGOT_SCRAPS: Item
+    lateinit var TUNGSTEN_RAW: Item
+    lateinit var TUNGSTEN_INGOT: Item
+    lateinit var TUNGSTEN_SWORD: Item
+    lateinit var TUNGSTEN_PICKAXE: Item
+    lateinit var TUNGSTEN_AXE: Item
+    lateinit var TUNGSTEN_SHOVEL: Item
+    lateinit var TUNGSTEN_HOE: Item
 
     // Companion whistle
     lateinit var RHISTEL: Item
@@ -263,9 +284,8 @@ object AeonisItems {
 
     fun register() {
         SOUL = register("soul") { Item(it) }
-        ANCARD_LIGHTER = register("ancard_lighter") { props ->
-            AncardLighterItem(props.durability(64))
-        }
+        // Portal ignition has been disabled; keep item id for save/data-pack compatibility.
+        ANCARD_LIGHTER = register("ancard_lighter") { props -> Item(props.durability(64)) }
         
         // Herobrine spawn egg - uses custom texture for colors
         HEROBRINE_SPAWN_EGG = register("herobrine_spawn_egg") { props ->
@@ -277,107 +297,48 @@ object AeonisItems {
             SpawnEggItem(props.spawnEgg(AeonisEntities.COPPER_STALKER))
         }
 
-        // Ancard dimension mob spawn eggs
-        ASH_STALKER_SPAWN_EGG = register("ash_stalker_spawn_egg") { props ->
-            SpawnEggItem(props.spawnEgg(AncardEntities.ASH_STALKER))
-        }
-        
-        BLOODROOT_FIEND_SPAWN_EGG = register("bloodroot_fiend_spawn_egg") { props ->
-            SpawnEggItem(props.spawnEgg(AncardEntities.BLOODROOT_FIEND))
-        }
-        
-        VEILSHADE_WATCHER_SPAWN_EGG = register("veilshade_watcher_spawn_egg") { props ->
-            SpawnEggItem(props.spawnEgg(AncardEntities.VEILSHADE_WATCHER))
-        }
-        
-        ANCARD_SOVEREIGN_SPAWN_EGG = register("ancard_sovereign_spawn_egg") { props ->
-            SpawnEggItem(props.spawnEgg(AncardEntities.ANCARD_SOVEREIGN))
-        }
-
-        SHADE_LURKER_SPAWN_EGG = register("shade_lurker_spawn_egg") { props ->
-            SpawnEggItem(props.spawnEgg(AncardEntities.SHADE_LURKER))
-        }
-
-        OBELISK_SENTINEL_SPAWN_EGG = register("obelisk_sentinel_spawn_egg") { props ->
-            SpawnEggItem(props.spawnEgg(AncardEntities.OBELISK_SENTINEL))
-        }
-
-        CRYPT_MITE_SPAWN_EGG = register("crypt_mite_spawn_egg") { props ->
-            SpawnEggItem(props.spawnEgg(AncardEntities.CRYPT_MITE))
-        }
-
-        BONEWEAVER_SPAWN_EGG = register("boneweaver_spawn_egg") { props ->
-            SpawnEggItem(props.spawnEgg(AncardEntities.BONEWEAVER))
-        }
-
-        ECHO_WISP_SPAWN_EGG = register("echo_wisp_spawn_egg") { props ->
-            SpawnEggItem(props.spawnEgg(AncardEntities.ECHO_WISP))
-        }
-
-        RUIN_HOUND_SPAWN_EGG = register("ruin_hound_spawn_egg") { props ->
-            SpawnEggItem(props.spawnEgg(AncardEntities.RUIN_HOUND))
-        }
-
-        VEIL_MIMIC_SPAWN_EGG = register("veil_mimic_spawn_egg") { props ->
-            SpawnEggItem(props.spawnEgg(AncardEntities.VEIL_MIMIC))
-        }
-
-        SPOREBACK_SPAWN_EGG = register("sporeback_spawn_egg") { props ->
-            SpawnEggItem(props.spawnEgg(AncardEntities.SPOREBACK))
-        }
-
-        RIFT_SCREECHER_SPAWN_EGG = register("rift_screecher_spawn_egg") { props ->
-            SpawnEggItem(props.spawnEgg(AncardEntities.RIFT_SCREECHER))
-        }
-
-        ANCIENT_COLOSSUS_SPAWN_EGG = register("ancient_colossus_spawn_egg") { props ->
-            SpawnEggItem(props.spawnEgg(AncardEntities.ANCIENT_COLOSSUS))
-        }
+        // Ancard mob system is disabled; preserve spawn egg item ids as inert items.
+        ASH_STALKER_SPAWN_EGG = register("ash_stalker_spawn_egg") { props -> Item(props) }
+        BLOODROOT_FIEND_SPAWN_EGG = register("bloodroot_fiend_spawn_egg") { props -> Item(props) }
+        VEILSHADE_WATCHER_SPAWN_EGG = register("veilshade_watcher_spawn_egg") { props -> Item(props) }
+        ANCARD_SOVEREIGN_SPAWN_EGG = register("ancard_sovereign_spawn_egg") { props -> Item(props) }
+        SHADE_LURKER_SPAWN_EGG = register("shade_lurker_spawn_egg") { props -> Item(props) }
+        OBELISK_SENTINEL_SPAWN_EGG = register("obelisk_sentinel_spawn_egg") { props -> Item(props) }
+        CRYPT_MITE_SPAWN_EGG = register("crypt_mite_spawn_egg") { props -> Item(props) }
+        BONEWEAVER_SPAWN_EGG = register("boneweaver_spawn_egg") { props -> Item(props) }
+        ECHO_WISP_SPAWN_EGG = register("echo_wisp_spawn_egg") { props -> Item(props) }
+        RUIN_HOUND_SPAWN_EGG = register("ruin_hound_spawn_egg") { props -> Item(props) }
+        VEIL_MIMIC_SPAWN_EGG = register("veil_mimic_spawn_egg") { props -> Item(props) }
+        SPOREBACK_SPAWN_EGG = register("sporeback_spawn_egg") { props -> Item(props) }
+        RIFT_SCREECHER_SPAWN_EGG = register("rift_screecher_spawn_egg") { props -> Item(props) }
+        ANCIENT_COLOSSUS_SPAWN_EGG = register("ancient_colossus_spawn_egg") { props -> Item(props) }
 
         HUNTER_SPAWN_EGG = register("hunter_spawn_egg") { props ->
             SpawnEggItem(props.spawnEgg(AeonisEntities.HUNTER))
         }
 
-        // Arda Sculk spawn eggs
-        RADIOACTIVE_WARDEN_SPAWN_EGG = register("radioactive_warden_spawn_egg") { props ->
-            SpawnEggItem(props.spawnEgg(AncardArdaEntities.RADIOACTIVE_WARDEN))
-        }
-
-        SCULK_BOSS_1_SPAWN_EGG = register("sculk_boss_1_spawn_egg") { props ->
-            SpawnEggItem(props.spawnEgg(AncardArdaEntities.SCULK_BOSS_1))
-        }
-
-        SCULK_CREAKING_SPAWN_EGG = register("sculk_creaking_spawn_egg") { props ->
-            SpawnEggItem(props.spawnEgg(AncardArdaEntities.SCULK_CREAKING))
-        }
-
-        SCULK_CREEPER_ANIMATION_SPAWN_EGG = register("sculk_creeper_animation_spawn_egg") { props ->
-            SpawnEggItem(props.spawnEgg(AncardArdaEntities.SCULK_CREEPER_ANIMATION))
-        }
-
-        SCULK_ENDERMAN_SPAWN_EGG = register("sculk_enderman_spawn_egg") { props ->
-            SpawnEggItem(props.spawnEgg(AncardArdaEntities.SCULK_ENDERMAN))
-        }
-
-        SCULK_GOLEM_BOSS_SPAWN_EGG = register("sculk_golem_boss_spawn_egg") { props ->
-            SpawnEggItem(props.spawnEgg(AncardArdaEntities.SCULK_GOLEM_BOSS))
-        }
-
-        SCULK_SKELETON_SPAWN_EGG = register("sculk_skeleton_spawn_egg") { props ->
-            SpawnEggItem(props.spawnEgg(AncardArdaEntities.SCULK_SKELETON))
-        }
-
-        SCULK_SLIME_SPAWN_EGG = register("sculk_slime_spawn_egg") { props ->
-            SpawnEggItem(props.spawnEgg(AncardArdaEntities.SCULK_SLIME))
-        }
-
-        SHADOW_HUNTER_SPAWN_EGG = register("shadow_hunter_spawn_egg") { props ->
-            SpawnEggItem(props.spawnEgg(AncardArdaEntities.SHADOW_HUNTER))
-        }
+        RADIOACTIVE_WARDEN_SPAWN_EGG = register("radioactive_warden_spawn_egg") { props -> Item(props) }
+        SCULK_BOSS_1_SPAWN_EGG = register("sculk_boss_1_spawn_egg") { props -> Item(props) }
+        SCULK_CREAKING_SPAWN_EGG = register("sculk_creaking_spawn_egg") { props -> Item(props) }
+        SCULK_CREEPER_ANIMATION_SPAWN_EGG = register("sculk_creeper_animation_spawn_egg") { props -> Item(props) }
+        SCULK_ENDERMAN_SPAWN_EGG = register("sculk_enderman_spawn_egg") { props -> Item(props) }
+        SCULK_GOLEM_BOSS_SPAWN_EGG = register("sculk_golem_boss_spawn_egg") { props -> Item(props) }
+        SCULK_SKELETON_SPAWN_EGG = register("sculk_skeleton_spawn_egg") { props -> Item(props) }
+        SCULK_SLIME_SPAWN_EGG = register("sculk_slime_spawn_egg") { props -> Item(props) }
+        SHADOW_HUNTER_SPAWN_EGG = register("shadow_hunter_spawn_egg") { props -> Item(props) }
 
         // Crimson materials
         RAW_CRIMSON = register("raw_crimson") { Item(it.fireResistant()) }
         CRIMSON_INGOT_SCRAPS = register("crimson_ingot_scraps") { Item(it.fireResistant()) }
+
+        // Tungsten progression (between iron and diamond)
+        TUNGSTEN_RAW = register("tungsten_raw") { Item(it) }
+        TUNGSTEN_INGOT = register("tungsten_ingot") { Item(it) }
+        TUNGSTEN_SWORD = register("tungsten_sword") { Item(it.sword(TUNGSTEN_TOOL_MATERIAL, 3.0f, -2.4f)) }
+        TUNGSTEN_PICKAXE = register("tungsten_pickaxe") { Item(it.pickaxe(TUNGSTEN_TOOL_MATERIAL, 1.0f, -2.8f)) }
+        TUNGSTEN_AXE = register("tungsten_axe") { AxeItem(TUNGSTEN_TOOL_MATERIAL, 6.0f, -3.0f, it) }
+        TUNGSTEN_SHOVEL = register("tungsten_shovel") { ShovelItem(TUNGSTEN_TOOL_MATERIAL, 1.5f, -3.0f, it) }
+        TUNGSTEN_HOE = register("tungsten_hoe") { HoeItem(TUNGSTEN_TOOL_MATERIAL, 0.0f, -3.0f, it) }
 
         // Companion whistle — cycles forced modes
         RHISTEL = register("rhistel") { props -> RhistelItem(props.stacksTo(1)) }
@@ -542,175 +503,8 @@ object AeonisItems {
         SCULK_GHOST_SPAWN_EGG = register("sculk_ghost_spawn_egg") { Item(it) }
         SCULK_GOLEM_SPAWN_EGG = register("sculk_golem_spawn_egg") { Item(it) }
 
-        // ═══════════════════════════════════════════════════════════════
-        // CREATIVE TAB REGISTRATION
-        // ═══════════════════════════════════════════════════════════════
-
-        // Tools & Utilities
-        net.fabricmc.fabric.api.itemgroup.v1.ItemGroupEvents.modifyEntriesEvent(net.minecraft.world.item.CreativeModeTabs.TOOLS_AND_UTILITIES).register { entries ->
-            entries.accept(SOUL)
-            entries.accept(ANCARD_LIGHTER)
-            entries.accept(RHISTEL)
-            entries.accept(DEEP_DARK_PORTAL_IGNITER)
-            entries.accept(ARDAS_SCULKS_BOOK)
-            // Black Birch tools
-            entries.accept(BLACKBIRCH_WOODEN_AXE)
-            entries.accept(BLACKBIRCH_WOODEN_HOE)
-            entries.accept(BLACKBIRCH_WOODEN_PICKAXE)
-            entries.accept(BLACKBIRCH_WOODEN_SHOVEL)
-            // Sculk wooden tools
-            entries.accept(SCULK_WOODEN_AXE)
-            entries.accept(SCULK_WOODEN_HOE)
-            entries.accept(SCULK_WOODEN_PICKAXE)
-            entries.accept(SCULK_WOODEN_SHOVEL)
-            // Wisterya tools
-            entries.accept(WISTERYA_WOODEN_AXE)
-            entries.accept(WISTERYA_WOODEN_HOE)
-            entries.accept(WISTERYA_WOODEN_PICKAXE)
-            entries.accept(WISTERYA_WOODEN_SHOVEL)
-            // Radioactive Balsa tools
-            entries.accept(RADIOACTIVE_PLANKS_AXE)
-            entries.accept(RADIOACTIVE_PLANKS_HOE)
-            entries.accept(RADIOACTIVE_PLANKS_PICKAXE)
-            entries.accept(RADIOACTIVE_PLANKS_SHOVEL)
-            // Sculkerite tools
-            entries.accept(SCULKERITE_AXE)
-            entries.accept(SCULKERITE_HOE)
-            entries.accept(SCULKERITE_PICKAXE)
-            entries.accept(SCULKERITE_SHOVEL)
-            entries.accept(SCULKERITE_HAMMER)
-            entries.accept(SCULKHERITE_PAXEL)
-            // Buckets
-            entries.accept(IRON_BUCKET2)
-            entries.accept(MOLTEN_SCULK_BUCKET)
-            entries.accept(RAW_IRON_BUCKET)
-            entries.accept(SCULK_BUCKET)
-        }
-
-        // Combat
-        net.fabricmc.fabric.api.itemgroup.v1.ItemGroupEvents.modifyEntriesEvent(net.minecraft.world.item.CreativeModeTabs.COMBAT).register { entries ->
-            // Wooden swords
-            entries.accept(BLACKBIRCH_WOODEN_SWORD)
-            entries.accept(SCULK_WOODEN_SWORD)
-            entries.accept(WISTERYA_WOODEN_SWORD)
-            entries.accept(RADIOACTIVE_PLANKS_SWORD)
-            // Sculkerite weapons
-            entries.accept(SCULKERITE_LONGSWORD)
-            entries.accept(SCULKERITE_LONGSWORD2)
-            entries.accept(SCULKHERITE_SWORD2)
-            // Warden sword
-            entries.accept(WARDEN_SWORD)
-            // Sculk arms
-            entries.accept(SCULK_ARMS2)
-            entries.accept(NETHERITE_SCULK_ARMS)
-            entries.accept(SCULKERITE_SCULK_ARMS)
-            // Ranged
-            entries.accept(SCULK_BOW)
-            entries.accept(SCULK_ARROW)
-            entries.accept(ANCIENT_NAUTILUS_BOOMERANG)
-            // Sculkerite armor
-            entries.accept(SCULKERITE_HELMET)
-            entries.accept(SCULKERITE_CHESTPLATE)
-            entries.accept(SCULKERITE_LEGGINGS)
-            entries.accept(SCULKERITE_BOOTS)
-            // Warden armor
-            entries.accept(WARDEN_HELMET)
-            entries.accept(WARDEN_CHESTPLATE)
-            entries.accept(WARDEN_LEGGINGS)
-            entries.accept(WARDEN_BOOTS)
-        }
-
-        // Ingredients
-        net.fabricmc.fabric.api.itemgroup.v1.ItemGroupEvents.modifyEntriesEvent(net.minecraft.world.item.CreativeModeTabs.INGREDIENTS).register { entries ->
-            entries.accept(RAW_CRIMSON)
-            entries.accept(CRIMSON_INGOT_SCRAPS)
-            entries.accept(SCULK_PIECE)
-            entries.accept(SCULK_INGOT)
-            entries.accept(SCULK_BONE)
-            entries.accept(SCULK_CRYSTAL)
-            entries.accept(SCULK_SENSOR_PART)
-            entries.accept(SCULK_RESIN_BRICK)
-            entries.accept(SCULK_RESIN_CLUMP)
-            entries.accept(SCULKERITE_NUGGET)
-            entries.accept(SCULKED_EMERALD)
-            entries.accept(GOLDEN_SCULK_PIECE)
-            entries.accept(GOLDEN_SCULK_SENSOR_PART)
-            entries.accept(GOLDEN_WARDEN_CLAW)
-            entries.accept(RADIOACTIVE_SCULK_PIECE)
-            entries.accept(RADIOACTIVE_SCULK_SENSOR_PART)
-            entries.accept(RADIOACTIVE_WARDEN_CLAW)
-            entries.accept(WARDEN_CLAW)
-            entries.accept(SACRED_OBSIDIAN_SHARD)
-            entries.accept(ROTTEN_CREAKING_SHELL)
-            entries.accept(ANCIENT_NAUTILUS_SHELL)
-            entries.accept(AGILE_SLIME_BALL)
-            entries.accept(DEEP_DARK_UPGRADE_TEMPLATE)
-            entries.accept(SCULKERITE_UPGRADE_SMITHING_TEMPLATE)
-            // Sticks
-            entries.accept(BLACKBIRCH_STICK)
-            entries.accept(RADIOACTIVE_BALSA_STICK)
-            entries.accept(SCULK_PLANKS_STICK)
-            entries.accept(WISTERYA_STICK)
-        }
-
-        // Food & Drinks
-        net.fabricmc.fabric.api.itemgroup.v1.ItemGroupEvents.modifyEntriesEvent(net.minecraft.world.item.CreativeModeTabs.FOOD_AND_DRINKS).register { entries ->
-            entries.accept(CREAKING_COOKIE)
-            entries.accept(SWEET_PALE_CAKE)
-            entries.accept(SCULK_RESIN_APPLE)
-        }
-
-        // Building Blocks (doors, vines, decorative)
-        net.fabricmc.fabric.api.itemgroup.v1.ItemGroupEvents.modifyEntriesEvent(net.minecraft.world.item.CreativeModeTabs.BUILDING_BLOCKS).register { entries ->
-            entries.accept(BLACK_BIRCH_DOOR_ITEM)
-            entries.accept(BLACK_BIRCH_VINES)
-            entries.accept(RADIOACTIVE_BALSA_DOOR_ITEM)
-            entries.accept(RADIOACTIVE_SCULK_VINES)
-            entries.accept(SCULK_CRYSTAL_BARS)
-            entries.accept(SCULK_CRYSTAL_DOOR_ITEM)
-            entries.accept(SCULK_PLANK_DOOR_ITEM)
-            entries.accept(WISTERYA_DOOR_ITEM)
-            entries.accept(SCULK_GRASS_FLOWERS)
-            entries.accept(LONG_SCULK_MUSHROOM_ITEM)
-            entries.accept(SCULK_CHEST_ANIMATED)
-        }
-        
-        // Spawn Eggs
-        net.fabricmc.fabric.api.itemgroup.v1.ItemGroupEvents.modifyEntriesEvent(net.minecraft.world.item.CreativeModeTabs.SPAWN_EGGS).register { entries ->
-            entries.accept(HEROBRINE_SPAWN_EGG)
-            entries.accept(COPPER_STALKER_SPAWN_EGG)
-            entries.accept(ASH_STALKER_SPAWN_EGG)
-            entries.accept(BLOODROOT_FIEND_SPAWN_EGG)
-            entries.accept(VEILSHADE_WATCHER_SPAWN_EGG)
-            entries.accept(ANCARD_SOVEREIGN_SPAWN_EGG)
-            entries.accept(SHADE_LURKER_SPAWN_EGG)
-            entries.accept(OBELISK_SENTINEL_SPAWN_EGG)
-            entries.accept(CRYPT_MITE_SPAWN_EGG)
-            entries.accept(BONEWEAVER_SPAWN_EGG)
-            entries.accept(ECHO_WISP_SPAWN_EGG)
-            entries.accept(RUIN_HOUND_SPAWN_EGG)
-            entries.accept(VEIL_MIMIC_SPAWN_EGG)
-            entries.accept(SPOREBACK_SPAWN_EGG)
-            entries.accept(RIFT_SCREECHER_SPAWN_EGG)
-            entries.accept(ANCIENT_COLOSSUS_SPAWN_EGG)
-            entries.accept(HUNTER_SPAWN_EGG)
-            entries.accept(RADIOACTIVE_WARDEN_SPAWN_EGG)
-            entries.accept(SCULK_BOSS_1_SPAWN_EGG)
-            entries.accept(SCULK_CREAKING_SPAWN_EGG)
-            entries.accept(SCULK_CREEPER_ANIMATION_SPAWN_EGG)
-            entries.accept(SCULK_ENDERMAN_SPAWN_EGG)
-            entries.accept(SCULK_GOLEM_BOSS_SPAWN_EGG)
-            entries.accept(SCULK_SKELETON_SPAWN_EGG)
-            entries.accept(SCULK_SLIME_SPAWN_EGG)
-            entries.accept(SHADOW_HUNTER_SPAWN_EGG)
-            // Placeholder spawn eggs
-            entries.accept(AGILE_SLIME_SPAWN_EGG)
-            entries.accept(SCULK_CREEPER_SPAWN_EGG)
-            entries.accept(SCULK_FISH_SPAWN_EGG)
-            entries.accept(SCULK_FOX_SPAWN_EGG)
-            entries.accept(SCULK_GHOST_SPAWN_EGG)
-            entries.accept(SCULK_GOLEM_SPAWN_EGG)
-        }
+        // Creative tab injection via Fabric item-group API is temporarily disabled
+        // during the 26.1 migration. Items remain registered and obtainable.
     }
 
     private fun register(name: String, factory: (Item.Properties) -> Item): Item {

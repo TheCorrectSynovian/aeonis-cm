@@ -1,6 +1,6 @@
 package com.qc.aeonis.llm.network.payloads;
 
-import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.Identifier;
@@ -26,7 +26,7 @@ public record LlmTaskPayload(
         Identifier.fromNamespaceAndPath("aeonis-manager", "llm_task")
     );
     
-    public static final StreamCodec<FriendlyByteBuf, LlmTaskPayload> CODEC = StreamCodec.of(
+    public static final StreamCodec<RegistryFriendlyByteBuf, LlmTaskPayload> CODEC = StreamCodec.of(
         (buf, payload) -> {
             buf.writeEnum(payload.taskType);
             buf.writeUtf(payload.targetPlayer != null ? payload.targetPlayer : "");

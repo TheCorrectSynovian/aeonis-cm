@@ -45,22 +45,14 @@ repositories {
 		}
 	}
 
-	// GeckoLib (animated entities)
-	exclusiveContent {
-		forRepository {
-			maven {
-				name = "GeckoLib"
-				url = "https://dl.cloudsmith.io/public/geckolib3/geckolib/maven/"
-			}
-		}
-		filter {
-			includeGroupAndSubgroups("software.bernie.geckolib")
-		}
-	}
 }
 
 loom {
+	noIntermediateMappings()
 	splitEnvironmentSourceSets()
+	mixin {
+		defaultRefmapName = "aeonis-manager.refmap.json"
+	}
 
 	mods {
 		"aeonis-manager" {
@@ -69,6 +61,33 @@ loom {
 		}
 	}
 
+}
+
+sourceSets {
+	main {
+		kotlin {
+			exclude("com/qc/aeonis/entity/ancard/**")
+			exclude("com/qc/aeonis/dimension/AncardSovereignSpawnManager.kt")
+		}
+		java {
+			exclude("com/qc/aeonis/entity/ancard/**")
+		}
+	}
+	client {
+		kotlin {
+			exclude("com/qc/aeonis/integration/modmenu/**")
+			exclude("com/qc/aeonis/client/entity/AncardEntityRenderers.kt")
+			exclude("com/qc/aeonis/client/entity/AncardMobGeoModel.kt")
+			exclude("com/qc/aeonis/client/block/**")
+			exclude("com/qc/aeonis/client/dimension/**")
+			exclude("com/qc/aeonis/screen/**")
+			exclude("com/qc/aeonis/mixin/client/TransformationCameraMixin.kt")
+		}
+		java {
+			setSrcDirs(["src/client/java/com/qc/aeonis/mixin/client"])
+			include("TransformationCameraMixin.java")
+		}
+	}
 }
 
 fabricApi {
@@ -80,15 +99,14 @@ fabricApi {
 dependencies {
 	// To change the versions see the gradle.properties file
 	minecraft "com.mojang:minecraft:${project.minecraft_version}"
-	mappings loom.officialMojangMappings()
+	mappings loom.layered {
+		mappings(file("mappings/noop-26.1.tiny"))
+	}
 	modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
 
 	// Fabric API. This is technically optional, but you probably want it anyway.
 	modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
 	modImplementation "net.fabricmc:fabric-language-kotlin:${project.fabric_kotlin_version}"
-
-	// GeckoLib (animated entities)
-	modImplementation "software.bernie.geckolib:geckolib-fabric-${project.minecraft_version}:${project.geckolibVersion}"
 
 	// Mod Menu API (compile-time only, optional at runtime)
 	modCompileOnly "com.terraformersmc:modmenu:${project.modmenu_version}"
@@ -96,6 +114,16 @@ dependencies {
 
 processResources {
 	inputs.property "version", project.version
+
+	// Disable legacy datapack content that currently fails registry loading on 26.1.
+	exclude("data/aeonis/dimension/**")
+	exclude("data/aeonis/dimension_type/**")
+	exclude("data/aeonis/tags/worldgen/**")
+	exclude("data/deeper_dark/worldgen/**")
+	exclude("data/minecraft/tags/worldgen/biome/stronghold_biased_to.json")
+	exclude("data/minecraft/tags/worldgen/biome/has_structure/stronghold.json")
+	exclude("data/minecraft/tags/worldgen/biome/has_structure/end_city.json")
+	exclude("data/minecraft/tags/worldgen/biome/has_structure/ancient_city.json")
 
 	filesMatching("fabric.mod.json") {
 		expand "version": inputs.properties.version
@@ -108,12 +136,12 @@ processResources {
 }
 
 tasks.withType(JavaCompile).configureEach {
-	it.options.release = 21
+	it.options.release = 25
 }
 
 tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).all {
 	kotlinOptions {
-		jvmTarget = 21
+		jvmTarget = 25
 		// Minecraft 1.21+ uses JSpecify @NullMarked; enabling it in Kotlin can cause signature clashes
 		// for Java overrides like Entity.equals(Object). Ignore JSpecify nullability at compile-time.
 		freeCompilerArgs += ["-Xjspecify-annotations=ignore"]
@@ -121,13 +149,8 @@ tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).all {
 }
 
 java {
-	// Loom will automatically attach sourcesJar to a RemapSourcesJar task and to the "build" task
-	// if it is present.
-	// If you remove this line, sources will not be generated.
-	withSourcesJar()
-
-	sourceCompatibility = JavaVersion.VERSION_21
-	targetCompatibility = JavaVersion.VERSION_21
+	sourceCompatibility = JavaVersion.VERSION_25
+	targetCompatibility = JavaVersion.VERSION_25
 }
 
 jar {

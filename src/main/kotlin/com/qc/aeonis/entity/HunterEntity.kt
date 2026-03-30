@@ -191,10 +191,6 @@ class HunterEntity(
     override fun createNavigation(level: Level): PathNavigation {
         val nav = super.createNavigation(level)
         setPathfindingMalus(PathType.LAVA, -1.0f)
-        setPathfindingMalus(PathType.DAMAGE_FIRE, -1.0f)
-        setPathfindingMalus(PathType.DANGER_FIRE, 12.0f)
-        setPathfindingMalus(PathType.DAMAGE_OTHER, -1.0f)
-        setPathfindingMalus(PathType.DANGER_OTHER, 8.0f)
         setPathfindingMalus(PathType.POWDER_SNOW, -1.0f)
         // Hunter doesn't mind water as much — can pursue through it
         setPathfindingMalus(PathType.WATER, 2.0f)

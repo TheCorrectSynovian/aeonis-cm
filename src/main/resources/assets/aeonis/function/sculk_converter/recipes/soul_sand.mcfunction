@@ -1,1 +1,0 @@
-function deeper_dark:sculk_converter_recipe_types/replace_item_id {replace:"minecraft:sand",with:"minecraft:soul_sand",flames:1,xp:1,conversion_time:20}

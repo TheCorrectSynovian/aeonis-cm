@@ -1,1 +1,0 @@
-function deeper_dark:sculk_converter_recipe_types/replace_item_id {replace:"minecraft:golden_apple",with:"minecraft:enchanted_golden_apple",flames:8,xp:30,conversion_time:6000}

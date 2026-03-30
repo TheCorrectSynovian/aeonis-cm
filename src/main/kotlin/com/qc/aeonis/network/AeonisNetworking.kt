@@ -2,7 +2,7 @@ package com.qc.aeonis.network
 
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking
-import net.minecraft.network.FriendlyByteBuf
+import net.minecraft.network.RegistryFriendlyByteBuf
 import net.minecraft.network.codec.StreamCodec
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload
 import net.minecraft.resources.Identifier
@@ -72,7 +72,7 @@ data class MobControlPayload(
             Identifier.fromNamespaceAndPath("aeonis-manager", "mob_control")
         )
         
-        val CODEC: StreamCodec<FriendlyByteBuf, MobControlPayload> = StreamCodec.of(
+        val CODEC: StreamCodec<RegistryFriendlyByteBuf, MobControlPayload> = StreamCodec.of(
             { buf, payload ->
                 buf.writeFloat(payload.forward)
                 buf.writeFloat(payload.strafe)
@@ -115,7 +115,7 @@ data class ControlModePayload(
             Identifier.fromNamespaceAndPath("aeonis-manager", "control_mode")
         )
         
-        val CODEC: StreamCodec<FriendlyByteBuf, ControlModePayload> = StreamCodec.of(
+        val CODEC: StreamCodec<RegistryFriendlyByteBuf, ControlModePayload> = StreamCodec.of(
             { buf, payload -> 
                 buf.writeBoolean(payload.enabled)
                 buf.writeInt(payload.mobId)
@@ -139,7 +139,7 @@ data class PossessPayload(
         val ID = CustomPacketPayload.Type<PossessPayload>(
             Identifier.fromNamespaceAndPath("aeonis-manager", "possess_mob")
         )
-        val CODEC: StreamCodec<FriendlyByteBuf, PossessPayload> = StreamCodec.of(
+        val CODEC: StreamCodec<RegistryFriendlyByteBuf, PossessPayload> = StreamCodec.of(
             { buf, payload ->
                 buf.writeInt(payload.mobId)
                 buf.writeInt(payload.selectedSlot)
@@ -160,7 +160,7 @@ data class ReleasePayload(
         val ID = CustomPacketPayload.Type<ReleasePayload>(
             Identifier.fromNamespaceAndPath("aeonis-manager", "release_mob")
         )
-        val CODEC: StreamCodec<FriendlyByteBuf, ReleasePayload> = StreamCodec.of(
+        val CODEC: StreamCodec<RegistryFriendlyByteBuf, ReleasePayload> = StreamCodec.of(
             { buf, payload ->
                 buf.writeInt(payload.selectedSlot)
                 buf.writeDouble(payload.bodyX)
@@ -178,7 +178,7 @@ class AbilityPayload : CustomPacketPayload {
         val ID = CustomPacketPayload.Type<AbilityPayload>(
             Identifier.fromNamespaceAndPath("aeonis-manager", "ability")
         )
-        val CODEC: StreamCodec<FriendlyByteBuf, AbilityPayload> = StreamCodec.of(
+        val CODEC: StreamCodec<RegistryFriendlyByteBuf, AbilityPayload> = StreamCodec.of(
             { _, _ -> },
             { _ -> AbilityPayload() }
         )
@@ -192,7 +192,7 @@ data class SelectedSlotPayload(val selectedSlot: Int) : CustomPacketPayload {
         val ID = CustomPacketPayload.Type<SelectedSlotPayload>(
             Identifier.fromNamespaceAndPath("aeonis-manager", "selected_slot")
         )
-        val CODEC: StreamCodec<FriendlyByteBuf, SelectedSlotPayload> = StreamCodec.of(
+        val CODEC: StreamCodec<RegistryFriendlyByteBuf, SelectedSlotPayload> = StreamCodec.of(
             { buf, payload -> buf.writeInt(payload.selectedSlot) },
             { buf -> SelectedSlotPayload(buf.readInt()) }
         )
@@ -250,7 +250,7 @@ object AeonisNetworking {
             val ID = CustomPacketPayload.Type<SyncControllingPlayersPayload>(
                 Identifier.fromNamespaceAndPath("aeonis-manager", "sync_controlling_players")
             )
-            val CODEC: StreamCodec<FriendlyByteBuf, SyncControllingPlayersPayload> = StreamCodec.of(
+            val CODEC: StreamCodec<RegistryFriendlyByteBuf, SyncControllingPlayersPayload> = StreamCodec.of(
                 { buf, payload ->
                     buf.writeInt(payload.playerUUIDs.size)
                     for (u in payload.playerUUIDs) {
@@ -279,7 +279,7 @@ object AeonisNetworking {
             val ID = CustomPacketPayload.Type<ControlledEntityStatusPayload>(
                 Identifier.fromNamespaceAndPath("aeonis-manager", "controlled_entity_status")
             )
-            val CODEC: StreamCodec<FriendlyByteBuf, ControlledEntityStatusPayload> = StreamCodec.of(
+            val CODEC: StreamCodec<RegistryFriendlyByteBuf, ControlledEntityStatusPayload> = StreamCodec.of(
                 { buf, payload ->
                     buf.writeInt(payload.entityId)
                     buf.writeFloat(payload.health)
@@ -299,7 +299,7 @@ object AeonisNetworking {
             val ID = CustomPacketPayload.Type<SoulModePayload>(
                 Identifier.fromNamespaceAndPath("aeonis-manager", "soul_mode")
             )
-            val CODEC: StreamCodec<FriendlyByteBuf, SoulModePayload> = StreamCodec.of(
+            val CODEC: StreamCodec<RegistryFriendlyByteBuf, SoulModePayload> = StreamCodec.of(
                 { buf, payload -> buf.writeBoolean(payload.enabled) },
                 { buf -> SoulModePayload(buf.readBoolean()) }
             )
@@ -313,7 +313,7 @@ object AeonisNetworking {
             val ID = CustomPacketPayload.Type<SoulPossessPayload>(
                 Identifier.fromNamespaceAndPath("aeonis-manager", "soul_possess")
             )
-            val CODEC: StreamCodec<FriendlyByteBuf, SoulPossessPayload> = StreamCodec.of(
+            val CODEC: StreamCodec<RegistryFriendlyByteBuf, SoulPossessPayload> = StreamCodec.of(
                 { buf, payload -> buf.writeInt(payload.mobId) },
                 { buf -> SoulPossessPayload(buf.readInt()) }
             )
@@ -327,7 +327,7 @@ object AeonisNetworking {
             val ID = CustomPacketPayload.Type<OpenManhuntGuiPayload>(
                 Identifier.fromNamespaceAndPath("aeonis-manager", "open_manhunt_gui")
             )
-            val CODEC: StreamCodec<FriendlyByteBuf, OpenManhuntGuiPayload> = StreamCodec.of(
+            val CODEC: StreamCodec<RegistryFriendlyByteBuf, OpenManhuntGuiPayload> = StreamCodec.of(
                 { _, _ -> },
                 { _ -> OpenManhuntGuiPayload() }
             )
@@ -338,19 +338,19 @@ object AeonisNetworking {
     // Register server-side networking handlers and periodic status updates
     fun registerServer() {
         // Register the server->client payload types
-        PayloadTypeRegistry.playS2C().register(ControlledEntityStatusPayload.ID, ControlledEntityStatusPayload.CODEC)
-        PayloadTypeRegistry.playS2C().register(ControlModePayload.ID, ControlModePayload.CODEC)
-        PayloadTypeRegistry.playS2C().register(SyncControllingPlayersPayload.ID, SyncControllingPlayersPayload.CODEC)
-        PayloadTypeRegistry.playS2C().register(SoulModePayload.ID, SoulModePayload.CODEC)
-        PayloadTypeRegistry.playS2C().register(OpenManhuntGuiPayload.ID, OpenManhuntGuiPayload.CODEC)
+        PayloadTypeRegistry.clientboundPlay().register(ControlledEntityStatusPayload.ID, ControlledEntityStatusPayload.CODEC)
+        PayloadTypeRegistry.clientboundPlay().register(ControlModePayload.ID, ControlModePayload.CODEC)
+        PayloadTypeRegistry.clientboundPlay().register(SyncControllingPlayersPayload.ID, SyncControllingPlayersPayload.CODEC)
+        PayloadTypeRegistry.clientboundPlay().register(SoulModePayload.ID, SoulModePayload.CODEC)
+        PayloadTypeRegistry.clientboundPlay().register(OpenManhuntGuiPayload.ID, OpenManhuntGuiPayload.CODEC)
         
         // Register client->server payload types
-        PayloadTypeRegistry.playC2S().register(SelectedSlotPayload.ID, SelectedSlotPayload.CODEC)
-        PayloadTypeRegistry.playC2S().register(PossessPayload.ID, PossessPayload.CODEC)
-        PayloadTypeRegistry.playC2S().register(ReleasePayload.ID, ReleasePayload.CODEC)
-        PayloadTypeRegistry.playC2S().register(AbilityPayload.ID, AbilityPayload.CODEC)
-        PayloadTypeRegistry.playC2S().register(MobControlPayload.ID, MobControlPayload.CODEC)
-        PayloadTypeRegistry.playC2S().register(SoulPossessPayload.ID, SoulPossessPayload.CODEC)
+        PayloadTypeRegistry.serverboundPlay().register(SelectedSlotPayload.ID, SelectedSlotPayload.CODEC)
+        PayloadTypeRegistry.serverboundPlay().register(PossessPayload.ID, PossessPayload.CODEC)
+        PayloadTypeRegistry.serverboundPlay().register(ReleasePayload.ID, ReleasePayload.CODEC)
+        PayloadTypeRegistry.serverboundPlay().register(AbilityPayload.ID, AbilityPayload.CODEC)
+        PayloadTypeRegistry.serverboundPlay().register(MobControlPayload.ID, MobControlPayload.CODEC)
+        PayloadTypeRegistry.serverboundPlay().register(SoulPossessPayload.ID, SoulPossessPayload.CODEC)
         
         // Register client->server selected-slot payload handler
         ServerPlayNetworking.registerGlobalReceiver(SelectedSlotPayload.ID) { payload, context ->
@@ -923,7 +923,7 @@ object AeonisNetworking {
             
             // Send as action bar
             val message = Component.literal("§c❤ $healthBar §7($health/$maxHealth) $heldInfo")
-            player.displayClientMessage(message, true)
+            player.sendSystemMessage(message)
         }
     }
     
@@ -1454,7 +1454,7 @@ object AeonisNetworking {
 
         // Only explode if there's something nearby (entity or block)
         if (nearbyEntities.isEmpty() && !hasBlockNearby) {
-            player.displayClientMessage(Component.literal("§c💥 Get closer to something to explode!"), true)
+            player.sendSystemMessage(Component.literal("§c💥 Get closer to something to explode!"))
             return
         }
 
@@ -1489,7 +1489,7 @@ object AeonisNetworking {
         player.setGameMode(net.minecraft.world.level.GameType.SURVIVAL)
 
         // Notify the player
-        player.displayClientMessage(Component.literal("§c💥 BOOM! Your creeper exploded!"), false)
+        player.sendSystemMessage(Component.literal("§c💥 BOOM! Your creeper exploded!"))
     }
 
     /**
@@ -1683,6 +1683,6 @@ object AeonisNetworking {
         )
         
         // Notify player
-        player.displayClientMessage(Component.literal("§5✦ Teleported!"), true)
+        player.sendSystemMessage(Component.literal("§5✦ Teleported!"))
     }
 }

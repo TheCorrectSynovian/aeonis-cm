@@ -1,4 +1,0 @@
-execute on target run data modify entity @e[tag=deeper_dark.sculk_converter,limit=1,sort=nearest,distance=0...1] data.Item set from entity @s SelectedItem
-execute on target if data entity @e[tag=deeper_dark.sculk_converter,limit=1,sort=nearest,distance=0...1] data.Item run data modify entity @e[tag=deeper_dark.sculk_converter,limit=1,sort=nearest,distance=0...1] data.Item.count set value 1
-execute on target if data entity @e[tag=deeper_dark.sculk_converter,limit=1,sort=nearest,distance=0...1] data.Item run item modify entity @s weapon.mainhand deeper_dark:decrease_count
-data remove entity @s interaction

@@ -15,7 +15,6 @@
 		"BeeEntityAccessor",
 		"DeathMessageMixin",
 		"ChatMessageMixin",
-		"FlintAndSteelMixin",
 		"AncardSeedMixin"
 	],
 	"injectors": {

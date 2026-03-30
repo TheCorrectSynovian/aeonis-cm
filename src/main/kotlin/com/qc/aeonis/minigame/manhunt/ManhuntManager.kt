@@ -496,10 +496,7 @@ object ManhuntManager {
                     
                     // Update action bar with distance
                     val distance = player.blockPosition().distSqr(hunterPos).let { kotlin.math.sqrt(it.toDouble()).toInt() }
-                    player.displayClientMessage(
-                        Component.literal("§c☠ Hunter: §e${distance} blocks away"),
-                        true
-                    )
+                    player.sendSystemMessage(Component.literal("§c☠ Hunter: §e${distance} blocks away"))
                     
                     break
                 }

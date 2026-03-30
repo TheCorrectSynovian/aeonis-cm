@@ -148,6 +148,12 @@ object AeonisCommands {
     private val actorWalkTargets = mutableMapOf<Int, Vec3>()
     private val actorLookTargets = mutableMapOf<Int, Int>() // EntityID -> TargetEntityID
     private val actorAttackTargets = mutableMapOf<Int, Int>() // EntityID -> TargetEntityID
+
+    private fun syncControllingPlayers(player: ServerPlayer) {
+        val serverLevel = player.level() as? net.minecraft.server.level.ServerLevel ?: return
+        val server = serverLevel.server
+        AeonisNetworking.broadcastControllingPlayers(server)
+    }
     
     /**
      * Called every tick to enforce Director Mode orders
@@ -957,7 +963,8 @@ object AeonisCommands {
         }
         
         // Register entity for control
-        AeonisNetworking.setControlledEntity(player, entity.id)
+        AeonisNetworking.setControlledEntity(player, entity.id, player.inventory.selectedSlot)
+        syncControllingPlayers(player)
         
         // Auto-equip weapons for ranged mobs
         equipWeaponsForRangedMob(entity, player)
@@ -1275,7 +1282,8 @@ object AeonisCommands {
             val player = level.server.playerList.getPlayer(ownerUUID)
             if (player != null) {
                 player.setCamera(newEntity)
-                AeonisNetworking.setControlledEntity(player, newEntity.id)
+                AeonisNetworking.setControlledEntity(player, newEntity.id, player.inventory.selectedSlot)
+                syncControllingPlayers(player)
                 newEntity.setNoAi(true)
             }
         }
@@ -1316,6 +1324,7 @@ object AeonisCommands {
         
         // Stop controlling
         AeonisNetworking.removeControlledEntity(player)
+        syncControllingPlayers(player)
         
         // Stop spectating (in case of spectator mode)
         player.setCamera(player)
@@ -1452,7 +1461,8 @@ object AeonisCommands {
         }
         
         // Register entity for control
-        AeonisNetworking.setControlledEntity(player, mob.id)
+        AeonisNetworking.setControlledEntity(player, mob.id, player.inventory.selectedSlot)
+        syncControllingPlayers(player)
         
         // Auto-equip weapons for ranged mobs
         equipWeaponsForRangedMob(mob, player)
@@ -2072,13 +2082,8 @@ object AeonisCommands {
     private fun timeWarp(ctx: CommandContext<CommandSourceStack>): Int {
         val source = ctx.source
         val ticks = IntegerArgumentType.getInteger(ctx, "ticks")
-        val level = source.level
-        
-        val newTime = level.dayTime + ticks
-        level.setDayTime(newTime)
-        
-        source.sendSuccess({ Component.literal("§d⏰ TIME WARP! Shifted time forward by $ticks ticks.") }, true)
-        return 1
+        source.sendFailure(Component.literal("§e⏰ Time warp is temporarily disabled in the 26.1 migration build."))
+        return 0
     }
     
     private fun drunkVision(ctx: CommandContext<CommandSourceStack>): Int {
@@ -2129,8 +2134,7 @@ object AeonisCommands {
         // Set difficulty to hard
         server.setDifficulty(Difficulty.HARD, true)
         
-        // Set time to night (13000)
-        level.setDayTime(13000)
+        // Time mutation is temporarily disabled in the 26.1 migration build.
         
         // Give speed II for 20 sec
         player.addEffect(MobEffectInstance(MobEffects.SPEED, 400, 1))
@@ -2179,7 +2183,7 @@ object AeonisCommands {
         }
         
         // World info
-        val worldTime = level?.dayTime ?: 0L
+        val worldTime = level?.gameTime ?: 0L
         val dayCount = (worldTime / 24000L) + 1
         val timeOfDay = worldTime % 24000L
         val timeStr = when {
@@ -2371,6 +2375,7 @@ object AeonisCommands {
         
         // Stop controlling
         AeonisNetworking.removeControlledEntity(player)
+        syncControllingPlayers(player)
         
         // Stop spectating
         player.setCamera(player)

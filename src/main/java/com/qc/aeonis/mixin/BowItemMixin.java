@@ -96,7 +96,7 @@ public class BowItemMixin {
                     // Play sound
                     world.playSound(null, mob.getX(), mob.getY(), mob.getZ(),
                         SoundEvents.ARROW_SHOOT, SoundSource.NEUTRAL,
-                        1.0f, 1.0f / (world.random.nextFloat() * 0.4f + 1.2f) + pullProgress * 0.5f);
+                        1.0f, 1.0f / (world.getRandom().nextFloat() * 0.4f + 1.2f) + pullProgress * 0.5f);
                 }
             }
         }

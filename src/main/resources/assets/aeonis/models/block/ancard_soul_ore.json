@@ -1,6 +1,0 @@
-{
-  "parent": "minecraft:block/cube_all",
-  "textures": {
-    "all": "aeonis:block/ancard_soul_ore"
-  }
-}

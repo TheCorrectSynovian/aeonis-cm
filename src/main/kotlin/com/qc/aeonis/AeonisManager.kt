@@ -3,8 +3,6 @@ package com.qc.aeonis
 import com.qc.aeonis.command.AeonisCommands
 import com.qc.aeonis.config.AeonisFeatures
 import com.qc.aeonis.entity.AeonisEntities
-import com.qc.aeonis.entity.ancard.AncardEntities
-import com.qc.aeonis.entity.ancard.arda.AncardArdaEntities
 import com.qc.aeonis.entity.HerobrineEntity
 import com.qc.aeonis.entity.HerobrineSpawner
 import com.qc.aeonis.llm.AeonisAssistant
@@ -36,13 +34,18 @@ object AeonisManager : ModInitializer {
 	override fun onInitialize() {
 		com.qc.aeonis.block.AeonisBlocks.register()
 		com.qc.aeonis.block.entity.AeonisBlockEntities.register()
-		com.qc.aeonis.block.AncardBlocks.register()
+		// Ancard custom block registry is disabled per current content scope.
+		// com.qc.aeonis.block.AncardBlocks.register()
 		AeonisEntities.register()
-		AncardEntities.register()
-		AncardArdaEntities.register()
+		// Ancard mob systems are intentionally disabled in 26.1 migration.
+		// Ancard source remains in-tree but is excluded from compilation.
+		// AncardEntities.register()
+		// AncardArdaEntities.register()
 		com.qc.aeonis.item.AeonisItems.register()
+		com.qc.aeonis.worldgen.AeonisOverworldGeneration.register()
 		com.qc.aeonis.data.AeonisLootModifiers.register()
-		com.qc.aeonis.effect.AncardEffects.register()
+		// Ancard mob effects are disabled alongside Ancard mobs.
+		// com.qc.aeonis.effect.AncardEffects.register()
 		AeonisPossession.register()
 		AeonisCommands.register()
 		AeonisNetworking.registerServer()
@@ -61,11 +64,10 @@ object AeonisManager : ModInitializer {
 		com.qc.aeonis.minigame.manhunt.ManhuntCommands.register()
 		logger.info("Manhunt minigame registered")
 		
-		// Register Ancard dimension rules and events
-		com.qc.aeonis.dimension.AncardDimensionRules.register()
-		com.qc.aeonis.dimension.AncardEclipseEvent.register()
-		com.qc.aeonis.dimension.AncardSovereignSpawnManager.register()
-		logger.info("Ancard dimension systems registered")
+		// Ancard runtime systems are disabled.
+		// com.qc.aeonis.dimension.AncardDimensionRules.register()
+		// com.qc.aeonis.dimension.AncardEclipseEvent.register()
+		// com.qc.aeonis.dimension.AncardSovereignSpawnManager.register()
 		
 		// Register LLM feature
 		LlmCommands.register()
@@ -147,23 +149,14 @@ object AeonisManager : ModInitializer {
 					// The camera positioning is handled client-side in CameraMixin
 					mob.setPos(player.x, player.y, player.z)
 					val desiredYaw = player.yRot
-					val yawBlend = getYawBlend(mob)
-					val smoothedYaw = mob.yRot + Mth.wrapDegrees(desiredYaw - mob.yRot) * yawBlend
-					mob.setYRot(smoothedYaw)
-					mob.setYHeadRot(smoothedYaw)
+					mob.setYRot(desiredYaw)
+					mob.setYHeadRot(desiredYaw)
 					if (mob is net.minecraft.world.entity.LivingEntity) {
-						mob.yBodyRot = smoothedYaw
+						mob.yBodyRot = desiredYaw
 					}
-					val flightLike = AeonisNetworking.canMobFly(mob) || mob.isInWater || mob.isInLava
-					if (flightLike) {
-						val desiredPitch = player.xRot
-						val smoothedPitch = mob.xRot + (desiredPitch - mob.xRot) * 0.35f
-						mob.setXRot(smoothedPitch)
-					} else {
-						// Ground mobs should not fully pitch with camera; it looks unnatural.
-						mob.setXRot(0.0f)
-					}
+					mob.setXRot(player.xRot)
 					if (mob is net.minecraft.world.entity.Mob) {
+						mob.navigation.stop()
 						val input = AeonisNetworking.getLatestControlInput(player.uuid)
 						if (input != null) {
 							mob.setZza(input.forward)
@@ -255,7 +248,7 @@ object AeonisManager : ModInitializer {
 				player.sendSystemMessage(Component.literal(""))
 				player.sendSystemMessage(Component.literal("§6§l⚠ §e§lProp Hunt Notice §6§l⚠"))
 				player.sendSystemMessage(Component.literal("§7━━━━━━━━━━━━━━━━━━━━━━━━━━━━"))
-				player.sendSystemMessage(Component.literal("§eThe new §6§lProp Hunt §efeature is §c§lEXPERIMENTAL §eand §c§lWIP§e!"))
+				player.sendSystemMessage(Component.literal("§eThe new 26.1 build is §c§lEXPERIMENTAL §eand §c§lWIP§e!"))
 				player.sendSystemMessage(Component.literal("§7Some features may not work as expected."))
 				player.sendSystemMessage(Component.literal("§7Report bugs on our GitHub!"))
 				player.sendSystemMessage(Component.literal("§7━━━━━━━━━━━━━━━━━━━━━━━━━━━━"))

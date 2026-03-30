@@ -1,6 +1,6 @@
 package com.qc.aeonis.llm.network.payloads;
 
-import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.Identifier;
@@ -20,7 +20,7 @@ public record LlmTestConnectionPayload(
         Identifier.fromNamespaceAndPath("aeonis-manager", "llm_test_connection")
     );
     
-    public static final StreamCodec<FriendlyByteBuf, LlmTestConnectionPayload> CODEC = StreamCodec.of(
+    public static final StreamCodec<RegistryFriendlyByteBuf, LlmTestConnectionPayload> CODEC = StreamCodec.of(
         (buf, payload) -> {
             buf.writeUtf(payload.provider);
             buf.writeUtf(payload.model);

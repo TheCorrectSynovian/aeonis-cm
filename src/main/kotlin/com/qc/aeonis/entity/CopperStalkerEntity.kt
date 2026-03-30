@@ -2,8 +2,6 @@ package com.qc.aeonis.entity
 
 import com.qc.aeonis.config.AeonisFeatures
 import net.minecraft.core.particles.ParticleTypes
-import com.qc.aeonis.entity.ancard.geo.AncardGeoMonster
-import com.qc.aeonis.entity.ancard.geo.AncardGeoUtil
 import net.minecraft.network.chat.Component
 import net.minecraft.world.level.storage.ValueInput
 import net.minecraft.world.level.storage.ValueOutput
@@ -35,6 +33,7 @@ import net.minecraft.world.entity.ai.goal.RandomLookAroundGoal
 import net.minecraft.world.entity.ai.goal.WaterAvoidingRandomStrollGoal
 import net.minecraft.world.entity.ai.goal.target.HurtByTargetGoal
 import net.minecraft.world.entity.ai.goal.target.NearestAttackableTargetGoal
+import net.minecraft.world.entity.monster.Monster
 import net.minecraft.world.entity.npc.villager.Villager
 import net.minecraft.world.entity.player.Player
 import net.minecraft.world.item.Item
@@ -44,15 +43,11 @@ import net.minecraft.world.item.enchantment.Enchantments
 import net.minecraft.world.level.Level
 import net.minecraft.world.level.LightLayer
 import net.minecraft.world.level.ServerLevelAccessor
-import software.bernie.geckolib.animatable.manager.AnimatableManager
-import software.bernie.geckolib.animation.AnimationController
-import software.bernie.geckolib.animation.`object`.PlayState
-import software.bernie.geckolib.animation.state.AnimationTest
 import java.util.EnumSet
 import java.util.UUID
 
 class CopperStalkerEntity(entityType: EntityType<out CopperStalkerEntity>, level: Level) :
-    AncardGeoMonster(entityType, level, "copper_stalker") {
+    Monster(entityType, level) {
     // Invisibility triggers at health <= 5, lasts 3 seconds (60 ticks)
     private val lowHealthThreshold = 5f
     private val invisDurationTicks = 60 // 3 seconds
@@ -184,7 +179,7 @@ class CopperStalkerEntity(entityType: EntityType<out CopperStalkerEntity>, level
         val serverLevel = level() as? ServerLevel ?: return
         
         // Check if it's daytime
-        val dayTime = serverLevel.dayTime % 24000L
+        val dayTime = serverLevel.gameTime % 24000L
         val isDaytime = dayTime < 12000L || dayTime > 23500L
         
         if (!isDaytime) {
@@ -273,7 +268,7 @@ class CopperStalkerEntity(entityType: EntityType<out CopperStalkerEntity>, level
             lookControl.setLookAt(owner, 30f, 30f)
         }
 
-        val dayTime = serverLevel.dayTime % 24000L
+        val dayTime = serverLevel.gameTime % 24000L
         val isMorning = dayTime in 0L..1200L
 
         if (isMorning) {
@@ -366,26 +361,6 @@ class CopperStalkerEntity(entityType: EntityType<out CopperStalkerEntity>, level
         return super.doHurtTarget(level, target)
     }
 
-    override fun registerControllers(controllers: AnimatableManager.ControllerRegistrar) {
-        controllers.add(
-            AnimationController<CopperStalkerEntity>("move", 3) { test: AnimationTest<CopperStalkerEntity> ->
-                if (isFleeing) {
-                    return@AnimationController test.setAndContinue(AncardGeoUtil.loop(animId, "flee"))
-                }
-                if (test.isMoving()) test.setAndContinue(AncardGeoUtil.loop(animId, "walk"))
-                else test.setAndContinue(AncardGeoUtil.loop(animId, "idle"))
-            }
-        )
-        controllers.add(
-            AnimationController<CopperStalkerEntity>("attack", 0) { test: AnimationTest<CopperStalkerEntity> ->
-                if (attackAnimTicks > 0) {
-                    return@AnimationController test.setAndContinue(AncardGeoUtil.once(animId, "attack"))
-                }
-                PlayState.STOP
-            }
-        )
-    }
-
     override fun finalizeSpawn(
         accessor: ServerLevelAccessor,
         difficulty: DifficultyInstance,
@@ -476,7 +451,7 @@ class CopperStalkerEntity(entityType: EntityType<out CopperStalkerEntity>, level
                 return false
             }
             
-            val time = serverLevel.dayTime % 24000L
+            val time = serverLevel.gameTime % 24000L
             val isNight = time in 13000L..23000L
             return isNight && checkMonsterSpawnRules(type, world, reason, pos, random)
         }

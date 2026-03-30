@@ -1,5 +1,6 @@
 package com.qc.aeonis.mixin.client;
 
+import com.qc.aeonis.client.AeonisFreecam;
 import com.qc.aeonis.network.AeonisClientNetworking;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
@@ -7,6 +8,7 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.monster.Ghast;
+import net.minecraft.world.phys.Vec3;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -22,6 +24,14 @@ public abstract class LocalPlayerMixin {
     
     @Inject(method = "tick", at = @At("TAIL"))
     private void aeonis$onTick(CallbackInfo ci) {
+        if (AeonisFreecam.INSTANCE.isEnabled()) {
+            LocalPlayer player = (LocalPlayer)(Object)this;
+            Vec3 anchor = AeonisFreecam.INSTANCE.getAnchorPos();
+            player.setDeltaMovement(Vec3.ZERO);
+            player.setPos(anchor.x, anchor.y, anchor.z);
+            player.setOldPosAndRot();
+        }
+
         if (!AeonisClientNetworking.INSTANCE.isControlling()) {
             return;
         }

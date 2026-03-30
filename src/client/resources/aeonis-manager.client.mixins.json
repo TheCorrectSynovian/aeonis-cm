@@ -1,20 +1,10 @@
 {
 	"required": true,
 	"package": "com.qc.aeonis.mixin.client",
+	"refmap": "aeonis-manager.refmap.json",
 	"compatibilityLevel": "JAVA_21",
 	"client": [
-		"MultiPlayerGameModeMixin",
-		"CameraMixin",
-		"GameRendererMixin",
-		"ClientCollisionMixin",
-		"LocalPlayerMixin",
-		"PlayerRendererMixin",
-		"MobRenderMixin",
-		"InGameOverlayRendererMixin",
-		"PlayerCameraPosMixin",
-		"WindowTitleMixin",
-		"OptionsScreenMixin",
-		"AncardFogMixin"
+		"TransformationCameraMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1
