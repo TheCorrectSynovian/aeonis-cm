@@ -53,6 +53,84 @@
 - Major stabilization areas: startup/runtime mixin compatibility, integrated server/world-load reliability, transformed camera + interaction behavior, and state cleanup.
 - Warning policy remaster: startup spam removed, targeted WIP warnings retained only where needed.
 
+---
+
+## 🧭 Fabric 26.1 Porting Reference (Maintainer + AI)
+
+This section is a structured internal reference for future Aeonis updates.
+It summarizes major Fabric 26.1 migration guidance in actionable form.
+
+### Source Context
+- Based on the Fabric 26.1 ecosystem guidance and release communication (Mar 2026).
+- Intended for maintainers, contributors, and AI-assisted update workflows.
+
+### Core Reality of 26.1
+- Minecraft 26.1 is unobfuscated.
+- Mods from 1.21.11 and earlier do not run as-is; at minimum, recompilation is required.
+- Official Mojang mappings are the expected baseline for Fabric 26.1 projects.
+
+### Toolchain Baseline
+- Loom: 1.15+
+- Gradle: 9.4+
+- Fabric Loader: latest stable for 26.1 line (minimum compatible release)
+- Java: 25 minimum for Gradle JVM
+- IntelliJ IDEA: 2025.3+ recommended for stable mixin IDE behavior
+
+### Buildscript Migration Rules
+- Use plugin: `net.fabricmc.fabric-loom` (unobfuscated workflow)
+- Replace old remap-centric dependencies:
+  - `modImplementation` -> `implementation`
+  - `modCompileOnly` -> `compileOnly`
+- Replace `remapJar`-centric assumptions with `jar` in pure unobfuscated workflows where applicable
+
+### Fabric API Migration Notes
+- `fabric` mod id dependency from Fabric API is no longer provided; depend on `fabric-api` correctly.
+- Removed deprecated modules:
+  - `fabric-convention-tags-v1`
+  - `fabric-loot-api-v2`
+- Deprecated HUD callback path replaced:
+  - old: `HudRenderCallback`
+  - new: `HudElementRegistry`
+- Naming alignment with official mappings means API renames are required during migration.
+  - example: `ItemGroupEvents` -> `CreativeModeTabEvents`
+
+### New/Important Fabric Event Patterns
+- Dimension attribute modification event is preferred over per-biome bulk patching for dimension-wide defaults.
+- New finer-grained block/item interaction events exist for cleaner vanilla flow interception:
+  - `BlockEvents.USE_ITEM_ON`
+  - `BlockEvents.USE_WITHOUT_ITEM`
+  - `ItemEvents.USE_ON`
+  - `ItemEvents.USE`
+
+### Rendering + Model Notes
+- Legacy OpenGL-direct assumptions should be reduced; backend changes are expected beyond 26.1.
+- Block color registration moved from broad legacy path to dedicated block color registry APIs.
+- Terrain render layer behavior is increasingly automatic from sprite/model properties.
+
+### Minecraft-Side 26.1 Data/Code Changes to Watch
+- Item stack lifecycle changed: avoid creating/using certain stack data before world load; template-based patterns may be required.
+- Recipe serializers moved toward codec-centric definitions.
+- Villager trading is data-driven; prefer data pack registrations over older helper-only APIs.
+- Fluid rendering flow moved toward fluid model registration patterns.
+
+### Aeonis Update Checklist for Future Versions
+1. Confirm Gradle + Loom + Java baseline first.
+2. Verify mapping assumptions (official names) before touching gameplay code.
+3. Run search for removed/deprecated Fabric API modules/events.
+4. Audit mixin targets and signatures against current MC classes.
+5. Validate worldgen/data pack references (registry keys must exist).
+6. Run transformed gameplay regression pass (camera, interaction, untransform cleanup).
+7. Update changelog + README migration notes before final release tag.
+
+### Risk Warnings
+- World format/storage and registry behavior can change across major lines: always back up test worlds.
+- Rendering internals remain high churn during the 26.1 -> 26.2 era.
+- Keep warning UX targeted: avoid login spam; notify only in specific WIP surfaces.
+
+### Contributor Policy Reminder
+- Do not pressure maintainers for same-day updates after major MC/Fabric jumps.
+- Prefer reproducible issue reports with logs, mappings context, and exact mod list.
+
 ### 🎯 Prop Hunt Hotfix Remaster
 - Fixed player leave/disconnect state restoration to prevent stuck disguise/inventory/gamemode issues
 - Added stronger round-state validation (countdown cancellation when player count drops, start guards, duplicate round-end guards)
