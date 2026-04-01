@@ -960,6 +960,9 @@ object AeonisCommands {
             entity.phaseManager.setPhase(EnderDragonPhase.HOVERING)
             // Ensure AI is enabled for Dragon
             entity.setNoAi(false)
+            player.sendSystemMessage(
+                Component.literal("§6[AEONIS] Warning: Ender Dragon transformation is still a work in progress due to multi-AI and multi-entity boss behavior.")
+            )
         }
         
         // Register entity for control
@@ -1300,7 +1303,7 @@ object AeonisCommands {
         }
         
         // Handle command-transform path
-        if (transformedEntities.containsKey(player.uuid)) {
+        if (transformedEntities.containsKey(player.uuid) || AeonisNetworking.isPlayerTransformed(player.uuid)) {
             autoUntransform(player, showMessage = true)
             return 1
         }
@@ -1319,8 +1322,10 @@ object AeonisCommands {
      * Auto-untransform helper function - used both by command and automatic death detection
      */
     fun autoUntransform(player: ServerPlayer, showMessage: Boolean = false) {
-        // Check if transformed
-        val entity = transformedEntities.remove(player.uuid) ?: return
+        // Support desynced states: cleanup should still run when network says transformed.
+        val entity = transformedEntities.remove(player.uuid)
+        val hadNetworkControl = AeonisNetworking.isPlayerTransformed(player.uuid)
+        if (entity == null && !hadNetworkControl) return
         
         // Stop controlling
         AeonisNetworking.removeControlledEntity(player)
@@ -1336,6 +1341,7 @@ object AeonisCommands {
         // Restore original gamemode
         val originalMode = originalGameModes.remove(player.uuid) ?: GameType.SURVIVAL
         player.setGameMode(originalMode)
+        restoreFlightState(player, originalMode)
         restoreOriginalMoveSpeed(player)
         
         // IMPORTANT: Reset player health to default (20.0 / 10 hearts)
@@ -1343,7 +1349,7 @@ object AeonisCommands {
         player.health = 20.0f
         
         // Teleport player to entity's last position (if entity still exists)
-        if (entity.isAlive) {
+        if (entity != null && entity.isAlive) {
             player.teleportTo(entity.x, entity.y, entity.z)
             // Kill the spawned entity
             entity.discard()
@@ -1352,6 +1358,16 @@ object AeonisCommands {
         if (showMessage) {
             player.sendSystemMessage(Component.literal("§a✨ You returned to your normal form!"))
         }
+    }
+
+    private fun restoreFlightState(player: ServerPlayer, gameType: GameType) {
+        if (gameType == GameType.CREATIVE || gameType == GameType.SPECTATOR) {
+            player.abilities.mayfly = true
+        } else {
+            player.abilities.mayfly = false
+            player.abilities.flying = false
+        }
+        player.onUpdateAbilities()
     }
     
     // ========== SOUL MODE ==========

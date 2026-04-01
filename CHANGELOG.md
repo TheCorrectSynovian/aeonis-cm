@@ -1,5 +1,52 @@
 # Aeonis - Changelog
 
+## 4.0.0 - First Stable 26.1 Release (2026-04-02)
+
+### Release Focus
+- First non-snapshot stable build on Minecraft 26.1.
+- Stabilization pass after the full 1.21.11 -> 26.1 transition cycle.
+- Compatibility metadata updated for 26.1 hotfix line (26.1.1 supported while 26.1 remains baseline).
+
+### Final Pre-Stable Highlights
+- Restored transformed interaction flow and improved transformed camera alignment/raycast origin.
+- Added stronger transform/untransform cleanup paths to reduce leftover transformed state.
+- Reworked warning policy:
+  - Removed global startup spam warnings.
+  - Added world-once install notice for 26.1 port status.
+  - Added specific Ender Dragon transformation WIP warning.
+- Restored vanilla game window/title behavior.
+- Rebuilt English localization set for active Aeonis namespaces.
+
+### 26.1 Porting Timeline (1.21.11 -> 26.1)
+
+#### 4.0-SNAPSHOT5_mc26.1 (2026-03-28)
+- Initial Minecraft 26.1 bootstrapping snapshot.
+- Early mapping/mixin target adaptation and first-pass compile recovery.
+
+#### 4.0-SNAPSHOT6_mc26.1 (2026-03-29)
+- Extended API/mapping migration fixes and runtime guard improvements.
+- Additional compatibility refactors for transformed control paths.
+
+#### 4.0-SNAPSHOT7_mc26.1 (2026-03-30)
+- Startup crash stabilization pass for changed vanilla targets.
+- Hardened mixin coverage to avoid hard-fail during client/server init.
+
+#### 4.0-SNAPSHOT8_mc26.1 (2026-03-31)
+- Follow-up stabilization after first successful startup path.
+- Integrated server/world-load crash triage and compatibility cleanup.
+
+#### 4.0-SNAPSHOT9_mc26.1 (2026-04-01)
+- Fixed world-load holder crash tied to unavailable worldgen feature keys.
+- Disabled unstable worldgen registration path for 26.1 safety.
+
+#### 4.0-SNAPSHOT10_mc26.1 (2026-04-01)
+- Camera/interaction pass for transformed gameplay usability.
+- Re-enabled practical transformed play loop (movement + POV + core interaction reliability).
+
+### Migration Notes
+- Previous baseline before this cycle: 1.21.11 line.
+- 4.0.0 marks the end of the transition branch and start of stable 26.1 releases.
+
 ## 3.1.0 - The HotFix Snapshot (2026-02-22)
 
 ### Prop Hunt Hotfix Remaster

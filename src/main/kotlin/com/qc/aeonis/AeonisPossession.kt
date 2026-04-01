@@ -168,6 +168,7 @@ object AeonisPossession {
     fun handleRelease(player: ServerPlayer, clientBodyX: Double, clientBodyY: Double, clientBodyZ: Double) {
         val playerId = player.uuid
         if (!activePossessions.getOrDefault(playerId, false)) return
+        exitPossessionMode(playerId)
 
         // Additional cleanup: save the controlled entity before clearing its mapping
         val controlledId = AeonisNetworking.getControlledEntityId(playerId)
@@ -198,7 +199,10 @@ object AeonisPossession {
         // Restore gamemode and visibility
         player.isInvisible = false
         val original = originalGameModes.remove(playerId)
-        if (original != null) player.setGameMode(original)
+        if (original != null) {
+            player.setGameMode(original)
+            restoreFlightState(player, original)
+        }
 
         // Reset attributes to normal player defaults
         val finalHealth = body?.health ?: player.health
@@ -318,6 +322,11 @@ object AeonisPossession {
             try {
                 player.noPhysics = false
                 player.isInvisible = false
+                if (!player.isCreative && !player.isSpectator) {
+                    player.abilities.mayfly = false
+                    player.abilities.flying = false
+                    player.onUpdateAbilities()
+                }
             } catch (_: Exception) {}
         }
         
@@ -347,6 +356,7 @@ object AeonisPossession {
 
     fun onPlayerDisconnect(player: ServerPlayer, server: net.minecraft.server.MinecraftServer) {
         val pid = player.uuid
+        exitPossessionMode(pid)
 
         // If the player was controlling a mob, save their held items into the mob
         val controlledId = AeonisNetworking.getControlledEntityId(pid)
@@ -382,7 +392,10 @@ object AeonisPossession {
                 }
             }
             val original = originalGameModes.remove(pid)
-            if (original != null) player.setGameMode(original)
+            if (original != null) {
+                player.setGameMode(original)
+                restoreFlightState(player, original)
+            }
             
             // IMPORTANT: Reset player's max health and health to default (20)
             // This prevents the bug where player keeps mob's health after reconnect
@@ -393,5 +406,15 @@ object AeonisPossession {
         
         // Reset noPhysics flag
         try { player.noPhysics = false } catch (_: Exception) {}
+    }
+
+    private fun restoreFlightState(player: ServerPlayer, gameType: GameType) {
+        if (gameType == GameType.CREATIVE || gameType == GameType.SPECTATOR) {
+            player.abilities.mayfly = true
+        } else {
+            player.abilities.mayfly = false
+            player.abilities.flying = false
+        }
+        player.onUpdateAbilities()
     }
 }

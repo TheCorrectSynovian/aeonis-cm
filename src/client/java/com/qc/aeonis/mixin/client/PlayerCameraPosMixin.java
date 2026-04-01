@@ -3,6 +3,7 @@ package com.qc.aeonis.mixin.client;
 import com.qc.aeonis.network.AeonisClientNetworking;
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.phys.Vec3;
 import org.spongepowered.asm.mixin.Mixin;
@@ -31,11 +32,9 @@ public class PlayerCameraPosMixin {
             int mobId = AeonisClientNetworking.INSTANCE.getControlledMobId();
             Entity entity = client.level.getEntity(mobId);
             
-            if (entity instanceof Mob mob) {
-                // Return eye position at player's XZ but at mob's eye height
-                Vec3 playerPos = client.player.getPosition(tickDelta);
-                float mobEyeHeight = mob.getEyeHeight();
-                cir.setReturnValue(new Vec3(playerPos.x, playerPos.y + (double)mobEyeHeight, playerPos.z));
+            if (entity instanceof LivingEntity living) {
+                // Use controlled entity's interpolated eye position for accurate POV raycasting.
+                cir.setReturnValue(living.getEyePosition(tickDelta));
             }
         }
     }

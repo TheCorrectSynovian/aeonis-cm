@@ -1,12 +1,24 @@
 {
-	"required": true,
-	"package": "com.qc.aeonis.mixin.client",
-	"refmap": "aeonis-manager.refmap.json",
-	"compatibilityLevel": "JAVA_21",
-	"client": [
-		"TransformationCameraMixin"
-	],
-	"injectors": {
-		"defaultRequire": 1
-	}
+  "required": true,
+  "package": "com.qc.aeonis.mixin.client",
+  "refmap": "aeonis-manager.refmap.json",
+  "compatibilityLevel": "JAVA_21",
+  "client": [
+    "WindowTitleMixin",
+    "PlayerRendererMixin",
+    "PlayerCameraPosMixin",
+    "OptionsScreenMixin",
+    "MultiPlayerGameModeMixin",
+    "MobRenderMixin",
+    "LocalPlayerMixin",
+    "InGameOverlayRendererMixin",
+    "GameRendererMixin",
+    "ExampleClientMixin",
+    "ClientCollisionMixin",
+    "CameraMixin",
+    "AncardFogMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
 }

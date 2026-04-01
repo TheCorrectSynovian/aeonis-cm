@@ -34,7 +34,7 @@ public class GameRendererMixin {
     @Final
     private Minecraft minecraft;
     
-    @Inject(method = "pick(F)V", at = @At("HEAD"), cancellable = true)
+    @Inject(method = "pick", at = @At("HEAD"), cancellable = true, require = 0)
     private void aeonis$customPick(float tickDelta, CallbackInfo ci) {
         if (AeonisFreecam.INSTANCE.isEnabled()) {
             ci.cancel();
@@ -165,7 +165,7 @@ public class GameRendererMixin {
         this.minecraft.hitResult = BlockHitResult.miss(endPos, missDir, missPos);
     }
 
-    @Inject(method = "getFov(Lnet/minecraft/client/Camera;FZ)F", at = @At("RETURN"), cancellable = true)
+    @Inject(method = "getFov", at = @At("RETURN"), cancellable = true, require = 0)
     private void aeonis$applyZoomFov(Camera camera, float tickDelta, boolean useConfigFov, CallbackInfoReturnable<Float> cir) {
         if (this.minecraft.player == null || this.minecraft.screen != null) {
             aeonis$zoomProgress = Math.max(0.0F, aeonis$zoomProgress - 0.25F);

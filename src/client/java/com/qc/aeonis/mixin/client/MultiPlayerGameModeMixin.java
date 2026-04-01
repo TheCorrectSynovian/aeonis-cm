@@ -22,9 +22,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 /**
- * Mixin to handle attack behavior when player is controlling a mob.
- * Short left-click = melee attack by controlled mob (handled via MobControlPayload)
- * Long left-click = block breaking by player (allow vanilla behavior)
+ * Client interaction hooks.
+ * Keep vanilla block/entity interaction intact while transformed.
  */
 @Mixin(MultiPlayerGameMode.class)
 public class MultiPlayerGameModeMixin {
@@ -32,19 +31,8 @@ public class MultiPlayerGameModeMixin {
     @Shadow @Final private ClientPacketListener connection;
     
     /**
-     * Cancel entity attacks while controlling - melee is handled via custom packet
-     */
-    @Inject(method = "attack", at = @At("HEAD"), cancellable = true)
-    private void aeonis$cancelAttackWhileControlling(Player player, Entity target, CallbackInfo ci) {
-        // If player is controlling a mob, cancel the vanilla entity attack
-        // Our custom melee attack handling is done via MobControlPayload on short click
-        if (AeonisClientNetworking.INSTANCE.isControlling()) {
-            ci.cancel();
-        }
-    }
-    
-    /**
-     * Allow block breaking when long-pressing left click while controlling a mob
+     * Only intercept block destroy in freecam remote-break mode.
+     * In normal transformed gameplay, vanilla behavior should run unmodified.
      */
     @Inject(method = "startDestroyBlock", at = @At("HEAD"), cancellable = true)
     private void aeonis$allowBlockBreakingOnLongPress(BlockPos pos, Direction direction, CallbackInfoReturnable<Boolean> cir) {
@@ -61,16 +49,10 @@ public class MultiPlayerGameModeMixin {
             cir.setReturnValue(true);
             return;
         }
-
-        // If controlling and NOT in block breaking mode (short click), cancel block breaking start
-        if (AeonisClientNetworking.INSTANCE.isControlling() && !AeonisClientNetworking.INSTANCE.isBreakingBlock()) {
-            cir.setReturnValue(false);
-        }
-        // If isBreakingBlock() is true, allow vanilla block breaking to proceed
     }
     
     /**
-     * Allow block breaking continuation when in block breaking mode
+     * Only intercept continuation in freecam remote-break mode.
      */
     @Inject(method = "continueDestroyBlock", at = @At("HEAD"), cancellable = true)
     private void aeonis$allowContinueBlockBreaking(BlockPos pos, Direction direction, CallbackInfoReturnable<Boolean> cir) {
@@ -83,11 +65,6 @@ public class MultiPlayerGameModeMixin {
             this.connection.send(new ServerboundPlayerActionPacket(Action.STOP_DESTROY_BLOCK, pos, direction));
             cir.setReturnValue(true);
             return;
-        }
-
-        // Only allow continuing block break if we're in block breaking mode
-        if (AeonisClientNetworking.INSTANCE.isControlling() && !AeonisClientNetworking.INSTANCE.isBreakingBlock()) {
-            cir.setReturnValue(false);
         }
     }
 

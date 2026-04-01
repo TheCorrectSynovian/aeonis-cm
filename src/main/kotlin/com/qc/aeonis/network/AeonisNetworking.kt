@@ -362,7 +362,8 @@ object AeonisNetworking {
 
         // Send controlled entity status to each controlling player at end of server tick
         net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents.END_SERVER_TICK.register { server ->
-            for ((playerUuid, entityId) in controlledEntities) {
+            pruneInvalidControlStates(server)
+            for ((playerUuid, entityId) in controlledEntities.toMap()) {
                 try {
                     val player = server.playerList.getPlayer(playerUuid) ?: continue
                     val level = player.level() as? net.minecraft.server.level.ServerLevel ?: continue
@@ -478,9 +479,25 @@ object AeonisNetworking {
         controlledEntities.remove(player.uuid)
         latestControlInputs.remove(player.uuid)
         attackCooldowns.remove(player.uuid)
+        witchPotionCooldowns.remove(player.uuid)
+        teleportCooldowns.remove(player.uuid)
+        projectileCooldowns.remove(player.uuid)
         try { player.isInvisible = false } catch (_: Exception) {}
         // Tell client to stop controlling
         ServerPlayNetworking.send(player, ControlModePayload(false, -1, -1))
+    }
+
+    /**
+     * Remove server-side control tracking without sending network packets.
+     * Useful for disconnect/offline cleanup.
+     */
+    fun clearControlState(playerUuid: java.util.UUID) {
+        controlledEntities.remove(playerUuid)
+        latestControlInputs.remove(playerUuid)
+        attackCooldowns.remove(playerUuid)
+        witchPotionCooldowns.remove(playerUuid)
+        teleportCooldowns.remove(playerUuid)
+        projectileCooldowns.remove(playerUuid)
     }
     
     fun getControlledEntityId(playerUuid: java.util.UUID): Int? {
@@ -499,6 +516,34 @@ object AeonisNetworking {
         for (player in server.playerList.players) {
             ServerPlayNetworking.send(player, payload)
         }
+    }
+
+    /**
+     * Prunes invalid transformation states (offline players, missing entities, dead entities).
+     */
+    fun pruneInvalidControlStates(server: net.minecraft.server.MinecraftServer): Boolean {
+        if (controlledEntities.isEmpty()) return false
+
+        val stalePlayers = mutableListOf<java.util.UUID>()
+        for ((playerUuid, entityId) in controlledEntities) {
+            val player = server.playerList.getPlayer(playerUuid)
+            if (player == null) {
+                stalePlayers.add(playerUuid)
+                continue
+            }
+
+            val level = player.level() as? net.minecraft.server.level.ServerLevel
+            val entity = level?.getEntity(entityId)
+            if (entity == null || !entity.isAlive) {
+                stalePlayers.add(playerUuid)
+            }
+        }
+
+        if (stalePlayers.isEmpty()) return false
+
+        stalePlayers.forEach { clearControlState(it) }
+        broadcastControllingPlayers(server)
+        return true
     }
     
     /**

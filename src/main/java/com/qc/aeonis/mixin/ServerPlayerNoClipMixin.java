@@ -21,6 +21,8 @@ public abstract class ServerPlayerNoClipMixin {
             // Transformed movement should keep normal physics for natural control.
             if (AeonisPossession.INSTANCE.isPlayerInPossessionMode(serverPlayer.getUUID())) {
                 player.noPhysics = true;
+            } else if (AeonisNetworking.INSTANCE.isPlayerTransformed(serverPlayer.getUUID())) {
+                player.noPhysics = false;
             }
         }
     }
@@ -35,6 +37,8 @@ public abstract class ServerPlayerNoClipMixin {
                 player.noPhysics = true;
                 player.setDeltaMovement(new Vec3(player.getDeltaMovement().x, player.getDeltaMovement().y, player.getDeltaMovement().z));
                 player.fallDistance = 0.0F;
+            } else if (AeonisNetworking.INSTANCE.isPlayerTransformed(serverPlayer.getUUID())) {
+                player.noPhysics = false;
             } else if (!AeonisPossession.INSTANCE.isPlayerInPossessionMode(serverPlayer.getUUID()) && 
                        !AeonisNetworking.INSTANCE.isPlayerTransformed(serverPlayer.getUUID()) && 
                        player.noPhysics && !player.isSpectator()) {

@@ -2,7 +2,7 @@
   <img src="https://media.forgecdn.net/avatars/console-avatars/avatar_15441b09-293b-46b5-9f56-a72f7d35a1b7.png" alt="Aeonis Banner"/>
 </p>
 
-<h1 align="center">⚡ Aeonis v3.1.0 — The HotFix Snapshot ⚡</h1>
+<h1 align="center">⚡ Aeonis v4.0.0 — First Stable 26.1 Release ⚡</h1>
 
 <p align="center">
   <b>Take control. Command anything. Master the game.</b>
@@ -13,12 +13,12 @@
 </p>
 
 <p align="center">
-  <a href="https://fabricmc.net/"><img src="https://img.shields.io/badge/Fabric-1.21.11-blue?style=for-the-badge&logo=fabric&logoColor=white" alt="Fabric"></a>
-  <a href="https://quiltmc.org/"><img src="https://img.shields.io/badge/Quilt-1.21.11-2E2E2E?style=for-the-badge&logo=quilt&logoColor=white" alt="Quilt"></a>
+  <a href="https://fabricmc.net/"><img src="https://img.shields.io/badge/Fabric-26.1-blue?style=for-the-badge&logo=fabric&logoColor=white" alt="Fabric"></a>
+  <a href="https://quiltmc.org/"><img src="https://img.shields.io/badge/Quilt-26.1-2E2E2E?style=for-the-badge&logo=quilt&logoColor=white" alt="Quilt"></a>
   <a href="https://www.curseforge.com/minecraft/mc-mods/aeonis-command-master"><img src="https://img.shields.io/badge/CurseForge-Download-orange?style=for-the-badge&logo=curseforge&logoColor=white" alt="CurseForge"></a>
   <a href="https://modrinth.com/mod/aeonis-command-master"><img src="https://img.shields.io/badge/Modrinth-Download-green?style=for-the-badge&logo=modrinth&logoColor=white" alt="Modrinth"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge" alt="License"></a>
-  <img src="https://img.shields.io/badge/Version-3.1.0-purple?style=for-the-badge" alt="Version">
+  <img src="https://img.shields.io/badge/Version-4.0.0-purple?style=for-the-badge" alt="Version">
 </p>
 
 <p align="center">
@@ -35,13 +35,23 @@
 ---
 
 
-# Aeonis — The HotFix Snapshot (v3.1.0)
+# Aeonis — First Stable 26.1 Release (v4.0.0)
 
 **Aeonis** is a multi-system Minecraft framework combining **mob possession**, **AI-assisted command systems**, **custom dimensions**, **unique mobs**, and **advanced rendering** into one unified experience.
 
 ---
 
-## 🆕 What’s New in 3.1.0 — The HotFix Snapshot
+## 🆕 What’s New in 4.0.0 — First Stable 26.1 Release
+
+### ✅ Stable Release Milestone
+- First non-snapshot stable release on Minecraft 26.1.
+- 26.1.1 hotfix compatibility is supported while 26.1 remains the baseline requirement.
+- Finalized migration line from 1.21.11 to 26.1 with snapshot stabilization completed.
+
+### 🔁 26.1 Transition Summary
+- Snapshot path completed: `4.0-SNAPSHOT5` -> `4.0-SNAPSHOT10`.
+- Major stabilization areas: startup/runtime mixin compatibility, integrated server/world-load reliability, transformed camera + interaction behavior, and state cleanup.
+- Warning policy remaster: startup spam removed, targeted WIP warnings retained only where needed.
 
 ### 🎯 Prop Hunt Hotfix Remaster
 - Fixed player leave/disconnect state restoration to prevent stuck disguise/inventory/gamemode issues

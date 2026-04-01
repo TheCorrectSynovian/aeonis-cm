@@ -11,11 +11,11 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(Minecraft.class)
 public class WindowTitleMixin {
-    
+
     @Shadow @Final private Window window;
-    
+
     @Inject(method = "updateTitle", at = @At("TAIL"))
     private void modifyWindowTitle(CallbackInfo ci) {
-        this.window.setTitle("Minecraft 1.21.11 (Aeonis Plus)");
+        // Intentionally no-op: keep vanilla title text.
     }
 }

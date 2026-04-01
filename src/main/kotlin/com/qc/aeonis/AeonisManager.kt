@@ -42,7 +42,9 @@ object AeonisManager : ModInitializer {
 		// AncardEntities.register()
 		// AncardArdaEntities.register()
 		com.qc.aeonis.item.AeonisItems.register()
-		com.qc.aeonis.worldgen.AeonisOverworldGeneration.register()
+		// Disabled for 26.1 stabilization: some referenced placed-feature keys are not shipped.
+		// Re-enable after worldgen datapack/resources are fully aligned with registered content.
+		// com.qc.aeonis.worldgen.AeonisOverworldGeneration.register()
 		com.qc.aeonis.data.AeonisLootModifiers.register()
 		// Ancard mob effects are disabled alongside Ancard mobs.
 		// com.qc.aeonis.effect.AncardEffects.register()
@@ -222,47 +224,35 @@ object AeonisManager : ModInitializer {
 			}
 		}
 		
-		// Register player join event to show welcome message about extra mobs
+		// Register player join event
 		ServerPlayConnectionEvents.JOIN.register { handler, sender, server ->
 			val player = handler.player
+			// Ensure stale state from previous sessions cannot leak into this login.
+			AeonisNetworking.clearControlState(player.uuid)
 			
-			// Show message if player hasn't seen it yet and extra mobs are disabled
-			if (!AeonisFeatures.hasSeenWelcome(server, player.uuid) && !AeonisFeatures.isExtraMobsEnabled(server)) {
-				AeonisFeatures.markWelcomeSeen(server, player.uuid)
-				
-				// Delay the message slightly so player sees it after login
+			// World-level install note: show once per world only.
+			if (!AeonisFeatures.hasShownWorldInstallNotice(server)) {
+				AeonisFeatures.markWorldInstallNoticeShown(server)
 				server.execute {
-					player.sendSystemMessage(Component.literal(""))
-					player.sendSystemMessage(Component.literal("§6§l✦ §e§lAeonis Plus §6§l✦"))
-					player.sendSystemMessage(Component.literal("§7━━━━━━━━━━━━━━━━━━━━━━━━━━━━"))
-					player.sendSystemMessage(Component.literal("§eAeonis Special Extra Mobs is currently §c§lOFF§e!"))
-					player.sendSystemMessage(Component.literal("§7Give it a try with: §a/aeonis features extra_mobs true"))
-					player.sendSystemMessage(Component.literal("§7This adds unique monsters like the §6Stalker§7 and §cHerobrine§7!"))
-					player.sendSystemMessage(Component.literal("§7━━━━━━━━━━━━━━━━━━━━━━━━━━━━"))
-					player.sendSystemMessage(Component.literal(""))
+					player.sendSystemMessage(Component.literal("§eThanks for installing Aeonis! We are still actively porting many lost features to 26.1 (The Tiny Takeover Update)."))
 				}
-			}
-			
-			// Show Prop Hunt experimental warning message on join
-			server.execute {
-				player.sendSystemMessage(Component.literal(""))
-				player.sendSystemMessage(Component.literal("§6§l⚠ §e§lProp Hunt Notice §6§l⚠"))
-				player.sendSystemMessage(Component.literal("§7━━━━━━━━━━━━━━━━━━━━━━━━━━━━"))
-				player.sendSystemMessage(Component.literal("§eThe new 26.1 build is §c§lEXPERIMENTAL §eand §c§lWIP§e!"))
-				player.sendSystemMessage(Component.literal("§7Some features may not work as expected."))
-				player.sendSystemMessage(Component.literal("§7Report bugs on our GitHub!"))
-				player.sendSystemMessage(Component.literal("§7━━━━━━━━━━━━━━━━━━━━━━━━━━━━"))
-				player.sendSystemMessage(Component.literal(""))
 			}
 
 			// Additional possession state validation / sync
-			server.execute { AeonisPossession.onPlayerJoin(handler.player, server) }
+			server.execute {
+				AeonisPossession.onPlayerJoin(handler.player, server)
+				AeonisNetworking.broadcastControllingPlayers(server)
+			}
 		}
 
 		// Handle disconnect cleanups
 		ServerPlayConnectionEvents.DISCONNECT.register { handler, server ->
 			val player = handler.player
-			server.execute { AeonisPossession.onPlayerDisconnect(player, server) }
+			server.execute {
+				AeonisNetworking.clearControlState(player.uuid)
+				AeonisNetworking.broadcastControllingPlayers(server)
+				AeonisPossession.onPlayerDisconnect(player, server)
+			}
 		}
 		
 		logger.info("Aeonis Plus core initialized")

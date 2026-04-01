@@ -75,7 +75,6 @@ sourceSets {
 	}
 	client {
 		kotlin {
-			exclude("com/qc/aeonis/integration/modmenu/**")
 			exclude("com/qc/aeonis/client/entity/AncardEntityRenderers.kt")
 			exclude("com/qc/aeonis/client/entity/AncardMobGeoModel.kt")
 			exclude("com/qc/aeonis/client/block/**")
@@ -84,8 +83,7 @@ sourceSets {
 			exclude("com/qc/aeonis/mixin/client/TransformationCameraMixin.kt")
 		}
 		java {
-			setSrcDirs(["src/client/java/com/qc/aeonis/mixin/client"])
-			include("TransformationCameraMixin.java")
+			exclude("com/qc/aeonis/llm/**")
 		}
 	}
 }
@@ -116,6 +114,7 @@ processResources {
 	inputs.property "version", project.version
 
 	// Disable legacy datapack content that currently fails registry loading on 26.1.
+	exclude("data/aeonis/worldgen/**")
 	exclude("data/aeonis/dimension/**")
 	exclude("data/aeonis/dimension_type/**")
 	exclude("data/aeonis/tags/worldgen/**")
@@ -135,8 +134,61 @@ processResources {
 	}
 }
 
+tasks.register("validateMixinReferences") {
+	group = "verification"
+	description = "Verifies mixin classes declared in mixin JSON files exist in source sets"
+
+	doLast {
+		def mixinFiles = fileTree("src") {
+			include("**/*.mixins.json")
+		}
+
+		def missing = []
+
+		mixinFiles.each { mixinFile ->
+			def json = new groovy.json.JsonSlurper().parse(mixinFile)
+			def mixinPackage = (json.package ?: "").toString()
+			def packagePath = mixinPackage.replace('.', '/')
+
+			def entries = []
+			if (json.mixins instanceof Collection) {
+				entries.addAll(json.mixins)
+			}
+			if (json.client instanceof Collection) {
+				entries.addAll(json.client)
+			}
+			if (json.server instanceof Collection) {
+				entries.addAll(json.server)
+			}
+
+			entries.each { mixinNameObj ->
+				def mixinName = mixinNameObj.toString()
+				def relativePath = mixinName.replace('.', '/')
+				def basePath = packagePath ? "${packagePath}/${relativePath}" : relativePath
+
+				def found = file("src/main/java/${basePath}.java").exists() ||
+					file("src/main/kotlin/${basePath}.kt").exists() ||
+					file("src/client/java/${basePath}.java").exists() ||
+					file("src/client/kotlin/${basePath}.kt").exists()
+
+				if (!found) {
+					missing.add("${mixinFile.path}: ${mixinPackage}.${mixinName}")
+				}
+			}
+		}
+
+		if (!missing.isEmpty()) {
+			throw new GradleException("Missing mixin classes:\n - " + missing.join("\n - "))
+		}
+	}
+}
+
 tasks.withType(JavaCompile).configureEach {
 	it.options.release = 25
+}
+
+tasks.named("check") {
+	dependsOn("validateMixinReferences")
 }
 
 tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).all {

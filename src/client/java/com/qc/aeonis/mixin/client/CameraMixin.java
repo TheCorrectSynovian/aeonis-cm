@@ -30,7 +30,7 @@ public abstract class CameraMixin {
     @Shadow
     protected abstract void move(float distanceOffset, float verticalOffset, float horizontalOffset);
     
-    @Inject(method = "setup", at = @At("TAIL"))
+    @Inject(method = "setup", at = @At("TAIL"), require = 0)
     private void aeonis$adjustCameraForMob(Level area, Entity focusedEntity, boolean thirdPerson, boolean inverseView, float partialTicks, CallbackInfo ci) {
         if (AeonisFreecam.INSTANCE.isEnabled()) {
             Vec3 freecamPos = AeonisFreecam.INSTANCE.getCameraPos(partialTicks);
@@ -47,25 +47,19 @@ public abstract class CameraMixin {
             return;
         }
         
-        // Find controlled mob
+        // Find controlled mob directly by id (more reliable than render-entity iteration)
         int mobId = AeonisClientNetworking.INSTANCE.getControlledMobId();
-        LivingEntity mob = null;
-        for (Entity entity : mc.level.entitiesForRendering()) {
-            if (entity.getId() == mobId && entity instanceof LivingEntity living) {
-                mob = living;
-                break;
-            }
-        }
+        Entity controlledEntity = mc.level.getEntity(mobId);
+        LivingEntity mob = controlledEntity instanceof LivingEntity living ? living : null;
         
         if (mob == null) return;
         
-        // Get MOB's interpolated position
-        Vec3 mobPos = mob.getPosition(partialTicks);
-        float mobEyeHeight = mob.getEyeHeight();
+        // Use true interpolated eye position for accurate first-person POV.
+        Vec3 mobEyePos = mob.getEyePosition(partialTicks);
         
         // FIRST PERSON: Camera at MOB's eye position
         if (!thirdPerson) {
-            this.setPosition(mobPos.x, mobPos.y + (double)mobEyeHeight, mobPos.z);
+            this.setPosition(mobEyePos.x, mobEyePos.y, mobEyePos.z);
         } else {
             // THIRD PERSON: Move camera further back for large mobs
             float extraDistance = getExtraCameraDistance(mob);

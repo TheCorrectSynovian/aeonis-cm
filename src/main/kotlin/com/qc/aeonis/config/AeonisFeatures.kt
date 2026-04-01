@@ -20,6 +20,7 @@ object AeonisFeatures {
         var extraMobsEnabled: Boolean = false,
         var safeChestPhysicsEnabled: Boolean = true,
         var safeChestFallHurtsEntities: Boolean = true,
+        var worldInstallNoticeShown: Boolean = false,
         val seenWelcome: MutableSet<UUID> = mutableSetOf()
     )
     
@@ -47,6 +48,7 @@ object AeonisFeatures {
                     features.extraMobsEnabled = props.getProperty("extra_mobs_enabled", "false").toBoolean()
                     features.safeChestPhysicsEnabled = props.getProperty("safe_chest_physics_enabled", "true").toBoolean()
                     features.safeChestFallHurtsEntities = props.getProperty("safe_chest_fall_hurts_entities", "true").toBoolean()
+                    features.worldInstallNoticeShown = props.getProperty("world_install_notice_shown", "false").toBoolean()
                     
                     // Load seen welcome UUIDs
                     val seenStr = props.getProperty("seen_welcome", "")
@@ -76,6 +78,7 @@ object AeonisFeatures {
             props.setProperty("extra_mobs_enabled", features.extraMobsEnabled.toString())
             props.setProperty("safe_chest_physics_enabled", features.safeChestPhysicsEnabled.toString())
             props.setProperty("safe_chest_fall_hurts_entities", features.safeChestFallHurtsEntities.toString())
+            props.setProperty("world_install_notice_shown", features.worldInstallNoticeShown.toString())
             props.setProperty("seen_welcome", features.seenWelcome.joinToString(",") { it.toString() })
             
             configFile.outputStream().use { props.store(it, "Aeonis Features Config") }
@@ -138,5 +141,17 @@ object AeonisFeatures {
     fun markWelcomeSeen(server: MinecraftServer, uuid: UUID) {
         loadFeatures(server).seenWelcome.add(uuid)
         saveFeatures(server)
+    }
+
+    fun hasShownWorldInstallNotice(server: MinecraftServer): Boolean {
+        return loadFeatures(server).worldInstallNoticeShown
+    }
+
+    fun markWorldInstallNoticeShown(server: MinecraftServer) {
+        val features = loadFeatures(server)
+        if (!features.worldInstallNoticeShown) {
+            features.worldInstallNoticeShown = true
+            saveFeatures(server)
+        }
     }
 }

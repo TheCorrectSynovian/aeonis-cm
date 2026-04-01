@@ -1,6 +1,4 @@
 package com.qc.aeonis.mixin.client;
-
-import com.qc.aeonis.screen.AeonisControlScreen;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.minecraft.client.gui.components.Button;
@@ -23,7 +21,9 @@ public abstract class OptionsScreenMixin extends Screen {
     @Inject(method = "init", at = @At("TAIL"))
     private void aeonis$addAeonisButton(CallbackInfo ci) {
         Button aeonisButton = Button.builder(Component.translatable("options.aeonis"), button -> {
-            this.minecraft.setScreen(new AeonisControlScreen(this));
+            if (this.minecraft != null && this.minecraft.player != null) {
+                this.minecraft.player.connection.sendCommand("aeonis");
+            }
         }).bounds(this.width / 2 - 100, this.height - 54, 200, 20).build();
         this.addRenderableWidget(aeonisButton);
     }
