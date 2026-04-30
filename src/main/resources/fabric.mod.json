@@ -9,8 +9,8 @@
 	],
 	"contact": {
 		"homepage": "https://aeonis.prenxy.app",
-		"sources": "https://github.com/TheCorrectSynovian/aeonis-cm",
-		"issues": "https://github.com/TheCorrectSynovian/aeonis-cm/issues"
+		"sources": "https://github.com/TeamQC-MC/aeonis-cm",
+		"issues": "https://github.com/TeamQC-MC/aeonis-cm/issues"
 	},
 	"license": "MIT",
 	"icon": "assets/aeonis-manager/icon.png",
@@ -20,10 +20,10 @@
 			"badges": ["library"],
 			"links": {
 				"modmenu.homepage": "https://aeonis.prenxy.app",
-				"modmenu.github": "https://github.com/TheCorrectSynovian/aeonis-cm",
-				"modmenu.sources": "https://github.com/TheCorrectSynovian/aeonis-cm",
-				"modmenu.issues": "https://github.com/TheCorrectSynovian/aeonis-cm/issues",
-				"modmenu.releases": "https://github.com/TheCorrectSynovian/aeonis-cm/releases",
+				"modmenu.github": "https://github.com/TeamQC-MC/aeonis-cm",
+				"modmenu.sources": "https://github.com/TeamQC-MC/aeonis-cm",
+				"modmenu.issues": "https://github.com/TeamQC-MC/aeonis-cm/issues",
+				"modmenu.releases": "https://github.com/TeamQC-MC/aeonis-cm/releases",
 				"modmenu.youtube": "https://www.youtube.com/@quantumcreeper"
 			}
 		}

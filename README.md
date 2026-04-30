@@ -23,7 +23,7 @@
 
 <p align="center">
   <a href="https://www.youtube.com/@quantumcreeper"><img src="https://img.shields.io/badge/YouTube-Subscribe-red?style=for-the-badge&logo=youtube&logoColor=white" alt="YouTube"></a>
-  <a href="https://github.com/TheCorrectSynovian/Aeonis-mod"><img src="https://img.shields.io/badge/GitHub-Source-181717?style=for-the-badge&logo=github&logoColor=white" alt="GitHub"></a>
+  <a href="https://github.com/TeamQC-MC/Aeonis-mod"><img src="https://img.shields.io/badge/GitHub-Source-181717?style=for-the-badge&logo=github&logoColor=white" alt="GitHub"></a>
 </p>
 
 ---
@@ -786,7 +786,7 @@ Enable with: `/aeonis features extra_mobs true`
 
 ## 🤝 Credits
 
-- **Developer:** QuantumCreeper / TheCorrectSynovian
+- **Developer:** QuantumCreeper / TeamQC-MC
 - **Mod ID:** `aeonis-manager`
 - **Version:** 3.1.0
 
@@ -804,7 +804,7 @@ This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) 
 
 <p align="center">
   <a href="https://www.youtube.com/@quantumcreeper"><img src="https://img.shields.io/badge/Subscribe-YouTube-red?style=for-the-badge&logo=youtube" alt="YouTube"></a>
-  <a href="https://github.com/TheCorrectSynovian/Aeonis-mod"><img src="https://img.shields.io/badge/Star-GitHub-yellow?style=for-the-badge&logo=github" alt="GitHub Stars"></a>
+  <a href="https://github.com/TeamQC-MC/Aeonis-mod"><img src="https://img.shields.io/badge/Star-GitHub-yellow?style=for-the-badge&logo=github" alt="GitHub Stars"></a>
 </p>
 
 ---

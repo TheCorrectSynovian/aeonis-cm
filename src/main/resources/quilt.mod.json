@@ -12,8 +12,8 @@
 			},
 			"contact": {
 				"homepage": "https://www.youtube.com/@quantumcreeper",
-				"sources": "https://github.com/TheCorrectSynovian/Aeonis-mod",
-				"issues": "https://github.com/TheCorrectSynovian/Aeonis-mod/issues"
+				"sources": "https://github.com/TeamQC-MC/Aeonis-mod",
+				"issues": "https://github.com/TeamQC-MC/Aeonis-mod/issues"
 			},
 			"license": "MIT",
 			"icon": "assets/aeonis-manager/icon.png"

@@ -73,7 +73,7 @@ public class OpenRouterProvider implements LlmProvider {
                     .uri(URI.create(baseUrl + "/chat/completions"))
                     .header("Content-Type", "application/json")
                     .header("Authorization", "Bearer " + config.apiKey())
-                    .header("HTTP-Referer", "https://github.com/TheCorrectSynovian/Aeonis-mod")
+                    .header("HTTP-Referer", "https://github.com/TeamQC-MC/Aeonis-mod")
                     .header("X-Title", "Aeonis")
                     .timeout(Duration.ofSeconds(60))
                     .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
