@@ -50,9 +50,6 @@ repositories {
 loom {
 	noIntermediateMappings()
 	splitEnvironmentSourceSets()
-	mixin {
-		defaultRefmapName = "aeonis-manager.refmap.json"
-	}
 
 	mods {
 		"aeonis-manager" {

@@ -1,8 +1,21 @@
 package com.qc.aeonis.mixin;
 
-import com.qc.aeonis.mixin.BeeEntityAccessor;
-import com.qc.aeonis.mixin.IronGolemEntityAccessor;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
+
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Unique;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+
 import com.qc.aeonis.network.AeonisNetworking;
+
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
@@ -10,7 +23,7 @@ import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.attributes.Attributes;
@@ -21,19 +34,6 @@ import net.minecraft.world.entity.monster.Ravager;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
-import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.Unique;
-import org.spongepowered.asm.mixin.injection.At;
-import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
-
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
-import java.util.UUID;
 
 @Mixin(Player.class)
 public abstract class PlayerAttackMixin {
@@ -140,7 +140,7 @@ public abstract class PlayerAttackMixin {
         boolean isIronGolem = controlledMob instanceof IronGolem;
         boolean isRavager = controlledMob instanceof Ravager;
         boolean isBee = controlledMob instanceof Bee;
-        boolean isWarden = controlledMob.getType() == EntityType.WARDEN;
+        boolean isWarden = controlledMob.getType() == EntityTypes.WARDEN;
         
         // === BEE: Single sting with poison ===
         if (isBee) {
@@ -245,11 +245,11 @@ public abstract class PlayerAttackMixin {
         // Special cases for specific mobs
         if (mob instanceof IronGolem) return 4.0;
         if (mob instanceof Ravager) return 4.5;
-        if (mob.getType() == EntityType.WARDEN) return 5.0;
-        if (mob.getType() == EntityType.ENDER_DRAGON) return 8.0;
+        if (mob.getType() == EntityTypes.WARDEN) return 5.0;
+        if (mob.getType() == EntityTypes.ENDER_DRAGON) return 8.0;
         if (mob instanceof Ghast || isGhastLike(mob)) return 6.0; // Ghasts don't melee but just in case
-        if (mob.getType() == EntityType.GIANT) return 8.0;
-        if (mob.getType() == EntityType.WITHER) return 5.0;
+        if (mob.getType() == EntityTypes.GIANT) return 8.0;
+        if (mob.getType() == EntityTypes.WITHER) return 5.0;
         if (mob instanceof Bee) return 1.5;
         
         // Default: base reach on mob's bounding box width

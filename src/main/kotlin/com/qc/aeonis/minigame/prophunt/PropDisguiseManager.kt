@@ -4,6 +4,7 @@ import com.qc.aeonis.util.playNotifySound
 
 import com.qc.aeonis.network.AeonisNetworking
 import net.minecraft.core.particles.ParticleTypes
+import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.network.chat.Component
 import net.minecraft.server.level.ServerLevel
 import net.minecraft.server.level.ServerPlayer
@@ -70,17 +71,17 @@ object PropDisguiseManager {
      * Great for hiding in corners and small spaces
      */
     val SMALL_PROPS = listOf(
-        EntityType.CHICKEN,
-        EntityType.RABBIT,
-        EntityType.BAT,
-        EntityType.SILVERFISH,
-        EntityType.ENDERMITE,
-        EntityType.BEE,
-        EntityType.FROG,
-        EntityType.ALLAY,
-        EntityType.PARROT,
-        EntityType.CAT,
-        EntityType.ARMADILLO
+        EntityTypes.CHICKEN,
+        EntityTypes.RABBIT,
+        EntityTypes.BAT,
+        EntityTypes.SILVERFISH,
+        EntityTypes.ENDERMITE,
+        EntityTypes.BEE,
+        EntityTypes.FROG,
+        EntityTypes.ALLAY,
+        EntityTypes.PARROT,
+        EntityTypes.CAT,
+        EntityTypes.ARMADILLO
     )
     
     /**
@@ -88,19 +89,19 @@ object PropDisguiseManager {
      * Good for blending in with normal mobs
      */
     val MEDIUM_PROPS = listOf(
-        EntityType.PIG,
-        EntityType.SHEEP,
-        EntityType.COW,
-        EntityType.WOLF,
-        EntityType.GOAT,
-        EntityType.FOX,
-        EntityType.OCELOT,
-        EntityType.ZOMBIE,
-        EntityType.SKELETON,
-        EntityType.CREEPER,
-        EntityType.SPIDER,
-        EntityType.VILLAGER,
-        EntityType.WANDERING_TRADER
+        EntityTypes.PIG,
+        EntityTypes.SHEEP,
+        EntityTypes.COW,
+        EntityTypes.WOLF,
+        EntityTypes.GOAT,
+        EntityTypes.FOX,
+        EntityTypes.OCELOT,
+        EntityTypes.ZOMBIE,
+        EntityTypes.SKELETON,
+        EntityTypes.CREEPER,
+        EntityTypes.SPIDER,
+        EntityTypes.VILLAGER,
+        EntityTypes.WANDERING_TRADER
     )
     
     /**
@@ -108,15 +109,15 @@ object PropDisguiseManager {
      * Risk/reward gameplay - hide in plain sight
      */
     val LARGE_PROPS = listOf(
-        EntityType.HORSE,
-        EntityType.DONKEY,
-        EntityType.MULE,
-        EntityType.LLAMA,
-        EntityType.POLAR_BEAR,
-        EntityType.IRON_GOLEM,
-        EntityType.SNOW_GOLEM,
-        EntityType.RAVAGER,
-        EntityType.CAMEL
+        EntityTypes.HORSE,
+        EntityTypes.DONKEY,
+        EntityTypes.MULE,
+        EntityTypes.LLAMA,
+        EntityTypes.POLAR_BEAR,
+        EntityTypes.IRON_GOLEM,
+        EntityTypes.SNOW_GOLEM,
+        EntityTypes.RAVAGER,
+        EntityTypes.CAMEL
     )
     
     /**
@@ -124,8 +125,8 @@ object PropDisguiseManager {
      * Perfect for rotation-lock strategy
      */
     val OBJECT_PROPS = listOf(
-        EntityType.ARMOR_STAND,
-        EntityType.MINECART
+        EntityTypes.ARMOR_STAND,
+        EntityTypes.MINECART
     )
     
     /**
@@ -133,13 +134,13 @@ object PropDisguiseManager {
      * Unlockable or earned through gameplay
      */
     val SPECIAL_PROPS = listOf(
-        EntityType.AXOLOTL,
-        EntityType.GLOW_SQUID,
-        EntityType.DOLPHIN,
-        EntityType.TURTLE,
-        EntityType.PANDA,
-        EntityType.SNIFFER,
-        EntityType.WARDEN // The ultimate disguise - terrifying!
+        EntityTypes.AXOLOTL,
+        EntityTypes.GLOW_SQUID,
+        EntityTypes.DOLPHIN,
+        EntityTypes.TURTLE,
+        EntityTypes.PANDA,
+        EntityTypes.SNIFFER,
+        EntityTypes.WARDEN // The ultimate disguise - terrifying!
     )
     
     /**
@@ -175,7 +176,7 @@ object PropDisguiseManager {
     fun chooseDisguise(player: ServerPlayer, typeName: String, game: PropHuntGame): Boolean {
         // Find the entity type by name
         val propType = getAllPropTypes(game.settings).find { 
-            EntityType.getKey(it).path.equals(typeName, ignoreCase = true)
+            BuiltInRegistries.ENTITY_TYPE.getKey(it).path.equals(typeName, ignoreCase = true)
         }
         
         if (propType == null) {
@@ -223,7 +224,7 @@ object PropDisguiseManager {
         
         // Track the disguise
         disguiseEntities[player.uuid] = disguise.id
-        playerData.disguiseType = EntityType.getKey(propType).toString()
+        playerData.disguiseType = BuiltInRegistries.ENTITY_TYPE.getKey(propType).toString()
         
         // ═══════════════════════════════════════════════════════════════════
         // USE THE ESTABLISHED TRANSFORM SYSTEM
@@ -249,7 +250,7 @@ object PropDisguiseManager {
         player.teleportTo(disguise.x, disguise.y, disguise.z)
         
         // Announce to player
-        val propName = EntityType.getKey(propType).path.replace("_", " ")
+        val propName = BuiltInRegistries.ENTITY_TYPE.getKey(propType).path.replace("_", " ")
         player.sendSystemMessage(Component.literal("§a[PropHunt] §7You are disguised as a §e$propName§7!"))
         player.sendSystemMessage(Component.literal("§7Use §eWASD§7 to move. Your disguise follows you!"))
         
@@ -844,3 +845,4 @@ enum class TauntType {
     /** Creates fake death effects */
     FAKE_DEATH
 }
+

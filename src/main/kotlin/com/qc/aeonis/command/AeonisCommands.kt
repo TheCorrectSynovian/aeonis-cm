@@ -13,6 +13,7 @@ import net.minecraft.world.entity.LivingEntity
 import net.minecraft.world.entity.PathfinderMob
 import com.mojang.brigadier.context.CommandContext
 import com.qc.aeonis.config.AeonisFeatures
+import com.qc.aeonis.entity.AeonisEntities
 import com.qc.aeonis.entity.HerobrineEntity
 import com.qc.aeonis.entity.HerobrineSpawner
 import com.qc.aeonis.network.AeonisNetworking
@@ -34,6 +35,7 @@ import com.mojang.brigadier.arguments.StringArgumentType
 import net.minecraft.world.entity.Entity
 import net.minecraft.world.entity.EntitySpawnReason
 import net.minecraft.world.entity.EntityType
+import net.minecraft.world.entity.EntityTypes
 import net.minecraft.world.entity.LightningBolt
 import net.minecraft.world.entity.Mob
 import net.minecraft.world.entity.animal.golem.IronGolem
@@ -43,6 +45,7 @@ import net.minecraft.world.entity.boss.enderdragon.phases.EnderDragonPhase
 import net.minecraft.world.entity.monster.Monster
 import net.minecraft.world.entity.monster.Vex
 import net.minecraft.world.entity.player.Player
+import net.minecraft.world.entity.MobCategory
 import net.minecraft.world.entity.item.ItemEntity
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.Items
@@ -55,7 +58,7 @@ import net.minecraft.world.phys.Vec3
 import net.minecraft.world.entity.monster.zombie.Zombie
 import net.minecraft.world.entity.monster.skeleton.Skeleton
 import net.minecraft.world.entity.monster.Creeper
-import net.minecraft.world.entity.monster.Slime
+import net.minecraft.world.entity.monster.cubemob.Slime
 import net.minecraft.world.entity.animal.equine.Horse
 import net.minecraft.world.entity.animal.pig.Pig
 import net.minecraft.world.entity.animal.axolotl.Axolotl
@@ -63,6 +66,7 @@ import net.minecraft.world.entity.animal.parrot.Parrot
 import net.minecraft.world.entity.animal.dolphin.Dolphin
 import net.minecraft.world.entity.animal.goat.Goat
 import net.minecraft.world.entity.animal.frog.Frog
+import net.minecraft.resources.Identifier
 import net.minecraft.world.item.DyeColor
 import net.minecraft.nbt.CompoundTag
 import kotlin.math.cos
@@ -70,6 +74,14 @@ import kotlin.math.sin
 
 object AeonisCommands {
         private const val PRANK_MORPH_DURATION_TICKS = 20 * 120 // 2 minutes
+        private val FUN_TRANSFORM_THEMES = mapOf(
+            "chaos" to listOf(EntityTypes.CREEPER, EntityTypes.ENDERMAN, EntityTypes.BREEZE, EntityTypes.WITCH, EntityTypes.RAVAGER),
+            "cute" to listOf(EntityTypes.AXOLOTL, EntityTypes.ALLAY, EntityTypes.FROG, EntityTypes.BEE, EntityTypes.PARROT),
+            "scary" to listOf(EntityTypes.WARDEN, EntityTypes.WITHER_SKELETON, EntityTypes.PHANTOM, EntityTypes.EVOKER, EntityTypes.VINDICATOR),
+            "boss" to listOf(EntityTypes.WITHER, EntityTypes.ENDER_DRAGON, EntityTypes.RAVAGER, EntityTypes.ELDER_GUARDIAN),
+            "cube" to listOf(EntityTypes.SLIME, EntityTypes.MAGMA_CUBE),
+            "meme" to listOf(EntityTypes.CHICKEN, EntityTypes.GOAT, EntityTypes.LLAMA, EntityTypes.PUFFERFISH, EntityTypes.SNIFFER)
+        )
         // Track all entities made chaotic for easy disabling
         private val chaoticEntities = mutableSetOf<Int>()
         private val prankMorphTimers = mutableMapOf<java.util.UUID, Int>()
@@ -323,10 +335,21 @@ object AeonisCommands {
         dispatcher: CommandDispatcher<CommandSourceStack>,
         registryAccess: net.minecraft.commands.CommandBuildContext
     ) {
-        // /transform <entity> [variants...]
+        // /transform random|theme|roulette|<entity> [variants...]
         dispatcher.register(
             Commands.literal("transform")
                 .requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
+                .then(Commands.literal("random")
+                    .executes { transformRandom(it) }
+                )
+                .then(Commands.literal("roulette")
+                    .executes { transformRoulette(it) }
+                )
+                .then(Commands.literal("theme")
+                    .then(Commands.argument("name", StringArgumentType.word())
+                        .executes { transformTheme(it) }
+                    )
+                )
                 .then(Commands.argument("entity", ResourceArgument.resource(registryAccess, Registries.ENTITY_TYPE))
                     .executes { transformIntoEntity(it, emptyList()) }
                     .then(Commands.argument("variant", StringArgumentType.word())
@@ -353,6 +376,78 @@ object AeonisCommands {
                 .requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
                 .executes { untransform(it) }
         )
+    }
+
+    private fun transformRandom(ctx: CommandContext<CommandSourceStack>): Int {
+        val player = ctx.source.player as? ServerPlayer ?: run {
+            ctx.source.sendFailure(Component.literal("§cOnly players can transform!"))
+            return 0
+        }
+        val pool = buildFunTransformPool()
+        val pick = pool.randomOrNull() ?: EntityTypes.ZOMBIE
+        val ok = forcePlayerTransform(player, pick)
+        if (!ok) {
+            ctx.source.sendFailure(Component.literal("§cRandom transform failed."))
+            return 0
+        }
+        player.sendSystemMessage(Component.literal("§d🎲 Random morph: §b${pick.description.string}"))
+        return 1
+    }
+
+    private fun transformRoulette(ctx: CommandContext<CommandSourceStack>): Int {
+        val player = ctx.source.player as? ServerPlayer ?: run {
+            ctx.source.sendFailure(Component.literal("§cOnly players can transform!"))
+            return 0
+        }
+        val roulettePool = buildFunTransformPool().shuffled().take(5)
+        if (roulettePool.isEmpty()) {
+            ctx.source.sendFailure(Component.literal("§cNo valid roulette forms found."))
+            return 0
+        }
+
+        var success = false
+        roulettePool.forEachIndexed { index, type ->
+            if (index == roulettePool.lastIndex) {
+                success = forcePlayerTransform(player, type)
+            }
+            player.sendSystemMessage(Component.literal("§7🎰 ${index + 1}/5 -> ${type.description.string}"))
+        }
+        if (!success) {
+            ctx.source.sendFailure(Component.literal("§cRoulette transform failed."))
+            return 0
+        }
+        player.sendSystemMessage(Component.literal("§6🎉 Jackpot form locked in!"))
+        return 1
+    }
+
+    private fun transformTheme(ctx: CommandContext<CommandSourceStack>): Int {
+        val player = ctx.source.player as? ServerPlayer ?: run {
+            ctx.source.sendFailure(Component.literal("§cOnly players can transform!"))
+            return 0
+        }
+        val theme = StringArgumentType.getString(ctx, "name").lowercase()
+        val themePool = FUN_TRANSFORM_THEMES[theme]
+        if (themePool == null || themePool.isEmpty()) {
+            val options = FUN_TRANSFORM_THEMES.keys.sorted().joinToString(", ")
+            ctx.source.sendFailure(Component.literal("§cUnknown theme. Try: $options"))
+            return 0
+        }
+
+        val picked = themePool.random()
+        val variants = if (theme == "cube" && BuiltInRegistries.ENTITY_TYPE.getKey(picked).path == "sulfur_cube") {
+            listOf(listOf("bouncy"), listOf("sticky"), listOf("fast_sliding"), listOf("light")).random()
+        } else {
+            emptyList()
+        }
+
+        val ok = forcePlayerTransform(player, picked, variants)
+        if (!ok) {
+            ctx.source.sendFailure(Component.literal("§cTheme transform failed."))
+            return 0
+        }
+        val suffix = if (variants.isEmpty()) "" else " §7(${variants.joinToString(", ")})"
+        player.sendSystemMessage(Component.literal("§a✨ Theme [$theme] -> §b${picked.description.string}$suffix"))
+        return 1
     }
 
 
@@ -612,11 +707,11 @@ object AeonisCommands {
                             .executes { swapPlayers(it) })))
                 .then(Commands.literal("morph")
                     .then(Commands.argument("targets", EntityArgument.players())
-                        .then(Commands.literal("chicken").executes { prankMorphPlayers(it, EntityType.CHICKEN) })
-                        .then(Commands.literal("pig").executes { prankMorphPlayers(it, EntityType.PIG) })
-                        .then(Commands.literal("goat").executes { prankMorphPlayers(it, EntityType.GOAT) })
-                        .then(Commands.literal("frog").executes { prankMorphPlayers(it, EntityType.FROG) })
-                        .then(Commands.literal("parrot").executes { prankMorphPlayers(it, EntityType.PARROT) })
+                        .then(Commands.literal("chicken").executes { prankMorphPlayers(it, EntityTypes.CHICKEN) })
+                        .then(Commands.literal("pig").executes { prankMorphPlayers(it, EntityTypes.PIG) })
+                        .then(Commands.literal("goat").executes { prankMorphPlayers(it, EntityTypes.GOAT) })
+                        .then(Commands.literal("frog").executes { prankMorphPlayers(it, EntityTypes.FROG) })
+                        .then(Commands.literal("parrot").executes { prankMorphPlayers(it, EntityTypes.PARROT) })
                         .then(Commands.literal("random_funny").executes { prankMorphPlayersRandom(it) })))
         )
     }
@@ -934,6 +1029,13 @@ object AeonisCommands {
             player.setGameMode(originalMode)
             return 0
         }
+
+        // Initialize the spawned mob with the player's current transform context for smoother first tick.
+        entity.snapTo(player.x, player.y, player.z, player.yRot, player.xRot)
+        if (entity is LivingEntity) {
+            entity.yBodyRot = player.yRot
+            entity.yHeadRot = player.yRot
+        }
         
         // Apply variants
         var variantInfo = ""
@@ -949,10 +1051,11 @@ object AeonisCommands {
         cacheOriginalMoveSpeed(player)
         transformedEntities[player.uuid] = entity
         
-        // Disable the mob's AI so it doesn't interfere with player control
-        // EXCEPTION: Ender Dragon needs AI to update its multi-part body and animations!
-        if (entity is Mob && entity !is EnderDragon) {
-            entity.setNoAi(true)
+        // 26.2+: `LivingEntity.aiStep` only calls `travel()` when `isEffectiveAi()` is true.
+        // Setting `NoAI` makes many mobs completely immobile. Keep NoAI off and instead suppress
+        // server-side AI logic while controlled via a dedicated mixin (see `ControlledMobServerAiStepMixin`).
+        if (entity is Mob) {
+            entity.setNoAi(false)
         }
         
         // Special handling for Ender Dragon - set to hover phase
@@ -1015,6 +1118,21 @@ object AeonisCommands {
     private fun applyVariants(entity: Entity, variants: List<String>): String {
         val appliedVariants = mutableListOf<String>()
         val level = entity.level() as net.minecraft.server.level.ServerLevel
+
+        // Sulfur Cube variants are mapped to vanilla archetype item tags from 26.2 APIs/data.
+        if (isSulfurCube(entity)) {
+            for (variant in variants) {
+                val itemId = sulfurCubeVariantItemId(variant)
+                if (itemId != null && entity is LivingEntity) {
+                    val item = BuiltInRegistries.ITEM.getValue(Identifier.parse(itemId))
+                    if (item != null && item != Items.AIR) {
+                        entity.setItemSlot(net.minecraft.world.entity.EquipmentSlot.BODY, ItemStack(item))
+                        appliedVariants.add("Sulfur:${variant.lowercase()}")
+                    }
+                }
+            }
+            return appliedVariants.joinToString(", ")
+        }
         
         // Zombie variants
         if (entity is Zombie) {
@@ -1025,16 +1143,16 @@ object AeonisCommands {
                         appliedVariants.add("Baby")
                     }
                     "drowned" -> {
-                        convertEntity(entity, EntityType.DROWNED)
+                        convertEntity(entity, EntityTypes.DROWNED)
                         appliedVariants.add("Drowned")
                     }
                     "husk" -> {
-                        convertEntity(entity, EntityType.HUSK)
+                        convertEntity(entity, EntityTypes.HUSK)
                         appliedVariants.add("Husk")
                     }
                     "chicken_jockey" -> {
                         entity.isBaby = true
-                        val chicken = EntityType.CHICKEN.spawn(
+                        val chicken = EntityTypes.CHICKEN.spawn(
                             level,
                             entity.blockPosition(),
                             EntitySpawnReason.COMMAND
@@ -1053,11 +1171,11 @@ object AeonisCommands {
             for (variant in variants) {
                 when (variant.lowercase()) {
                     "wither" -> {
-                        convertEntity(entity, EntityType.WITHER_SKELETON)
+                        convertEntity(entity, EntityTypes.WITHER_SKELETON)
                         appliedVariants.add("Wither")
                     }
                     "stray" -> {
-                        convertEntity(entity, EntityType.STRAY)
+                        convertEntity(entity, EntityTypes.STRAY)
                         appliedVariants.add("Stray")
                     }
                     "charged" -> {
@@ -1191,6 +1309,29 @@ object AeonisCommands {
         
         return appliedVariants.joinToString(", ")
     }
+
+    private fun isSulfurCube(entity: Entity): Boolean {
+        return try {
+            BuiltInRegistries.ENTITY_TYPE.getKey(entity.type).path == "sulfur_cube"
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    private fun sulfurCubeVariantItemId(variant: String): String? {
+        return when (variant.lowercase()) {
+            "regular" -> "minecraft:sulfur"
+            "bouncy" -> "minecraft:oak_planks"
+            "slow_flat" -> "minecraft:iron_block"
+            "fast_flat" -> "minecraft:wet_sponge"
+            "light" -> "minecraft:white_wool"
+            "fast_sliding" -> "minecraft:packed_ice"
+            "slow_sliding" -> "minecraft:red_mushroom_block"
+            "sticky" -> "minecraft:honeycomb_block"
+            "high_resistance" -> "minecraft:soul_sand"
+            else -> null
+        }
+    }
     
     /**
      * Auto-equip weapons for ranged mobs when player transforms into them.
@@ -1203,7 +1344,7 @@ object AeonisCommands {
     private fun equipWeaponsForRangedMob(entity: Entity, player: ServerPlayer) {
         when {
             // Skeleton types - give bow and arrows
-            entity is Skeleton || entity.type == EntityType.STRAY || entity.type == EntityType.BOGGED -> {
+            entity is Skeleton || entity.type == EntityTypes.STRAY || entity.type == EntityTypes.BOGGED -> {
                 val bow = ItemStack(Items.BOW)
                 val arrows = ItemStack(Items.ARROW, 64)
                 // Add to player inventory
@@ -1216,7 +1357,7 @@ object AeonisCommands {
                 player.sendSystemMessage(Component.literal("§7[Aeonis] §aEquipped §eBow §aand §eArrows§a!"))
             }
             // Pillager - give crossbow and arrows
-            entity.type == EntityType.PILLAGER -> {
+            entity.type == EntityTypes.PILLAGER -> {
                 val crossbow = ItemStack(Items.CROSSBOW)
                 val arrows = ItemStack(Items.ARROW, 64)
                 player.inventory.add(crossbow)
@@ -1227,7 +1368,7 @@ object AeonisCommands {
                 player.sendSystemMessage(Component.literal("§7[Aeonis] §aEquipped §eCrossbow §aand §eArrows§a!"))
             }
             // Piglin - give crossbow and arrows
-            entity.type == EntityType.PIGLIN -> {
+            entity.type == EntityTypes.PIGLIN -> {
                 val crossbow = ItemStack(Items.CROSSBOW)
                 val arrows = ItemStack(Items.ARROW, 64)
                 player.inventory.add(crossbow)
@@ -1238,7 +1379,7 @@ object AeonisCommands {
                 player.sendSystemMessage(Component.literal("§7[Aeonis] §aEquipped §eCrossbow §aand §eArrows§a!"))
             }
             // Drowned - give trident
-            entity.type == EntityType.DROWNED -> {
+            entity.type == EntityTypes.DROWNED -> {
                 val trident = ItemStack(Items.TRIDENT)
                 player.inventory.add(trident)
                 if (entity is LivingEntity) {
@@ -1247,7 +1388,7 @@ object AeonisCommands {
                 player.sendSystemMessage(Component.literal("§7[Aeonis] §aEquipped §eTrident§a!"))
             }
             // Wither Skeleton - give stone sword
-            entity.type == EntityType.WITHER_SKELETON -> {
+            entity.type == EntityTypes.WITHER_SKELETON -> {
                 val sword = ItemStack(Items.STONE_SWORD)
                 player.inventory.add(sword)
                 if (entity is LivingEntity) {
@@ -1256,7 +1397,7 @@ object AeonisCommands {
                 player.sendSystemMessage(Component.literal("§7[Aeonis] §aEquipped §eStone Sword§a!"))
             }
             // Vindicator - give iron axe
-            entity.type == EntityType.VINDICATOR -> {
+            entity.type == EntityTypes.VINDICATOR -> {
                 val axe = ItemStack(Items.IRON_AXE)
                 player.inventory.add(axe)
                 if (entity is LivingEntity) {
@@ -1287,7 +1428,8 @@ object AeonisCommands {
                 player.setCamera(newEntity)
                 AeonisNetworking.setControlledEntity(player, newEntity.id, player.inventory.selectedSlot)
                 syncControllingPlayers(player)
-                newEntity.setNoAi(true)
+                // Keep NoAI off for movement; AI is suppressed while controlled via mixin.
+                newEntity.setNoAi(false)
             }
         }
         
@@ -1353,7 +1495,15 @@ object AeonisCommands {
             player.teleportTo(entity.x, entity.y, entity.z)
             // Kill the spawned entity
             entity.discard()
+        } else {
+            // If the transformed mob already died/despawned, force a safe anchor reset on the player.
+            player.teleportTo(player.x, player.y, player.z)
         }
+
+        // Hard reset status flags to avoid the post-death soft-lock bug in transform mode.
+        soulModePlayers.remove(player.uuid)
+        player.noPhysics = false
+        player.fallDistance = 0.0
         
         if (showMessage) {
             player.sendSystemMessage(Component.literal("§a✨ You returned to your normal form!"))
@@ -1465,10 +1615,8 @@ object AeonisCommands {
         // Track the entity
         transformedEntities[player.uuid] = mob
         
-        // Disable the mob's AI (except for Dragon)
-        if (mob !is EnderDragon) {
-            mob.setNoAi(true)
-        }
+        // Keep NoAI off for movement; AI is suppressed while controlled via mixin.
+        mob.setNoAi(false)
         
         // Special handling for Ender Dragon
         if (mob is EnderDragon) {
@@ -1511,7 +1659,7 @@ object AeonisCommands {
         for (target in targets) {
             val level = target.level() as? net.minecraft.server.level.ServerLevel ?: continue
             
-            val lightning = LightningBolt(EntityType.LIGHTNING_BOLT, level)
+            val lightning = LightningBolt(EntityTypes.LIGHTNING_BOLT, level)
             lightning.setPos(target.x, target.y, target.z)
             lightning.setVisualOnly(false)
             level.addFreshEntity(lightning)
@@ -1780,7 +1928,7 @@ object AeonisCommands {
     }
 
     private fun prankMorphPlayersRandom(ctx: CommandContext<CommandSourceStack>): Int {
-        val funnyTypes = listOf(EntityType.CHICKEN, EntityType.PIG, EntityType.GOAT, EntityType.FROG, EntityType.PARROT)
+        val funnyTypes = listOf(EntityTypes.CHICKEN, EntityTypes.PIG, EntityTypes.GOAT, EntityTypes.FROG, EntityTypes.PARROT)
         return prankMorphPlayers(ctx, funnyTypes.random())
     }
 
@@ -1807,15 +1955,33 @@ object AeonisCommands {
         return count
     }
 
-    private fun forcePlayerTransform(target: ServerPlayer, entityType: EntityType<*>): Boolean {
+    private fun forcePlayerTransform(target: ServerPlayer, entityType: EntityType<*>, variants: List<String> = emptyList()): Boolean {
         if (AeonisNetworking.isPlayerTransformed(target.uuid)) {
             autoUntransform(target, showMessage = false)
         }
 
         val entityId = BuiltInRegistries.ENTITY_TYPE.getKey(entityType).toString()
         val source = target.createCommandSourceStack().withPermission(net.minecraft.server.permissions.LevelBasedPermissionSet.GAMEMASTER)
-        (target.level() as net.minecraft.server.level.ServerLevel).server.commands.performPrefixedCommand(source, "transform $entityId")
+        val variantSuffix = if (variants.isEmpty()) "" else " " + variants.joinToString(" ")
+        (target.level() as net.minecraft.server.level.ServerLevel).server.commands.performPrefixedCommand(source, "transform $entityId$variantSuffix")
         return transformedEntities.containsKey(target.uuid)
+    }
+
+    private fun buildFunTransformPool(): List<EntityType<*>> {
+        return BuiltInRegistries.ENTITY_TYPE
+            .filter { type ->
+                type != EntityTypes.PLAYER &&
+                type != AeonisEntities.BODY &&
+                type.canSummon() &&
+                type.category != MobCategory.MISC &&
+                !type.description.string.contains("Body", ignoreCase = true)
+            }
+            .shuffled()
+            .take(40)
+    }
+
+    private fun isCubeStyleMob(entity: Entity): Boolean {
+        return entity is Slime || isSulfurCube(entity)
     }
     
     // ========== TRANSFORM ABILITIES ==========
@@ -1966,7 +2132,7 @@ object AeonisCommands {
             val x = player.x + Math.cos(angle) * radius
             val z = player.z + Math.sin(angle) * radius
             
-            val golem = EntityType.IRON_GOLEM.create(level, EntitySpawnReason.COMMAND)
+            val golem = EntityTypes.IRON_GOLEM.create(level, EntitySpawnReason.COMMAND)
             golem?.let {
                 it.setPos(x, player.y, z)
                 level.addFreshEntity(it)
@@ -2044,7 +2210,7 @@ object AeonisCommands {
                     val x = player.x + Math.cos(angle) * dist
                     val z = player.z + Math.sin(angle) * dist
                     
-                    val lightning = LightningBolt(EntityType.LIGHTNING_BOLT, level)
+                    val lightning = LightningBolt(EntityTypes.LIGHTNING_BOLT, level)
                     lightning.setPos(x, player.y, z)
                     lightning.setVisualOnly(true) // Don't damage
                     level.addFreshEntity(lightning)
@@ -2315,7 +2481,7 @@ object AeonisCommands {
         }
         val level = player.level() as? net.minecraft.server.level.ServerLevel ?: return 0
 
-        val vex = EntityType.VEX.spawn(level, player.blockPosition().above(), EntitySpawnReason.COMMAND)
+        val vex = EntityTypes.VEX.spawn(level, player.blockPosition().above(), EntitySpawnReason.COMMAND)
         if (vex == null) {
             source.sendFailure(Component.literal("§cFailed to summon pet vex!"))
             return 0
@@ -2353,7 +2519,7 @@ object AeonisCommands {
         val count = IntegerArgumentType.getInteger(ctx, "count").coerceIn(1, 5)
 
         repeat(count) {
-            val wolf = EntityType.WOLF.spawn(level, player.blockPosition(), EntitySpawnReason.COMMAND) ?: return@repeat
+            val wolf = EntityTypes.WOLF.spawn(level, player.blockPosition(), EntitySpawnReason.COMMAND) ?: return@repeat
             // Apply effects for spirit wolf appearance
             wolf.setPos(player.x + (Math.random() - 0.5) * 2, player.y, player.z + (Math.random() - 0.5) * 2)
             wolf.addEffect(MobEffectInstance(MobEffects.GLOWING, 900, 0))
@@ -2687,3 +2853,5 @@ object AeonisCommands {
         }, 4500, java.util.concurrent.TimeUnit.MILLISECONDS)
     }
 }
+
+

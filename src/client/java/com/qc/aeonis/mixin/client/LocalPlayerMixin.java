@@ -127,7 +127,7 @@ public abstract class LocalPlayerMixin {
                mob instanceof net.minecraft.world.entity.boss.wither.WitherBoss ||
                mob instanceof net.minecraft.world.entity.boss.enderdragon.EnderDragon ||
                mob instanceof net.minecraft.world.entity.monster.breeze.Breeze ||
-               mob.getType() == EntityType.BAT ||
+               net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE.getKey(mob.getType()).getPath().equals("bat") ||
                mob.isNoGravity();
     }
     

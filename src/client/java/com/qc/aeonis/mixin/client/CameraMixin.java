@@ -4,12 +4,11 @@ import com.qc.aeonis.client.AeonisFreecam;
 import com.qc.aeonis.network.AeonisClientNetworking;
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
+import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.monster.Ghast;
-import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -30,8 +29,9 @@ public abstract class CameraMixin {
     @Shadow
     protected abstract void move(float distanceOffset, float verticalOffset, float horizontalOffset);
     
-    @Inject(method = "setup", at = @At("TAIL"), require = 0)
-    private void aeonis$adjustCameraForMob(Level area, Entity focusedEntity, boolean thirdPerson, boolean inverseView, float partialTicks, CallbackInfo ci) {
+    // 26.2+: camera alignment is handled in `alignWithEntity(partialTicks)` instead of `setup(...)`.
+    @Inject(method = "alignWithEntity", at = @At("TAIL"), require = 0)
+    private void aeonis$adjustCameraForMob(float partialTicks, CallbackInfo ci) {
         if (AeonisFreecam.INSTANCE.isEnabled()) {
             Vec3 freecamPos = AeonisFreecam.INSTANCE.getCameraPos(partialTicks);
             this.setPosition(freecamPos.x, freecamPos.y, freecamPos.z);
@@ -56,16 +56,58 @@ public abstract class CameraMixin {
         
         // Use true interpolated eye position for accurate first-person POV.
         Vec3 mobEyePos = mob.getEyePosition(partialTicks);
+        boolean sulfurCube = isSulfurCube(mob);
+        boolean genericCube = isCubeMob(mob);
         
+        boolean thirdPerson = !mc.options.getCameraType().isFirstPerson();
+
         // FIRST PERSON: Camera at MOB's eye position
         if (!thirdPerson) {
-            this.setPosition(mobEyePos.x, mobEyePos.y, mobEyePos.z);
+            if (genericCube) {
+                // Cube mobs look better from a stable center-biased camera.
+                double y = mob.getY() + mob.getBbHeight() * 0.72;
+                if (sulfurCube) {
+                    y += Math.sin((mob.tickCount + partialTicks) * 0.35) * 0.045;
+                }
+                this.setPosition(mob.getX(), y, mob.getZ());
+            } else {
+                this.setPosition(mobEyePos.x, mobEyePos.y, mobEyePos.z);
+            }
         } else {
-            // THIRD PERSON: Move camera further back for large mobs
+            // THIRD PERSON: anchor camera to the controlled mob, then apply a reasonable distance.
+            if (genericCube) {
+                double y = mob.getY() + mob.getBbHeight() * 0.72;
+                if (sulfurCube) {
+                    y += Math.sin((mob.tickCount + partialTicks) * 0.35) * 0.045;
+                }
+                this.setPosition(mob.getX(), y, mob.getZ());
+            } else {
+                this.setPosition(mobEyePos.x, mobEyePos.y, mobEyePos.z);
+            }
+
+            float baseDistance = 4.0f;
+            try {
+                baseDistance = (float) mob.getAttributeValue(net.minecraft.world.entity.ai.attributes.Attributes.CAMERA_DISTANCE);
+            } catch (Exception ignored) {
+                // fallback to default
+            }
+            float scale = 1.0f;
+            try {
+                scale = mob.getScale();
+            } catch (Exception ignored) {
+                // ignore
+            }
+            this.move(-(baseDistance * scale), 0, 0);
+
+            // Move camera further back for large mobs
             float extraDistance = getExtraCameraDistance(mob);
             if (extraDistance > 0) {
-                // Move camera backward by extra distance
                 this.move(-extraDistance, 0, 0);
+            }
+            if (genericCube) {
+                float cubeBack = sulfurCube ? 3.4f : 2.6f;
+                float cubeUp = sulfurCube ? 0.38f : 0.28f;
+                this.move(-cubeBack, cubeUp, 0);
             }
         }
     }
@@ -74,32 +116,35 @@ public abstract class CameraMixin {
      * Calculate extra camera distance for large mobs
      */
     private static float getExtraCameraDistance(LivingEntity mob) {
+        if (isCubeMob(mob)) {
+            return 0;
+        }
         // Ghast and similar large flying mobs
         if (isGhastLike(mob)) {
             return 8.0f; // Much further back for Ghast (they're huge)
         }
         
         // Ender Dragon
-        if (mob.getType() == EntityType.ENDER_DRAGON) {
+        if (mob.getType() == EntityTypes.ENDER_DRAGON) {
             return 12.0f; // Even further for dragon
         }
         
         // Wither
-        if (mob.getType() == EntityType.WITHER) {
+        if (mob.getType() == EntityTypes.WITHER) {
             return 6.0f;
         }
         
         // Ravager, Iron Golem, and other large mobs
-        if (mob.getType() == EntityType.RAVAGER) {
+        if (mob.getType() == EntityTypes.RAVAGER) {
             return 4.0f;
         }
         
-        if (mob.getType() == EntityType.IRON_GOLEM) {
+        if (mob.getType() == EntityTypes.IRON_GOLEM) {
             return 3.0f;
         }
         
         // Giant (if it exists)
-        if (mob.getType() == EntityType.GIANT) {
+        if (mob.getType() == EntityTypes.GIANT) {
             return 10.0f;
         }
         
@@ -122,6 +167,27 @@ public abstract class CameraMixin {
         try {
             String typePath = mob.getType().builtInRegistryHolder().key().identifier().getPath();
             return typePath.toLowerCase().contains("ghast");
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private static boolean isCubeMob(LivingEntity mob) {
+        try {
+            String typePath = mob.getType().builtInRegistryHolder().key().identifier().getPath();
+            return typePath.contains("cube");
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private static boolean isSulfurCube(LivingEntity mob) {
+        try {
+            String typePath = mob.getType().builtInRegistryHolder().key().identifier().getPath();
+            if (!"sulfur_cube".equals(typePath)) {
+                return false;
+            }
+            return !mob.getItemBySlot(EquipmentSlot.BODY).isEmpty();
         } catch (Exception e) {
             return false;
         }

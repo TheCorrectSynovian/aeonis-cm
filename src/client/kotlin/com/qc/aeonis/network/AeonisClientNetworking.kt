@@ -189,21 +189,19 @@ object AeonisClientNetworking {
                 if (controlledMobId > 0) {
                     val mobEntity = client.level!!.getEntity(controlledMobId)
                     if (mobEntity is net.minecraft.world.entity.Mob) {
-                        // Keep local visual state in lockstep with player input to reduce perceived control latency.
-                        mobEntity.setPos(client.player!!.x, client.player!!.y, client.player!!.z)
+                        // Keep only rotation in lockstep; position remains server-authoritative for smoother replication.
                         mobEntity.yRot = client.player!!.yRot
                         mobEntity.xRot = client.player!!.xRot
                         mobEntity.yBodyRot = client.player!!.yRot
                         mobEntity.yHeadRot = client.player!!.yRot
                         
-                        // Animate limbs based on player movement for visual feedback
+                        // Animate from the mob's own local motion so visuals match replicated movement.
                         if (mobEntity is net.minecraft.world.entity.LivingEntity) {
                             val horizontalSpeed = Math.sqrt(
-                                client.player!!.deltaMovement.x * client.player!!.deltaMovement.x +
-                                client.player!!.deltaMovement.z * client.player!!.deltaMovement.z
+                                mobEntity.deltaMovement.x * mobEntity.deltaMovement.x +
+                                mobEntity.deltaMovement.z * mobEntity.deltaMovement.z
                             )
-                            // This triggers walk animation
-                            mobEntity.walkAnimation.setSpeed((horizontalSpeed * 6.5f).toFloat())
+                            mobEntity.walkAnimation.setSpeed((horizontalSpeed * 6.8f).toFloat())
                         }
                     }
                 }
@@ -232,6 +230,7 @@ object AeonisClientNetworking {
     fun getControlledEntityId(): Int = controlledEntityId
     fun getControlledMobId(): Int = controlledMobId
     fun isBreakingBlock(): Boolean = isBreakingBlock
+    fun isPlayerControlling(playerUuid: java.util.UUID): Boolean = controllingPlayerUUIDs.contains(playerUuid)
     
     private fun sendMovementInput(client: Minecraft) {
         val player = client.player ?: return
@@ -243,8 +242,9 @@ object AeonisClientNetworking {
         
         if (options.keyUp.isDown) forward += 1f
         if (options.keyDown.isDown) forward -= 1f
-        if (options.keyLeft.isDown) strafe -= 1f
-        if (options.keyRight.isDown) strafe += 1f
+        // 26.2 vanilla convention: "left impulse" is positive when pressing left.
+        if (options.keyLeft.isDown) strafe += 1f
+        if (options.keyRight.isDown) strafe -= 1f
         
         val jump = options.keyJump.isDown
         val sneak = options.keyShift.isDown

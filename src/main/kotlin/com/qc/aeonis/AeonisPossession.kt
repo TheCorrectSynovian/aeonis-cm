@@ -63,7 +63,7 @@ object AeonisPossession {
         // UseEntity callback for soul possession interactions (using SOUL item)
         UseEntityCallback.EVENT.register(UseEntityCallback { player, world, hand, entity, hitResult ->
             val stack = player.getItemInHand(hand)
-            if (stack.item === AeonisItems.SOUL) {
+            if (false && stack.item === AeonisItems.SOUL) {
                 if (world.isClientSide) return@UseEntityCallback InteractionResult.SUCCESS
                 if (entity is LivingEntity && entity !is BodyEntity) {
                     handlePossess(player as ServerPlayer, entity)

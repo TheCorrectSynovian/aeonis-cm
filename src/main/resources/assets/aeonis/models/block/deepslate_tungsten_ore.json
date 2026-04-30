@@ -1,6 +1,0 @@
-{
-  "parent": "block/cube_all",
-  "textures": {
-    "all": "aeonis:block/deepslate_tungsten_ore"
-  }
-}

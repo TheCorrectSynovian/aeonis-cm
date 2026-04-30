@@ -1,26 +1,30 @@
 package com.qc.aeonis.mixin;
 
-import com.qc.aeonis.network.AeonisNetworking;
-import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.tags.DamageTypeTags;
-import net.minecraft.world.damagesource.DamageSource;
-import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.EntityType;
-import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.Mob;
-import net.minecraft.world.entity.animal.bee.Bee;
-import net.minecraft.world.entity.animal.parrot.Parrot;
-import net.minecraft.world.entity.animal.fish.WaterAnimal;
-import net.minecraft.world.entity.animal.allay.Allay;
-import net.minecraft.world.entity.monster.*;
-import net.minecraft.world.entity.monster.zombie.Drowned;
-import net.minecraft.world.entity.monster.breeze.Breeze;
-import net.minecraft.world.entity.monster.piglin.Piglin;
-import net.minecraft.world.entity.monster.warden.Warden;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
+
+import com.qc.aeonis.network.AeonisNetworking;
+
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.tags.DamageTypeTags;
+import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntityTypes;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.animal.allay.Allay;
+import net.minecraft.world.entity.animal.bee.Bee;
+import net.minecraft.world.entity.animal.fish.WaterAnimal;
+import net.minecraft.world.entity.animal.parrot.Parrot;
+import net.minecraft.world.entity.monster.Blaze;
+import net.minecraft.world.entity.monster.Ghast;
+import net.minecraft.world.entity.monster.Guardian;
+import net.minecraft.world.entity.monster.Phantom;
+import net.minecraft.world.entity.monster.Vex;
+import net.minecraft.world.entity.monster.breeze.Breeze;
+import net.minecraft.world.entity.monster.zombie.Drowned;
 
 @Mixin(ServerPlayer.class)
 public class PlayerDamageMixin {
@@ -49,8 +53,8 @@ public class PlayerDamageMixin {
         if (source.is(DamageTypeTags.IS_FALL)) {
             if (mob instanceof Ghast || mob instanceof Blaze || mob instanceof Phantom ||
                 mob instanceof Vex || mob instanceof Bee || mob instanceof Allay ||
-                mob instanceof Parrot || mob.getType() == EntityType.WITHER ||
-                mob.getType() == EntityType.ENDER_DRAGON || mob instanceof Breeze ||
+                mob instanceof Parrot || mob.getType() == EntityTypes.WITHER ||
+                mob.getType() == EntityTypes.ENDER_DRAGON || mob instanceof Breeze ||
                 mob.isNoGravity()) {
                 cir.setReturnValue(false);
                 return;

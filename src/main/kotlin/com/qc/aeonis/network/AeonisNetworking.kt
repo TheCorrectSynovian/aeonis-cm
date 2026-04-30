@@ -1,8 +1,11 @@
 package com.qc.aeonis.network
 
+import com.qc.aeonis.AeonisPossession
+import com.qc.aeonis.command.AeonisCommands
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking
 import net.minecraft.network.RegistryFriendlyByteBuf
+import net.minecraft.network.chat.Component
 import net.minecraft.network.codec.StreamCodec
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload
 import net.minecraft.resources.Identifier
@@ -11,47 +14,44 @@ import net.minecraft.world.entity.Entity
 import net.minecraft.world.entity.EquipmentSlot
 import net.minecraft.world.entity.LivingEntity
 import net.minecraft.world.entity.Mob
-import net.minecraft.world.entity.monster.Monster
-import net.minecraft.world.entity.monster.zombie.Zombie
-import net.minecraft.world.entity.monster.skeleton.Skeleton
-import net.minecraft.world.entity.animal.wolf.Wolf
-import net.minecraft.world.entity.animal.golem.IronGolem
 import net.minecraft.world.entity.animal.allay.Allay
 import net.minecraft.world.entity.animal.bee.Bee
+import net.minecraft.world.entity.animal.chicken.Chicken
+import net.minecraft.world.entity.animal.golem.IronGolem
+import net.minecraft.world.entity.animal.golem.SnowGolem
 import net.minecraft.world.entity.animal.parrot.Parrot
-import net.minecraft.world.entity.boss.wither.WitherBoss
+import net.minecraft.world.entity.animal.wolf.Wolf
 import net.minecraft.world.entity.boss.enderdragon.EnderDragon
-import net.minecraft.world.entity.boss.enderdragon.phases.EnderDragonPhase
+import net.minecraft.world.entity.boss.wither.WitherBoss
+import net.minecraft.world.entity.item.ItemEntity
 import net.minecraft.world.entity.monster.Blaze
+import net.minecraft.world.entity.monster.Creeper
+import net.minecraft.world.entity.monster.EnderMan
 import net.minecraft.world.entity.monster.Ghast
+import net.minecraft.world.entity.monster.Monster
 import net.minecraft.world.entity.monster.Phantom
 import net.minecraft.world.entity.monster.Vex
-import net.minecraft.world.entity.monster.EnderMan
-import net.minecraft.world.entity.monster.Creeper
-import net.minecraft.world.entity.monster.skeleton.AbstractSkeleton
-import net.minecraft.world.entity.monster.breeze.Breeze
-import net.minecraft.world.entity.monster.illager.Pillager
-import net.minecraft.world.entity.animal.chicken.Chicken
-import net.minecraft.world.entity.projectile.arrow.Arrow
-import net.minecraft.world.entity.projectile.hurtingprojectile.WitherSkull
-import net.minecraft.world.entity.projectile.hurtingprojectile.DragonFireball
-import net.minecraft.world.entity.projectile.hurtingprojectile.SmallFireball
-import net.minecraft.world.entity.projectile.hurtingprojectile.LargeFireball
-import net.minecraft.world.entity.projectile.throwableitemprojectile.Snowball
-import net.minecraft.world.entity.projectile.hurtingprojectile.windcharge.BreezeWindCharge
-import net.minecraft.world.entity.item.ItemEntity
 import net.minecraft.world.entity.monster.Witch
+import net.minecraft.world.entity.monster.breeze.Breeze
 import net.minecraft.world.entity.monster.illager.Evoker
+import net.minecraft.world.entity.monster.illager.Pillager
+import net.minecraft.world.entity.monster.skeleton.AbstractSkeleton
+import net.minecraft.world.entity.monster.skeleton.Skeleton
 import net.minecraft.world.entity.monster.warden.Warden
-import net.minecraft.world.entity.animal.golem.SnowGolem
+import net.minecraft.world.entity.monster.zombie.Zombie
 import net.minecraft.world.entity.projectile.EvokerFangs
-import net.minecraft.world.phys.AABB
-import net.minecraft.world.phys.Vec3
-import net.minecraft.network.chat.Component
+import net.minecraft.world.entity.projectile.Projectile
+import net.minecraft.world.entity.projectile.arrow.Arrow
+import net.minecraft.world.entity.projectile.hurtingprojectile.DragonFireball
+import net.minecraft.world.entity.projectile.hurtingprojectile.LargeFireball
+import net.minecraft.world.entity.projectile.hurtingprojectile.SmallFireball
+import net.minecraft.world.entity.projectile.hurtingprojectile.WitherSkull
+import net.minecraft.world.entity.projectile.hurtingprojectile.windcharge.BreezeWindCharge
+import net.minecraft.world.entity.projectile.throwableitemprojectile.Snowball
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.Items
-import com.qc.aeonis.AeonisPossession
-import com.qc.aeonis.command.AeonisCommands
+import net.minecraft.world.phys.AABB
+import net.minecraft.world.phys.Vec3
 
 /**
  * Packet sent from client to server with movement input
@@ -508,6 +508,14 @@ object AeonisNetworking {
         return controlledEntities.toMap()
     }
 
+    fun isEntityControlled(entityId: Int): Boolean {
+        return controlledEntities.values.any { it == entityId }
+    }
+
+    fun getControllingPlayerUuid(entityId: Int): java.util.UUID? {
+        return controlledEntities.entries.firstOrNull { it.value == entityId }?.key
+    }
+
     fun getLatestControlInput(playerUuid: java.util.UUID): MobControlPayload? = latestControlInputs[playerUuid]
 
     fun broadcastControllingPlayers(server: net.minecraft.server.MinecraftServer) {
@@ -564,41 +572,46 @@ object AeonisNetworking {
         val entityId = controlledEntities[player.uuid] ?: return
         val level = player.level() as? net.minecraft.server.level.ServerLevel ?: return
         val entity = level.getEntity(entityId) ?: return
+
+        // Update latest control inputs
         latestControlInputs[player.uuid] = payload
-        
+
         // Apply rotation to entity (synced from player's camera)
-        entity.yRot = payload.yaw
-        entity.xRot = payload.pitch
-        entity.setYHeadRot(payload.yaw)
-        if (entity is LivingEntity) {
-            entity.yBodyRot = payload.yaw
+        try {
+            entity.yRot = payload.yaw
+            entity.xRot = if (isCubeMob(entity)) 0.0f else payload.pitch
+            entity.setYHeadRot(payload.yaw)
+            if (entity is LivingEntity) {
+                entity.yBodyRot = payload.yaw
+            }
+        } catch (e: Exception) {
+            player.sendSystemMessage(Component.literal("§c[Aeonis] Error applying rotation: ${e.message}"))
         }
 
         // Handle attack input -> perform MELEE attack (left-click)
         if (payload.attack) {
-            // Small guard against spam using attackCooldowns
             val now = System.currentTimeMillis()
             val last = attackCooldowns[player.uuid] ?: 0L
             if (now - last >= 250L) { // 250ms cooldown between attacks
                 attackCooldowns[player.uuid] = now
                 try {
-                    // Perform melee attack: damage entity player is looking at
                     performMeleeAttack(player, entity)
-                } catch (_: Exception) {
-                    // fallback: do nothing
+                } catch (e: Exception) {
+                    player.sendSystemMessage(Component.literal("§c[Aeonis] Attack error: ${e.message}"))
                 }
             }
         }
 
-        // Teleport input: REMOVED - no longer used for special abilities
-        // Special abilities are now triggered by the R key (AbilityPayload)
-        
-        // NOTE: Movement is now handled by the player's normal movement
-        // The server tick in AeonisManager syncs the mob position to the player
-        // This simplifies the system and makes movement feel natural
-        
-        // NOTE: Removed legacy action bar health display since vanilla health bar now shows mob health
-        // The player's max health is synced to the mob's max health in AeonisManager tick
+        // Movement handled server-side; avoid per-tick chat spam.
+    }
+
+    private fun isCubeMob(entity: Entity): Boolean {
+        return try {
+            val path = entity.type.builtInRegistryHolder().key().identifier().path
+            path.contains("cube")
+        } catch (_: Exception) {
+            false
+        }
     }
 
     /**
@@ -696,11 +709,11 @@ object AeonisNetworking {
         return when {
             mob is IronGolem -> 4.0
             mob is net.minecraft.world.entity.monster.Ravager -> 4.5
-            mob.type == net.minecraft.world.entity.EntityType.WARDEN -> 5.0
-            mob.type == net.minecraft.world.entity.EntityType.ENDER_DRAGON -> 8.0
+            mob.type == net.minecraft.world.entity.EntityTypes.WARDEN -> 5.0
+            mob.type == net.minecraft.world.entity.EntityTypes.ENDER_DRAGON -> 8.0
             mob is net.minecraft.world.entity.monster.Ghast -> 6.0
-            mob.type == net.minecraft.world.entity.EntityType.GIANT -> 8.0
-            mob.type == net.minecraft.world.entity.EntityType.WITHER -> 5.0
+            mob.type == net.minecraft.world.entity.EntityTypes.GIANT -> 8.0
+            mob.type == net.minecraft.world.entity.EntityTypes.WITHER -> 5.0
             mob is Bee -> 1.5
             else -> {
                 // Default: base reach on mob's bounding box size
@@ -775,7 +788,7 @@ object AeonisNetworking {
                     if (!canUseProjectile(player.uuid, now)) return
                     setProjectileCooldown(player.uuid, 100L)
                     val look = mobEntity.getViewVector(1.0f)
-                    val snowball = Snowball(net.minecraft.world.entity.EntityType.SNOWBALL, level)
+                    val snowball = Snowball(net.minecraft.world.entity.EntityTypes.SNOWBALL, level)
                     snowball.owner = mobEntity
                     snowball.setPos(mobEntity.x, mobEntity.eyeY, mobEntity.z)
                     snowball.shoot(look.x, look.y, look.z, 1.6f, 1.0f)
@@ -841,7 +854,7 @@ object AeonisNetworking {
                         level.addFreshEntity(fangs)
                     }
                     // Summon a vex
-                    val vex = Vex(net.minecraft.world.entity.EntityType.VEX, level)
+                    val vex = Vex(net.minecraft.world.entity.EntityTypes.VEX, level)
                     vex.setPos(mobEntity.x, mobEntity.y + 1.0, mobEntity.z)
                     vex.setOwner(mobEntity)
                     vex.setLimitedLife(600) // 30 seconds
@@ -1105,7 +1118,7 @@ object AeonisNetworking {
                entity is Vex ||
                entity is Blaze ||
                entity is Breeze ||
-               entity.type == net.minecraft.world.entity.EntityType.BAT
+               entity.type == net.minecraft.world.entity.EntityTypes.BAT
     }
     
     // Internal alias for backward compatibility
@@ -1731,3 +1744,5 @@ object AeonisNetworking {
         player.sendSystemMessage(Component.literal("§5✦ Teleported!"))
     }
 }
+
+

@@ -25,11 +25,25 @@ import net.minecraft.network.chat.Component
 import net.minecraft.server.level.ServerLevel
 import net.minecraft.server.level.ServerPlayer
 import net.minecraft.util.Mth
+import net.minecraft.world.entity.EquipmentSlot
+import net.minecraft.world.entity.EntityTypes
 import net.minecraft.world.level.GameType
 import org.slf4j.LoggerFactory
 
 object AeonisManager : ModInitializer {
     private val logger = LoggerFactory.getLogger("aeonis-manager")
+    private val sulfurJumpCooldownByPlayer = mutableMapOf<java.util.UUID, Int>()
+    private enum class SulfurArchetype {
+        REGULAR,
+        BOUNCY,
+        SLOW_FLAT,
+        FAST_FLAT,
+        LIGHT,
+        FAST_SLIDING,
+        SLOW_SLIDING,
+        STICKY,
+        HIGH_RESISTANCE
+    }
 
 	override fun onInitialize() {
 		com.qc.aeonis.block.AeonisBlocks.register()
@@ -109,6 +123,73 @@ object AeonisManager : ModInitializer {
 				HerobrineEntity.triggerDreamEvent(entity)
 			}
 		}
+
+		// Apply control inputs early in the tick so `LivingEntity.aiStep -> travel(input)` sees them this tick.
+		// (In 26.2+, movement is gated behind `isEffectiveAi()`, so we keep NoAI off and suppress AI separately.)
+		ServerTickEvents.START_SERVER_TICK.register { server ->
+			for (player in server.playerList.players) {
+				if (!AeonisNetworking.isPlayerTransformed(player.uuid)) continue
+				val entityId = AeonisNetworking.getControlledEntityId(player.uuid) ?: continue
+				val level = player.level() as? net.minecraft.server.level.ServerLevel ?: continue
+				val mob = level.getEntity(entityId) as? net.minecraft.world.entity.Mob ?: continue
+				val input = AeonisNetworking.getLatestControlInput(player.uuid)
+
+				mob.navigation.stop()
+				val liveMobSpeed = mob.getAttributeValue(net.minecraft.world.entity.ai.attributes.Attributes.MOVEMENT_SPEED).toFloat()
+				mob.setSpeed(liveMobSpeed)
+
+					if (input != null) {
+						val mag = kotlin.math.sqrt(input.forward * input.forward + input.strafe * input.strafe)
+						if (mag > 0.001f) {
+							mob.setZza(input.forward / mag)
+							mob.setXxa(input.strafe / mag)
+						} else {
+							mob.setZza(0.0f)
+							mob.setXxa(0.0f)
+						}
+
+						(mob as? net.minecraft.world.entity.LivingEntity)?.setJumping(input.jump)
+						if (AeonisNetworking.canMobFly(mob)) {
+							mob.setYya(
+								when {
+									input.jump -> 1.0f
+									input.sneak -> -1.0f
+									else -> 0.0f
+								}
+							)
+							// `travel(input)` doesn't use `yya` for vertical movement in air; drive vertical velocity directly.
+							val currY = mob.deltaMovement.y
+							val targetY = when {
+								input.jump -> 0.34
+								input.sneak -> -0.26
+								else -> 0.0
+							}
+							val smoothedY = currY + (targetY - currY) * 0.32
+							mob.setDeltaMovement(
+								mob.deltaMovement.x,
+								smoothedY.coerceIn(-0.6, 0.6),
+								mob.deltaMovement.z
+							)
+						} else if (mob.isInWater && mob.canBreatheUnderwater()) {
+							// Aquatic mobs: allow vertical swimming via jump/sneak (used by `travelInWater`).
+							mob.setYya(
+								when {
+									input.jump -> 1.0f
+									input.sneak -> -1.0f
+									else -> 0.0f
+								}
+							)
+						} else {
+							mob.setYya(0.0f)
+						}
+					} else {
+						mob.setZza(0.0f)
+						mob.setXxa(0.0f)
+					mob.setYya(0.0f)
+					(mob as? net.minecraft.world.entity.LivingEntity)?.setJumping(false)
+				}
+			}
+		}
 		
 		// Register tick event for transformed players - sync mob position and handle flying
 		ServerTickEvents.END_SERVER_TICK.register { server ->
@@ -128,6 +209,7 @@ object AeonisManager : ModInitializer {
 					val entityId = AeonisNetworking.getControlledEntityId(player.uuid) ?: continue
 					val level = player.level() as? net.minecraft.server.level.ServerLevel ?: continue
 					val mob = level.getEntity(entityId)
+					val input = AeonisNetworking.getLatestControlInput(player.uuid)
 					
 					// AUTO-UNTRANSFORM: If mob is dead or gone, automatically untransform the player
 					if (mob == null || !mob.isAlive) {
@@ -135,48 +217,118 @@ object AeonisManager : ModInitializer {
 						continue
 					}
 
-					// Cache original movement speed once and apply mob-like movement speed to the player
+					// Cache original movement speed once and mirror the controlled mob's current speed attribute.
 					AeonisCommands.cacheOriginalMoveSpeed(player)
 					if (mob is net.minecraft.world.entity.LivingEntity) {
-						val mobSpeedAttr = mob.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.MOVEMENT_SPEED)
-						if (mobSpeedAttr != null) {
-							val profileMul = getMovementProfileMultiplier(mob)
-							val targetSpeed = (mobSpeedAttr.baseValue * profileMul).coerceIn(0.06, 0.42)
-							player.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.MOVEMENT_SPEED)?.baseValue = targetSpeed
+						val liveMobSpeed = mob.getAttributeValue(net.minecraft.world.entity.ai.attributes.Attributes.MOVEMENT_SPEED)
+						var targetSpeed = if (liveMobSpeed > 0.0) liveMobSpeed else 0.1
+						if (isSulfurCube(mob)) {
+							targetSpeed *= when (resolveSulfurArchetype(mob)) {
+								SulfurArchetype.FAST_FLAT -> 1.18
+								SulfurArchetype.SLOW_FLAT -> 0.76
+								SulfurArchetype.FAST_SLIDING -> 1.12
+								SulfurArchetype.SLOW_SLIDING -> 0.84
+								SulfurArchetype.STICKY -> 0.70
+								SulfurArchetype.LIGHT -> 1.06
+								else -> 1.0
+							}
 						}
+						player.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.MOVEMENT_SPEED)?.baseValue = targetSpeed
 					}
 					
-					// SYNC MOB TO PLAYER POSITION (player moves via normal minecraft movement, mob follows)
-					// This is the QCmod approach - player is the "driver" and mob is the "visual"
-					// The camera positioning is handled client-side in CameraMixin
-					mob.setPos(player.x, player.y, player.z)
+					// Smooth sync player to mob to avoid fight between player motion and mob motion.
+					val dx = mob.x - player.x
+					val dy = mob.y - player.y
+					val dz = mob.z - player.z
+					val distSqr = dx * dx + dy * dy + dz * dz
+					val posBlend = when {
+						distSqr > 36.0 -> 1.0f
+						distSqr > 9.0 -> 0.75f
+						else -> 0.42f
+					}
+					player.setPos(
+						Mth.lerp(posBlend, player.x.toFloat(), mob.x.toFloat()).toDouble(),
+						Mth.lerp(posBlend, player.y.toFloat(), mob.y.toFloat()).toDouble(),
+						Mth.lerp(posBlend, player.z.toFloat(), mob.z.toFloat()).toDouble()
+					)
+
+					val prevYaw = mob.yRot
 					val desiredYaw = player.yRot
-					mob.setYRot(desiredYaw)
-					mob.setYHeadRot(desiredYaw)
+					val smoothedYaw = Mth.rotLerp(0.45f, prevYaw, desiredYaw)
+					mob.setYRot(smoothedYaw)
+					mob.setYHeadRot(smoothedYaw)
 					if (mob is net.minecraft.world.entity.LivingEntity) {
-						mob.yBodyRot = desiredYaw
+						mob.yBodyRot = Mth.rotLerp(0.35f, mob.yBodyRot, smoothedYaw)
 					}
 					mob.setXRot(player.xRot)
-					if (mob is net.minecraft.world.entity.Mob) {
-						mob.navigation.stop()
-						val input = AeonisNetworking.getLatestControlInput(player.uuid)
-						if (input != null) {
-							mob.setZza(input.forward)
-							mob.setXxa(input.strafe)
-						} else {
-							mob.setZza(0.0f)
-							mob.setXxa(0.0f)
+					mob.yRotO = prevYaw
+					player.setDeltaMovement(mob.deltaMovement.multiply(0.85, 1.0, 0.85))
+					if (mob is net.minecraft.world.entity.LivingEntity) {
+						val mobHorizontalSpeed = kotlin.math.sqrt(
+							(mob.x - mob.xo) * (mob.x - mob.xo) +
+							(mob.z - mob.zo) * (mob.z - mob.zo)
+						).toFloat()
+						val animSpeed = (mobHorizontalSpeed * 7.2f).coerceIn(0.0f, 2.6f)
+						mob.walkAnimation.setSpeed(animSpeed)
+						// Sulfur Cube enhancement: use cube-like hop cadence from vanilla cube behavior.
+						if (isSulfurCube(mob) && input != null) {
+							val archetype = resolveSulfurArchetype(mob)
+							val isMoving = kotlin.math.abs(input.forward) > 0.01f || kotlin.math.abs(input.strafe) > 0.01f
+							val cooldown = sulfurJumpCooldownByPlayer.getOrDefault(player.uuid, 0)
+							if (cooldown > 0) {
+								sulfurJumpCooldownByPlayer[player.uuid] = cooldown - 1
+							}
+							if (player.onGround()) {
+								player.setDeltaMovement(
+									when (archetype) {
+										SulfurArchetype.FAST_SLIDING -> player.deltaMovement.multiply(1.04, 1.0, 1.04)
+										SulfurArchetype.SLOW_SLIDING -> player.deltaMovement.multiply(0.92, 1.0, 0.92)
+										SulfurArchetype.STICKY -> player.deltaMovement.multiply(0.78, 1.0, 0.78)
+										SulfurArchetype.HIGH_RESISTANCE -> player.deltaMovement.multiply(0.88, 1.0, 0.88)
+										else -> player.deltaMovement
+									}
+								)
+							}
+							if (archetype == SulfurArchetype.LIGHT && !player.onGround()) {
+								player.setDeltaMovement(player.deltaMovement.add(0.0, 0.016, 0.0))
+							}
+							if (isMoving && player.onGround() && mob.onGround() && cooldown <= 0) {
+								val jumpImpulse = when (archetype) {
+									SulfurArchetype.BOUNCY -> 0.56
+									SulfurArchetype.STICKY -> 0.30
+									SulfurArchetype.SLOW_FLAT -> 0.28
+									SulfurArchetype.FAST_FLAT -> 0.34
+									SulfurArchetype.LIGHT -> 0.48
+									else -> 0.42
+								}
+								val boostedY = (player.deltaMovement.y + jumpImpulse).coerceAtMost(0.62)
+								player.setDeltaMovement(player.deltaMovement.x, boostedY, player.deltaMovement.z)
+								mob.playSound(net.minecraft.sounds.SoundEvents.SLIME_JUMP, 0.5f, 1.0f)
+								mob.walkAnimation.setSpeed((animSpeed + 0.35f).coerceAtMost(2.8f))
+								sulfurJumpCooldownByPlayer[player.uuid] = when (archetype) {
+									SulfurArchetype.BOUNCY -> 7 + level.random.nextInt(8)
+									SulfurArchetype.STICKY -> 15 + level.random.nextInt(10)
+									SulfurArchetype.SLOW_FLAT -> 13 + level.random.nextInt(8)
+									SulfurArchetype.FAST_FLAT -> 9 + level.random.nextInt(7)
+									SulfurArchetype.LIGHT -> 8 + level.random.nextInt(8)
+									else -> 10 + level.random.nextInt(12)
+								}
+								player.hurtMarked = true
+							}
+							if (input.sneak && player.onGround()) {
+								val sneakMul = when (archetype) {
+									SulfurArchetype.STICKY -> 0.64
+									SulfurArchetype.FAST_SLIDING -> 0.90
+									else -> 0.80
+								}
+								player.setDeltaMovement(player.deltaMovement.multiply(sneakMul, 1.0, sneakMul))
+							}
 						}
 					}
-					mob.setDeltaMovement(player.deltaMovement)
-					if (mob is net.minecraft.world.entity.LivingEntity) {
-						val horizontalSpeed = kotlin.math.sqrt(
-							player.deltaMovement.x * player.deltaMovement.x +
-							player.deltaMovement.z * player.deltaMovement.z
-						).toFloat()
-						val animSpeed = (horizontalSpeed * 5.8f).coerceIn(0.0f, 1.8f)
-						mob.walkAnimation.setSpeed(animSpeed)
-					}
+					if (distSqr > 0.0001) {
+						mob.hurtMarked = true
+							player.hurtMarked = true
+						}
 					mob.hurtMarked = true
 					
 					// Sync mob equipment with player's held items
@@ -221,6 +373,9 @@ object AeonisManager : ModInitializer {
 					// Keep normal physics for natural movement while transformed.
 					player.noPhysics = false
 				}
+				else {
+					sulfurJumpCooldownByPlayer.remove(player.uuid)
+				}
 			}
 		}
 		
@@ -261,8 +416,8 @@ object AeonisManager : ModInitializer {
 	private fun getYawBlend(entity: net.minecraft.world.entity.Entity): Float {
 		val width = entity.bbWidth
 		return when {
-			entity.type == net.minecraft.world.entity.EntityType.SPIDER ||
-				entity.type == net.minecraft.world.entity.EntityType.CAVE_SPIDER -> 0.52f
+			entity.type == net.minecraft.world.entity.EntityTypes.SPIDER ||
+				entity.type == net.minecraft.world.entity.EntityTypes.CAVE_SPIDER -> 0.52f
 			width <= 0.7f -> 0.55f
 			width <= 1.2f -> 0.45f
 			width <= 2.0f -> 0.36f
@@ -270,23 +425,36 @@ object AeonisManager : ModInitializer {
 		}
 	}
 
-	private fun getMovementProfileMultiplier(entity: net.minecraft.world.entity.Entity): Double {
-		return when (entity.type) {
-			net.minecraft.world.entity.EntityType.ZOMBIE -> 0.92
-			net.minecraft.world.entity.EntityType.HUSK -> 0.90
-			net.minecraft.world.entity.EntityType.DROWNED -> 0.88
-			net.minecraft.world.entity.EntityType.CREEPER -> 0.90
-			net.minecraft.world.entity.EntityType.SPIDER -> 1.12
-			net.minecraft.world.entity.EntityType.CAVE_SPIDER -> 1.16
-			net.minecraft.world.entity.EntityType.ENDERMAN -> 1.06
-			net.minecraft.world.entity.EntityType.SKELETON -> 0.98
-			net.minecraft.world.entity.EntityType.STRAY -> 0.96
-			net.minecraft.world.entity.EntityType.WITHER_SKELETON -> 0.94
-			net.minecraft.world.entity.EntityType.IRON_GOLEM -> 0.78
-			net.minecraft.world.entity.EntityType.RAVAGER -> 0.74
-			net.minecraft.world.entity.EntityType.WARDEN -> 0.80
-			net.minecraft.world.entity.EntityType.BEE -> 1.12
-			else -> 1.0
+	private fun isSulfurCube(entity: net.minecraft.world.entity.Entity): Boolean {
+		return try {
+			val path = net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE.getKey(entity.type).path
+			path == "sulfur_cube"
+		} catch (_: Exception) {
+			false
+		}
+	}
+
+	private fun resolveSulfurArchetype(entity: net.minecraft.world.entity.Entity): SulfurArchetype {
+		val living = entity as? net.minecraft.world.entity.LivingEntity ?: return SulfurArchetype.REGULAR
+		val bodyStack = living.getItemBySlot(EquipmentSlot.BODY)
+		if (bodyStack.isEmpty) return SulfurArchetype.REGULAR
+		val itemPath = try {
+			net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(bodyStack.item).path
+		} catch (_: Exception) {
+			return SulfurArchetype.REGULAR
+		}
+		return when (itemPath) {
+			"oak_planks" -> SulfurArchetype.BOUNCY
+			"iron_block" -> SulfurArchetype.SLOW_FLAT
+			"wet_sponge" -> SulfurArchetype.FAST_FLAT
+			"white_wool" -> SulfurArchetype.LIGHT
+			"packed_ice" -> SulfurArchetype.FAST_SLIDING
+			"red_mushroom_block" -> SulfurArchetype.SLOW_SLIDING
+			"honeycomb_block" -> SulfurArchetype.STICKY
+			"soul_sand" -> SulfurArchetype.HIGH_RESISTANCE
+			else -> SulfurArchetype.REGULAR
 		}
 	}
 }
+
+

@@ -1,1 +1,0 @@
-$damage @s $(sonic_boom_damage) minecraft:sonic_boom by @n[tag=deeper_dark.selected]

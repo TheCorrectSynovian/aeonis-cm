@@ -1,1 +1,0 @@
-$item modify entity @s $(slot) [{"function":"minecraft:set_components","components":{"minecraft:lodestone_tracker":{"target":{"dimension":"$(dimension)","pos":[$(x),$(y),$(z)]},"tracked":false},"!minecraft:enchantment_glint_override":{}}}]

@@ -20,6 +20,11 @@ object AeonisOverworldGeneration {
         Identifier.fromNamespaceAndPath("aeonis_manager", "tungsten_ore_stony_peaks")
     )
 
+    private val TUNGSTEN_ORE_CAVES_PLACED_KEY = ResourceKey.create(
+        Registries.PLACED_FEATURE,
+        Identifier.fromNamespaceAndPath("aeonis_manager", "tungsten_ore_caves")
+    )
+
     private val ANDESITE_STONE_CLUSTER_KEY = ResourceKey.create(
         Registries.PLACED_FEATURE,
         Identifier.fromNamespaceAndPath("aeonis", "andesite_stone_cluster")
@@ -71,6 +76,12 @@ object AeonisOverworldGeneration {
             BiomeSelectors.includeByKey(Biomes.STONY_PEAKS),
             GenerationStep.Decoration.UNDERGROUND_ORES,
             TUNGSTEN_ORE_STONY_PEAKS_PLACED_KEY
+        )
+
+        BiomeModifications.addFeature(
+            BiomeSelectors.includeByKey(Biomes.DRIPSTONE_CAVES, Biomes.LUSH_CAVES),
+            GenerationStep.Decoration.UNDERGROUND_ORES,
+            TUNGSTEN_ORE_CAVES_PLACED_KEY
         )
 
         BiomeModifications.addFeature(

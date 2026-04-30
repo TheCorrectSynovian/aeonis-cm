@@ -1,2 +1,0 @@
-execute if predicate {  "condition": "minecraft:entity_properties",  "entity": "this",  "predicate": {    "effects": {      "minecraft:darkness": {        "amplifier": 0      }    }  }} run effect give @s minecraft:darkness 2 10 true
-execute if predicate {  "condition": "minecraft:entity_properties",  "entity": "this",  "predicate": {    "effects": {      "minecraft:blindness": {        "amplifier": 0      }    }  }} run effect clear @s minecraft:blindness

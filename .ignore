@@ -1,0 +1,12 @@
+# Exclude large generated/decompiled source mirrors from search/indexing tools
+26.2_snapshot3_client.sources/
+src_mc26.2_snap5_clientsource/
+temp-client-sources/
+temp-sources/
+temp/
+.dump/
+.gradle-user/
+*.sources/
+.kotlin/
+.trash/
+*sources.zip

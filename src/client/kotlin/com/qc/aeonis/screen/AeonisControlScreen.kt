@@ -18,7 +18,9 @@ import net.minecraft.core.registries.Registries
 import net.minecraft.network.chat.Component
 import net.minecraft.resources.ResourceKey
 import net.minecraft.resources.Identifier
+import net.minecraft.world.entity.EntityTypes
 import net.minecraft.world.entity.EntityType
+
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.Items
 import net.minecraft.world.item.SpawnEggItem

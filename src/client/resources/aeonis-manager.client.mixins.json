@@ -1,7 +1,6 @@
 {
   "required": true,
   "package": "com.qc.aeonis.mixin.client",
-  "refmap": "aeonis-manager.refmap.json",
   "compatibilityLevel": "JAVA_21",
   "client": [
     "WindowTitleMixin",
@@ -12,7 +11,8 @@
     "MobRenderMixin",
     "LocalPlayerMixin",
     "InGameOverlayRendererMixin",
-    "GameRendererMixin",
+    "MinecraftPickMixin",
+    "CameraZoomMixin",
     "ExampleClientMixin",
     "ClientCollisionMixin",
     "CameraMixin",
